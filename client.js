@@ -1983,6 +1983,9 @@ window.__ModuleLoader__.load({
       const branches = space.branches
       const layoutMode = space.layoutMode === 'horizontal' ? 'horizontal' : 'vertical'
       const layout = buildPositions(mainTurns, branches, layoutMode)
+      const lineZoom = Math.max(0.01, Math.min(1, view.zoom))
+      const mainLineWidth = 5 + (1 - lineZoom) * 5
+      const branchLineWidth = 2 + (1 - lineZoom) * 3
       const positions = layout.positions
       const turnRects = layout.rects
       const branchPositions = branches.map((branch) => positions.get(branch.id)).filter(Boolean)
@@ -3163,7 +3166,7 @@ window.__ModuleLoader__.load({
           paths.push(h('path', {
             key: 'main-' + index,
             className: 'cs-link-main',
-            style: { stroke: MAIN_COLOR },
+            style: { stroke: MAIN_COLOR, strokeWidth: mainLineWidth },
             d: curvePorts(
               mainRects[index - 1],
               layoutMode === 'horizontal' ? 'right' : 'bottom',
@@ -3185,7 +3188,7 @@ window.__ModuleLoader__.load({
             paths.push(h('path', {
               key: 'edge-' + branch.id,
               className: 'cs-link-branch',
-              style: { stroke: position.color },
+              style: { stroke: position.color, strokeWidth: branchLineWidth },
               d,
             }))
           }
@@ -3196,7 +3199,7 @@ window.__ModuleLoader__.load({
             paths.push(h('path', {
               key: 'spine-' + branch.id + '-' + index,
               className: 'cs-link-branch-spine',
-              style: { stroke: position.color },
+              style: { stroke: position.color, strokeWidth: branchLineWidth },
               d: curvePorts(a, 'bottom', b, 'top'),
             }))
           }
@@ -3542,13 +3545,14 @@ window.__ModuleLoader__.load({
             h('span', { className: cx('cs-save', saveState === 'error' ? 'cs-save-error' : '') },
               saveState === 'saving' ? t('saving') : saveState === 'saved' ? t('saved') : saveState === 'error' ? t('saveError') : ''
             ),
-            typeof onBackToLibrary === 'function'
-              ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToLibrary }, t('library'))
-              : null,
+
             h('button', { type: 'button', className: 'cs-btn', disabled: undoCount === 0, onClick: undo }, t('undo')),
 
             h('button', { type: 'button', className: 'cs-btn', onClick: focusMainLine }, t('focusMain')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setLayersOpen(true) }, t('layers')),
+            typeof onBackToLibrary === 'function'
+              ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToLibrary }, t('library'))
+              : null,
             typeof onBackToConversation === 'function'
               ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToConversation }, t('backToConversation'))
               : null
