@@ -62,6 +62,12 @@ window.__ModuleLoader__.load({
       importFailed: '导入失败',
       importDone: '导入完成，放在“导入”文件夹里',
       duplicate: '复制',
+      copied: '已复制',
+      copyQuestion: '复制问题',
+      copyAnswer: '复制回答',
+      copyBoth: '复制问答',
+      contextQuote: '从这里继续追问',
+      contextFront: '置于最前',
       trashEmpty: '回收站是空的',
       restore: '恢复',
       deleteForever: '永久删除',
@@ -213,6 +219,12 @@ window.__ModuleLoader__.load({
       importFailed: 'Import failed',
       importDone: 'Imported into the Import folder',
       duplicate: 'Duplicate',
+      copied: 'Copied',
+      copyQuestion: 'Copy question',
+      copyAnswer: 'Copy answer',
+      copyBoth: 'Copy Q&A',
+      contextQuote: 'Continue from this answer',
+      contextFront: 'Bring to front',
       trashEmpty: 'Trash is empty',
       restore: 'Restore',
       deleteForever: 'Delete forever',
@@ -609,6 +621,12 @@ window.__ModuleLoader__.load({
 .cs-flag { padding: 0 2px; border: 0; background: transparent; color: var(--cs-muted); font-size: 14px; line-height: 1; cursor: pointer; }
 .cs-flag-on { color: #e5484d; }
 .cs-layer-list { display: flex; flex-direction: column; gap: 4px; max-height: min(520px, calc(100vh - 220px)); overflow: auto; }
+.cs-context-layer { position: fixed; inset: 0; z-index: 4200; }
+.cs-context-menu { position: fixed; min-width: 190px; padding: 4px; border: 1px solid var(--cs-border); border-radius: 9px; background: var(--cs-panel); box-shadow: 0 12px 36px rgba(0,0,0,.35); }
+.cs-context-menu button { display: block; width: 100%; padding: 7px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--cs-text); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.cs-context-menu button:hover { background: var(--cs-hover); }
+.cs-context-danger { color: var(--cs-danger) !important; }
+.cs-context-divider { height: 1px; margin: 4px 6px; background: var(--cs-border); }
 .cs-layer-modal { width: min(560px, calc(100vw - 48px)); }
 .cs-layer-tree { display: flex; flex-direction: column; gap: 2px; }
 .cs-layer-root { padding: 4px 8px 6px; color: var(--cs-muted); font-size: 10px; font-weight: 600; letter-spacing: .08em; }
@@ -1407,6 +1425,7 @@ window.__ModuleLoader__.load({
       onDragStart, onDragMove, onDragEnd, onResizeStart, onResizeMove, onResizeEnd,
       onBringToFront, selected, active, side, sequence, onToggleTodo, onToggleFlag,
       onCardPointerDown, onCardPointerMove, onCardPointerUp, onCardPointerCancel, onCardClick, onCardDoubleClick, onLocateAnchor,
+      onContextMenu,
     }) {
       const streaming = turn.status === 'streaming'
       const failed = turn.status === 'failed'
@@ -1457,6 +1476,11 @@ window.__ModuleLoader__.load({
         onPointerCancel: onCardPointerCancel,
         onClick: onCardClick,
         onDoubleClick: onCardDoubleClick,
+        onContextMenu: (event) => {
+          const target = event.target
+          if (target && target.closest && target.closest('input, textarea, [contenteditable="true"]')) return
+          if (onContextMenu) onContextMenu(event)
+        },
       },
         h('div', { className: 'cs-card-head' },
           h('div', { className: 'cs-card-tags' },
@@ -2370,6 +2394,7 @@ window.__ModuleLoader__.load({
       const [layersOpen, setLayersOpen] = useState(false)
       const [marquee, setMarquee] = useState(null)
       const [selectedTurn, setSelectedTurn] = useState(null)
+      const [contextMenu, setContextMenu] = useState(null)
       const [quoteDraft, setQuoteDraft] = useState(null)
       const [selectedIds, setSelectedIds] = useState(() => new Set())
       const [anchorReveal, setAnchorReveal] = useState(null)
@@ -2914,6 +2939,62 @@ window.__ModuleLoader__.load({
       }
       undoRef.current = undo
 
+
+      const copyText = async (text) => {
+        try {
+          await navigator.clipboard.writeText(text)
+        } catch (_error) {
+          const area = document.createElement('textarea')
+          area.value = text
+          area.style.position = 'fixed'
+          area.style.opacity = '0'
+          document.body.appendChild(area)
+          area.select()
+          try { document.execCommand('copy') } catch (_copyError) {}
+          area.remove()
+        }
+        setToast({ text: t('copied') })
+      }
+
+      const openCardContextMenu = (event, turn, kind, branchId) => {
+        event.preventDefault()
+        event.stopPropagation()
+        const menuWidth = 210
+        const menuHeight = 260
+        setSelectedIds(new Set([turn.id]))
+        setSelectedTurn(null)
+        setContextMenu({
+          turn,
+          kind,
+          branchId,
+          x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth)),
+          y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight)),
+        })
+      }
+
+      const contextCopy = (mode) => {
+        if (!contextMenu) return
+        const { turn } = contextMenu
+        const question = String(turn.question || '')
+        const answer = String(turn.answer || '')
+        const text = mode === 'question' ? question : mode === 'answer' ? answer : ('Q: ' + question + '\n\nA: ' + answer)
+        setContextMenu(null)
+        copyText(text)
+      }
+
+      const contextQuote = () => {
+        if (!contextMenu) return
+        const { turn, kind, branchId } = contextMenu
+        setContextMenu(null)
+        openDraftFor(turn.id, turn.answer || '', kind === 'branch' ? branchId : null, 'answer')
+      }
+
+      const contextDelete = () => {
+        if (!contextMenu) return
+        const { turn, kind, branchId } = contextMenu
+        setContextMenu(null)
+        deleteTurn(kind, branchId, turn.id)
+      }
 
       const toggleMark = (turn, kind, branchId, field, value) => {
         pushHistory()
@@ -4114,6 +4195,7 @@ window.__ModuleLoader__.load({
                 onCardPointerCancel: endCardPress,
                 onCardClick: (event) => handleCardClick(event, turn, 'main', null),
                 onCardDoubleClick: (event) => handleCardDoubleClick(event, turn, 'main', null),
+                onContextMenu: (event) => openCardContextMenu(event, turn, 'main', null),
                 onDragStart: (event) => startTurnDrag(event, turn, 'main', null, baseX, baseY, rect),
                 onDragMove: moveTurnFrame,
                 onDragEnd: endTurnFrame,
@@ -4189,6 +4271,7 @@ window.__ModuleLoader__.load({
                 onCardPointerCancel: endCardPress,
                 onCardClick: (event) => handleCardClick(event, turn, 'branch', branch.id),
                 onCardDoubleClick: (event) => handleCardDoubleClick(event, turn, 'branch', branch.id),
+                onContextMenu: (event) => openCardContextMenu(event, turn, 'branch', branch.id),
                 onLocateAnchor: () => revealAnchor(branch),
                 onDragStart: (event) => startTurnDrag(event, turn, 'branch', branch.id, position.x, position.y + index * TURN_STEP, rect),
                 onDragMove: moveTurnFrame,
@@ -4266,6 +4349,30 @@ window.__ModuleLoader__.load({
           },
         },
           h('button', { type: 'button', className: 'cs-sel-btn', onClick: openBranchDraft }, t('followUp'))
+        )
+      }
+
+      const renderContextMenu = () => {
+        if (!contextMenu) return null
+        return h('div', {
+          className: 'cs-context-layer',
+          onMouseDown: () => setContextMenu(null),
+          onContextMenu: (event) => event.preventDefault(),
+        },
+          h('div', {
+            className: 'cs-context-menu',
+            style: { left: contextMenu.x, top: contextMenu.y },
+            onMouseDown: (event) => event.stopPropagation(),
+          },
+            h('button', { type: 'button', onClick: () => contextCopy('question') }, t('copyQuestion')),
+            h('button', { type: 'button', onClick: () => contextCopy('answer') }, t('copyAnswer')),
+            h('button', { type: 'button', onClick: () => contextCopy('both') }, t('copyBoth')),
+            h('div', { className: 'cs-context-divider' }),
+            h('button', { type: 'button', onClick: contextQuote }, t('contextQuote')),
+            h('button', { type: 'button', onClick: () => { const item = contextMenu; setContextMenu(null); bringToFront(item.turn, item.kind, item.branchId) } }, t('contextFront')),
+            h('div', { className: 'cs-context-divider' }),
+            h('button', { type: 'button', className: 'cs-context-danger', onClick: contextDelete }, t('delete'))
+          )
         )
       }
 
@@ -4497,6 +4604,7 @@ window.__ModuleLoader__.load({
           }) : null,
           renderSelection(),
           renderHover(),
+          renderContextMenu(),
           renderLayers(),
           renderBottomComposer(),
           h('div', { className: 'cs-hintbar' }, detail === 'full' ? t('selectHint') : detail === 'compact' ? t('compactHint') : t('zoomHint')),
