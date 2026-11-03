@@ -27,6 +27,8 @@ const MAX_UPLOAD_BYTES = 32 * 1024 * 1024
 const MAX_ANCHOR_CHARS = 2400
 const MAX_MAIN_CONTEXT_CHARS = 1600
 const MAX_HISTORY_ITEM_CHARS = 6000
+const LIBRARY_SCHEMA_VERSION = 2
+const SPACE_SCHEMA_VERSION = 2
 
 export const inject = ['webServer', 'llm', 'agentDefaultModel', 'attachments']
 
@@ -172,7 +174,7 @@ export function apply(ctx) {
           firstSummary: String(space.firstSummary || '').slice(0, 240),
         }))
       : []
-    return { version: 1, folders, spaces }
+    return { version: 1, schemaVersion: LIBRARY_SCHEMA_VERSION, folders, spaces }
   }
 
   const spaceMeta = (space, folderId, createdAt) => {
@@ -228,11 +230,11 @@ export function apply(ctx) {
         layoutMode: legacy.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
       }
       await writeJson(spaceFile(id), space)
-      const library = { version: 1, folders: [], spaces: [spaceMeta(space, null, space.createdAt)] }
+      const library = { version: 1, schemaVersion: LIBRARY_SCHEMA_VERSION, folders: [], spaces: [spaceMeta(space, null, space.createdAt)] }
       await writeJson(libraryFile(), library)
       return library
     }
-    const empty = { version: 1, folders: [], spaces: [] }
+    const empty = { version: 1, schemaVersion: LIBRARY_SCHEMA_VERSION, folders: [], spaces: [] }
     await writeJson(libraryFile(), empty)
     return empty
   }
@@ -260,6 +262,7 @@ export function apply(ctx) {
     const existing = library.spaces.find((item) => item.id === id) || null
     const normalized = {
       ...space,
+      schemaVersion: SPACE_SCHEMA_VERSION,
       id,
       title: String(space.title || (existing && existing.title) || '未命名空间').slice(0, 200),
       layoutMode: space.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
@@ -279,6 +282,7 @@ export function apply(ctx) {
     const id = makeId('s')
     const space = {
       version: 1,
+      schemaVersion: SPACE_SCHEMA_VERSION,
       id,
       title: String(body.title || '未命名空间').trim().slice(0, 200) || '未命名空间',
       layoutMode: body.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
@@ -420,7 +424,7 @@ export function apply(ctx) {
       const space = await readJson(spaceFile(meta.id))
       if (space) spaces[meta.id] = space
     }
-    return { version: 1, exportedAt: new Date().toISOString(), library, spaces }
+    return { version: 1, schemaVersion: LIBRARY_SCHEMA_VERSION, exportedAt: new Date().toISOString(), library, spaces }
   }
 
   const importLibrary = async (body) => {
@@ -466,6 +470,7 @@ export function apply(ctx) {
       const id = makeId('s')
       const space = {
         ...data,
+        schemaVersion: SPACE_SCHEMA_VERSION,
         id,
         title: String(meta.title || data.title || '导入空间').slice(0, 200),
         layoutMode: meta.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',

@@ -46,6 +46,8 @@ window.__ModuleLoader__.load({
       noSearchResultsHint: '换个关键词，或清空搜索。',
       export: '导出',
       trash: '回收站',
+      privacy: '隐私',
+      privacyBody: 'Mica Space 的数据默认保存在当前工作区的 .chat-space 目录。\n\n轻量记忆和本地语义模式不会访问网络。你正常提问时，问题、上下文、附件和抽取出的文件文本会发送给 DSH 当前配置的模型提供商。\n\n附件由 DSH attachment 服务保存；Git 备份只有在你填写 remote 并点击备份时才会 push。插件本身不包含遥测，也不包含作者的 API key。',
       backup: 'Git 备份',
       backupHint: '备份库数据到本地 git；填私有仓库地址后同时 push。附件文件不包含在 git 里。',
       backupRemote: '远程仓库（可选）',
@@ -224,6 +226,8 @@ window.__ModuleLoader__.load({
       noSearchResultsHint: 'Try another keyword or clear the search.',
       export: 'Export',
       trash: 'Trash',
+      privacy: 'Privacy',
+      privacyBody: 'Mica Space stores data in .chat-space under the current workspace.\n\nLightweight and local semantic memory do not use the network. When you ask, the question, context, attachments, and extracted file text are sent to the model provider configured in DSH.\n\nAttachments are stored by the DSH attachment service. Git backup pushes only when you configure a remote and click backup. The plugin contains no telemetry and no author API key.',
       backup: 'Git backup',
       backupHint: 'Commit library data to a local git repo; set a private remote to push. Attachments are not included.',
       backupRemote: 'Remote repository (optional)',
@@ -493,6 +497,7 @@ window.__ModuleLoader__.load({
 .cs-attachments { flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .cs-attachment-image { display: block; width: 88px; height: 88px; overflow: hidden; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); }
 .cs-attachment-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cs-attachment-missing::after { content: '附件不可用'; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 4px; color: var(--cs-muted); font-size: 10px; text-align: center; }
 .cs-attachment-file { display: inline-flex; align-items: center; gap: 6px; max-width: 260px; padding: 6px 8px; border: 1px solid var(--cs-border); border-radius: 7px; background: var(--cs-bg); color: var(--cs-text); text-decoration: none; font-size: 11px; }
 .cs-attachment-file:hover { border-color: var(--cs-accent); }
 .cs-attachment-icon { flex-shrink: 0; font-size: 14px; }
@@ -633,6 +638,9 @@ window.__ModuleLoader__.load({
 .cs-lib-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 3px; }
 .cs-lib-trash-modal { width: min(620px, calc(100vw - 48px)); }
 .cs-backup-modal { width: min(520px, calc(100vw - 48px)); }
+.cs-privacy-modal { width: min(620px, calc(100vw - 48px)); }
+.cs-privacy-body { max-height: min(420px, calc(100vh - 260px)); overflow: auto; color: var(--cs-muted); font-size: 12px; line-height: 1.7; }
+.cs-privacy-body p { margin: 0 0 10px; }
 .cs-backup-note { margin-top: 4px; color: var(--cs-muted); font-size: 11px; line-height: 1.6; }
 .cs-backup-field { display: flex; flex-direction: column; gap: 5px; color: var(--cs-muted); font-size: 11px; }
 .cs-backup-result { max-height: 120px; overflow: auto; white-space: pre-wrap; padding: 8px 9px; border: 1px solid var(--cs-border); border-radius: 7px; background: var(--cs-bg); color: var(--cs-text); font-size: 11px; }
@@ -1949,7 +1957,20 @@ window.__ModuleLoader__.load({
                       rel: 'noreferrer',
                       onPointerDown: (event) => event.stopPropagation(),
                       onClick: (event) => event.stopPropagation(),
-                    }, h('img', { src: attachmentHref(item, false), alt: item.attachment && item.attachment.name || 'image', loading: 'lazy' }))
+                    }, h('img', {
+                        src: attachmentHref(item, false),
+                        alt: item.attachment && item.attachment.name || 'image',
+                        loading: 'lazy',
+                        decoding: 'async',
+                        onError: (event) => {
+                          const img = event.currentTarget
+                          img.style.display = 'none'
+                          if (img.parentElement) {
+                            img.parentElement.classList.add('cs-attachment-missing')
+                            img.parentElement.title = '附件不可用'
+                          }
+                        },
+                      }))
                   : h('a', {
                       key: 'att-' + index,
                       className: 'cs-attachment-file',
@@ -2550,6 +2571,7 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'cs-btn', onClick: () => { if (libraryImportRef.current) libraryImportRef.current.click() } }, t('importLibrary')),
             h('input', { ref: libraryImportRef, type: 'file', accept: '.json,application/json', style: { display: 'none' }, onChange: importLibraryFile }),
             h('button', { type: 'button', className: 'cs-btn', onClick: openTrash }, t('trash')),
+            h('button', { type: 'button', className: 'cs-btn', onClick: () => setPrivacyOpen(true) }, t('privacy')),
             h('input', {
               className: 'cs-lib-search',
               type: 'search',
@@ -2648,6 +2670,17 @@ window.__ModuleLoader__.load({
               : null
           )
         ),
+        privacyOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setPrivacyOpen(false) },
+          h('div', { className: 'cs-lib-modal cs-privacy-modal', onClick: (event) => event.stopPropagation() },
+            h('div', { className: 'cs-lib-modal-title' }, t('privacy')),
+            h('div', { className: 'cs-privacy-body' },
+              String(t('privacyBody')).split('\n\n').map((paragraph, index) => h('p', { key: 'privacy-' + index }, paragraph))
+            ),
+            h('div', { className: 'cs-lib-modal-actions' },
+              h('button', { type: 'button', className: 'cs-btn', onClick: () => setPrivacyOpen(false) }, t('close'))
+            )
+          )
+        ) : null,
         backupOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setBackupOpen(false) },
           h('div', { className: 'cs-lib-modal cs-backup-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-lib-modal-title' }, t('backup')),
@@ -2787,6 +2820,7 @@ window.__ModuleLoader__.load({
       const [hover, setHover] = useState(null)
       const [layersOpen, setLayersOpen] = useState(false)
       const [memoryOpen, setMemoryOpen] = useState(false)
+      const [privacyOpen, setPrivacyOpen] = useState(false)
       const [marquee, setMarquee] = useState(null)
       const [selectedTurn, setSelectedTurn] = useState(null)
       const [contextMenu, setContextMenu] = useState(null)

@@ -64,9 +64,11 @@ test('space lifecycle, trash restore, duplicate, folder cycle, export/import', a
     const library = await request('GET', '/chat-space/api/library')
     assert.equal(library.status, 200)
     assert.equal(library.body.ok, true)
+    assert.equal(library.body.library.schemaVersion, 2)
 
     const created = await request('POST', '/chat-space/api/space/create', { title: '测试空间', layoutMode: 'vertical' })
     assert.equal(created.status, 200)
+    assert.equal(created.body.space.schemaVersion, 2)
     const spaceId = created.body.space.id
     assert.ok(spaceId)
     const saved = await request('POST', '/chat-space/api/save', {
@@ -78,6 +80,7 @@ test('space lifecycle, trash restore, duplicate, folder cycle, export/import', a
       spaceId,
     })
     assert.equal(saved.status, 200)
+    assert.equal(saved.body.space.schemaVersion, 2)
     const loaded = await request('GET', '/chat-space/api/space?id=' + encodeURIComponent(spaceId))
     assert.equal(loaded.status, 200)
     assert.equal(loaded.body.space.main.turns.length, 1)
