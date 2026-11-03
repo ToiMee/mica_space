@@ -331,9 +331,7 @@ window.__ModuleLoader__.load({
 .cs-grip:active { cursor: grabbing; }
 .cs-resize { position: absolute; right: 2px; bottom: 2px; z-index: 2; width: 16px; height: 16px; cursor: nwse-resize; }
 .cs-resize::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 7px; height: 7px; border-right: 2px solid var(--cs-border-strong); border-bottom: 2px solid var(--cs-border-strong); border-radius: 0 0 2px 0; opacity: .7; }
-.cs-center-guide { position: absolute; z-index: 890; pointer-events: none; opacity: .42; }
-.cs-center-guide-v { left: 50%; top: 0; bottom: 0; width: 3px; transform: translateX(-50%); background-image: repeating-linear-gradient(to bottom, var(--cs-accent) 0 14px, transparent 14px 30px); }
-.cs-center-guide-h { top: 50%; left: 0; right: 0; height: 3px; transform: translateY(-50%); background-image: repeating-linear-gradient(to right, var(--cs-accent) 0 14px, transparent 14px 30px); }
+.cs-main-guide { position: absolute; z-index: 0; pointer-events: none; opacity: .42; }
 .cs-dot-tip { position: fixed; z-index: 1200; max-width: 300px; padding: 8px 10px; border-radius: 8px; background: #1f2329; color: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,.25); font-size: 12px; line-height: 1.55; pointer-events: none; }
 .cs-bottom-composer { position: absolute; left: 50%; bottom: 18px; z-index: 950; display: flex; flex-direction: column; gap: 6px; width: min(640px, calc(100% - 220px)); transform: translateX(-50%); }
 .cs-bottom-label { align-self: flex-start; padding: 2px 8px; border: 1px solid var(--cs-border); border-radius: 999px; background: var(--cs-panel); color: var(--cs-muted); font-size: 11px; line-height: 1.4; }
@@ -1704,19 +1702,16 @@ window.__ModuleLoader__.load({
           let appliedDx = dx
           let appliedDy = dy
           const snapDistance = 16 / Math.max(view.zoom, 0.01)
-          const guideElement = viewportRef.current
-          if (guideElement) {
-            for (const target of drag.targets) {
-              if (target.kind !== 'main') continue
-              if (layoutMode === 'horizontal') {
-                const axis = (guideElement.clientHeight / 2 - view.y) / Math.max(view.zoom, 0.01)
-                const center = target.rect.y + target.rect.h / 2 + appliedDy
-                if (Math.abs(center - axis) < snapDistance) appliedDy = axis - (target.rect.y + target.rect.h / 2)
-              } else {
-                const axis = (guideElement.clientWidth / 2 - view.x) / Math.max(view.zoom, 0.01)
-                const center = target.rect.x + target.rect.w / 2 + appliedDx
-                if (Math.abs(center - axis) < snapDistance) appliedDx = axis - (target.rect.x + target.rect.w / 2)
-              }
+          for (const target of drag.targets) {
+            if (target.kind !== 'main') continue
+            if (layoutMode === 'horizontal') {
+              const center = target.rect.y + target.rect.h / 2 + appliedDy
+              const axis = target.baseY + target.rect.h / 2
+              if (Math.abs(center - axis) < snapDistance) appliedDy = axis - (target.rect.y + target.rect.h / 2)
+            } else {
+              const center = target.rect.x + target.rect.w / 2 + appliedDx
+              const axis = target.baseX + target.rect.w / 2
+              if (Math.abs(center - axis) < snapDistance) appliedDx = axis - (target.rect.x + target.rect.w / 2)
             }
           }
           for (const target of drag.targets) {
@@ -2670,19 +2665,12 @@ window.__ModuleLoader__.load({
             key: 'main-' + index,
             className: 'cs-link-main',
             style: { stroke: MAIN_COLOR },
-            d: (() => {
-              const a = sidePoint(mainRects[index - 1], layoutMode === 'horizontal' ? 'right' : 'bottom')
-              const b = sidePoint(mainRects[index], layoutMode === 'horizontal' ? 'left' : 'top')
-              const ignore = new Set([mainTurns[index - 1].id, mainTurns[index].id])
-              return rectsOverlap(mainRects[index - 1], mainRects[index]) || lineBlocked(a, b, allCardRects, ignore)
-                ? sinePath(a, b, 56, 1)
-                : curvePorts(
-                    mainRects[index - 1],
-                    layoutMode === 'horizontal' ? 'right' : 'bottom',
-                    mainRects[index],
-                    layoutMode === 'horizontal' ? 'left' : 'top'
-                  )
-            })(),
+            d: curvePorts(
+              mainRects[index - 1],
+              layoutMode === 'horizontal' ? 'right' : 'bottom',
+              mainRects[index],
+              layoutMode === 'horizontal' ? 'left' : 'top'
+            ),
           }))
         }
         for (const position of branchPositions) {
@@ -2694,8 +2682,7 @@ window.__ModuleLoader__.load({
             const anchorSide = side === 'left' ? 'right' : side === 'right' ? 'left' : side === 'top' ? 'bottom' : 'top'
             const a = sidePoint(anchor, anchorSide)
             const b = sidePoint(first, side)
-            const ignore = new Set([branch.anchorTurnId, branch.turns[0].id])
-            const d = rectsOverlap(anchor, first) || lineBlocked(a, b, allCardRects, ignore) ? sinePath(a, b, 56, 1) : curvePorts(anchor, anchorSide, first, side)
+            const d = curvePorts(anchor, anchorSide, first, side)
             paths.push(h('path', {
               key: 'edge-' + branch.id,
               className: 'cs-link-branch',
@@ -2711,14 +2698,7 @@ window.__ModuleLoader__.load({
               key: 'spine-' + branch.id + '-' + index,
               className: 'cs-link-branch-spine',
               style: { stroke: position.color },
-              d: (() => {
-                const pa = sidePoint(a, 'bottom')
-                const pb = sidePoint(b, 'top')
-                const ignore = new Set([branch.turns[index - 1].id, branch.turns[index].id])
-                return rectsOverlap(a, b) || lineBlocked(pa, pb, allCardRects, ignore)
-                  ? sinePath(pa, pb, 56, 1)
-                  : curvePorts(a, 'bottom', b, 'top')
-              })(),
+              d: curvePorts(a, 'bottom', b, 'top'),
             }))
           }
         }
@@ -3097,11 +3077,28 @@ window.__ModuleLoader__.load({
               transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`,
             },
           },
-                        renderLinks(),
+                        h('div', {
+              className: cx('cs-main-guide', layoutMode === 'horizontal' ? 'cs-main-guide-h' : 'cs-main-guide-v'),
+              style: layoutMode === 'horizontal'
+                ? {
+                    top: TOP_PAD + MAIN_H / 2 - 1.5 / view.zoom,
+                    left: 0,
+                    width: bounds.width,
+                    height: 3 / view.zoom,
+                    backgroundImage: 'repeating-linear-gradient(to right, var(--cs-accent) 0 ' + (14 / view.zoom) + 'px, transparent ' + (14 / view.zoom) + 'px ' + (30 / view.zoom) + 'px)',
+                  }
+                : {
+                    left: MAIN_W / 2 - 1.5 / view.zoom,
+                    top: 0,
+                    width: 3 / view.zoom,
+                    height: bounds.height,
+                    backgroundImage: 'repeating-linear-gradient(to bottom, var(--cs-accent) 0 ' + (14 / view.zoom) + 'px, transparent ' + (14 / view.zoom) + 'px ' + (30 / view.zoom) + 'px)',
+                  },
+            }),
+            renderLinks(),
             renderMain(),
             renderBranches()
           ),
-          h('div', { className: cx('cs-center-guide', layoutMode === 'horizontal' ? 'cs-center-guide-h' : 'cs-center-guide-v') }),
           marquee ? h('div', {
             className: 'cs-marquee',
             style: { left: marquee.left, top: marquee.top, width: marquee.width, height: marquee.height },
