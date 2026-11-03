@@ -45,6 +45,11 @@ window.__ModuleLoader__.load({
       noSearchResults: '没有匹配的空间',
       noSearchResultsHint: '换个关键词，或清空搜索。',
       export: '导出',
+      trash: '回收站',
+      trashEmpty: '回收站是空的',
+      restore: '恢复',
+      deleteForever: '永久删除',
+      confirmDeleteForever: '永久删除这个空间？此操作不可撤销。',
       newFolder: '新建文件夹',
       allSpaces: '全部空间',
       uncategorized: '未分类',
@@ -175,6 +180,11 @@ window.__ModuleLoader__.load({
       noSearchResults: 'No matching spaces',
       noSearchResultsHint: 'Try another keyword or clear the search.',
       export: 'Export',
+      trash: 'Trash',
+      trashEmpty: 'Trash is empty',
+      restore: 'Restore',
+      deleteForever: 'Delete forever',
+      confirmDeleteForever: 'Delete this space forever? This cannot be undone.',
       newFolder: 'New folder',
       allSpaces: 'All spaces',
       uncategorized: 'Uncategorized',
@@ -532,6 +542,12 @@ window.__ModuleLoader__.load({
 .cs-lib-layout-option { flex: 1; padding: 8px; border: 1px solid var(--cs-border); border-radius: 7px; background: var(--cs-bg); color: var(--cs-muted); cursor: pointer; font: inherit; font-size: 12px; }
 .cs-lib-layout-active { border-color: var(--cs-accent); background: color-mix(in srgb, var(--cs-accent) 12%, var(--cs-panel)); color: var(--cs-accent); }
 .cs-lib-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 3px; }
+.cs-lib-trash-modal { width: min(620px, calc(100vw - 48px)); }
+.cs-lib-trash-list { display: flex; flex-direction: column; gap: 6px; max-height: min(420px, calc(100vh - 260px)); overflow: auto; }
+.cs-lib-trash-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); }
+.cs-lib-trash-info { flex: 1; min-width: 0; }
+.cs-lib-trash-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.cs-lib-trash-meta { margin-top: 2px; color: var(--cs-muted); font-size: 11px; }
 .cs-main-guide { position: absolute; z-index: 0; pointer-events: none; opacity: .42; }
 .cs-main-guide-v { top: 0; bottom: 0; width: 3px; background-image: repeating-linear-gradient(to bottom, var(--cs-accent) 0 14px, transparent 14px 30px); }
 .cs-main-guide-h { left: 0; right: 0; height: 3px; background-image: repeating-linear-gradient(to right, var(--cs-accent) 0 14px, transparent 14px 30px); }
@@ -1568,6 +1584,9 @@ window.__ModuleLoader__.load({
       const [activeId, setActiveId] = useState(() => readTextStorage(LAST_SPACE_KEY) || null)
       const [selectedFolder, setSelectedFolder] = useState('all')
       const [search, setSearch] = useState('')
+      const [trashOpen, setTrashOpen] = useState(false)
+      const [trashItems, setTrashItems] = useState([])
+      const [trashLoading, setTrashLoading] = useState(false)
       const [newSpaceOpen, setNewSpaceOpen] = useState(false)
       const [newSpaceTitle, setNewSpaceTitle] = useState('')
       const [newSpaceLayout, setNewSpaceLayout] = useState('vertical')
@@ -1761,6 +1780,35 @@ window.__ModuleLoader__.load({
         setRenameValue('')
       })
 
+      const openTrash = async () => {
+        setTrashOpen(true)
+        setTrashLoading(true)
+        setNotice('')
+        try {
+          const response = await fetch(API + '/trash', { headers: { Accept: 'application/json' } })
+          const body = await response.json()
+          if (!response.ok || !body || body.ok === false) throw new Error(body && body.error ? body.error : '读取回收站失败')
+          setTrashItems(Array.isArray(body.items) ? body.items : [])
+        } catch (error) {
+          setNotice(error && error.message ? error.message : '读取回收站失败')
+        } finally {
+          setTrashLoading(false)
+        }
+      }
+
+      const restoreTrashItem = (item) => run(async () => {
+        const data = await post('/trash/restore', { file: item.file })
+        if (data.library) setLibrary(data.library)
+        setTrashItems((previous) => previous.filter((entry) => entry.file !== item.file))
+        setTrashOpen(false)
+      })
+
+      const deleteTrashItem = (item) => run(async () => {
+        if (!window.confirm(t('confirmDeleteForever'))) return
+        const data = await post('/trash/delete', { file: item.file })
+        if (Array.isArray(data.items)) setTrashItems(data.items)
+      })
+
       const exportSpace = (space) => run(async () => {
         const response = await fetch(API + '/space?id=' + encodeURIComponent(space.id), { headers: { Accept: 'application/json' } })
         const body = await response.json()
@@ -1902,6 +1950,7 @@ window.__ModuleLoader__.load({
             )
           ),
           h('div', { className: 'cs-top-actions' },
+            h('button', { type: 'button', className: 'cs-btn', onClick: openTrash }, t('trash')),
             h('input', {
               className: 'cs-lib-search',
               type: 'search',
@@ -1978,6 +2027,31 @@ window.__ModuleLoader__.load({
               : null
           )
         ),
+        trashOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setTrashOpen(false) },
+          h('div', { className: 'cs-lib-modal cs-lib-trash-modal', onClick: (event) => event.stopPropagation() },
+            h('div', { className: 'cs-lib-modal-title' }, t('trash')),
+            h('div', { className: 'cs-lib-trash-list' },
+              trashLoading
+                ? h('div', { className: 'cs-lib-empty-text' }, t('loading'))
+                : trashItems.length === 0
+                  ? h('div', { className: 'cs-lib-empty-text' }, t('trashEmpty'))
+                  : trashItems.map((item) => h('div', { key: item.file, className: 'cs-lib-trash-row' },
+                      h('div', { className: 'cs-lib-trash-info' },
+                        h('div', { className: 'cs-lib-trash-title' }, item.title || t('untitledSpace')),
+                        h('div', { className: 'cs-lib-trash-meta' },
+                          (item.deletedAt ? formatDate(item.deletedAt) : '') +
+                          (item.folderId && folderById.get(item.folderId) ? ' · ' + folderById.get(item.folderId).name : '')
+                        )
+                      ),
+                      h('button', { type: 'button', className: 'cs-lib-mini', disabled: busy, onClick: () => restoreTrashItem(item) }, t('restore')),
+                      h('button', { type: 'button', className: 'cs-lib-mini cs-lib-mini-danger', disabled: busy, onClick: () => deleteTrashItem(item) }, t('deleteForever'))
+                    ))
+            ),
+            h('div', { className: 'cs-lib-modal-actions' },
+              h('button', { type: 'button', className: 'cs-btn', onClick: () => setTrashOpen(false) }, t('close'))
+            )
+          )
+        ) : null,
         newSpaceOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setNewSpaceOpen(false) },
           h('div', { className: 'cs-lib-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-lib-modal-title' }, t('newSpace')),
@@ -2095,6 +2169,7 @@ window.__ModuleLoader__.load({
       const summaryRequestsRef = useRef(new Set())
       const zCounterRef = useRef(0)
       const historyRef = useRef([])
+      const undoRef = useRef(null)
       const dotPressRef = useRef(null)
       const suppressDotClickRef = useRef(false)
       const cardPressRef = useRef(null)
@@ -2221,6 +2296,21 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         writeJsonStorage(DRAFT_KEY, draft)
       }, [draft])
+
+      useEffect(() => {
+        const onUndoKey = (event) => {
+          if (!(event.ctrlKey || event.metaKey) || event.shiftKey) return
+          if (String(event.key || '').toLowerCase() !== 'z') return
+          const target = event.target
+          const tag = target && target.tagName ? String(target.tagName).toLowerCase() : ''
+          if (tag === 'input' || tag === 'textarea' || (target && target.isContentEditable)) return
+          if (!undoRef.current) return
+          event.preventDefault()
+          undoRef.current()
+        }
+        window.addEventListener('keydown', onUndoKey)
+        return () => window.removeEventListener('keydown', onUndoKey)
+      }, [])
 
       useEffect(() => {
         writeJsonStorage(SELECTION_KEY, selection)
@@ -2592,6 +2682,8 @@ window.__ModuleLoader__.load({
         saveSoon(80)
         setToast({ text: t('undone') })
       }
+      undoRef.current = undo
+
 
       const toggleMark = (turn, kind, branchId, field, value) => {
         pushHistory()
@@ -4113,7 +4205,7 @@ window.__ModuleLoader__.load({
               saveState === 'saving' ? t('saving') : saveState === 'saved' ? t('saved') : saveState === 'error' ? t('saveError') : ''
             ),
 
-            h('button', { type: 'button', className: 'cs-btn', disabled: undoCount === 0, onClick: undo }, t('undo')),
+            h('button', { type: 'button', className: 'cs-btn', disabled: undoCount === 0, onClick: undo, title: 'Ctrl+Z' }, t('undo')),
 
             h('button', { type: 'button', className: 'cs-btn', onClick: focusMainLine }, t('focusMain')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setLayersOpen(true) }, t('layers')),

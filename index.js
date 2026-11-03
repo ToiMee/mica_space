@@ -8,7 +8,7 @@
 // The old single .chat-space/space.json is migrated to the "default" space
 // the first time the library is read.
 
-import { copyFile, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 const API_ROOT = '/chat-space/api'
@@ -256,17 +256,76 @@ export function apply(ctx) {
     const id = validId(body.id) ? body.id : ''
     if (!id) throw new Error('空间 ID 不合法')
     const file = spaceFile(id)
+    const library = await readLibrary()
+    const meta = library.spaces.find((item) => item.id === id)
     try {
-      await mkdir(trashDir(), { recursive: true })
-      await copyFile(file, path.join(trashDir(), id + '-' + Date.now() + '.json'))
+      const space = await readJson(file)
+      if (space) {
+        await mkdir(trashDir(), { recursive: true })
+        const record = {
+          space,
+          folderId: (meta && validId(meta.folderId)) ? meta.folderId : null,
+          deletedAt: Date.now(),
+        }
+        await writeJson(path.join(trashDir(), id + '-' + Date.now() + '.json'), record)
+      }
     } catch (error) {
       if (error && error.code !== 'ENOENT') throw error
     }
     try { await unlink(file) } catch (error) { if (error && error.code !== 'ENOENT') throw error }
-    const library = await readLibrary()
     library.spaces = library.spaces.filter((item) => item.id !== id)
     await writeJson(libraryFile(), library)
     return library
+  }
+
+  const trashEntries = async () => {
+    const directory = trashDir()
+    await mkdir(directory, { recursive: true })
+    const names = await readdir(directory)
+    const items = []
+    for (const name of names) {
+      if (!name.endsWith('.json') || name.includes('.bak')) continue
+      const record = await readJson(path.join(directory, name))
+      if (!record) continue
+      const space = record.space && typeof record.space === 'object' ? record.space : record
+      if (!space || !validId(space.id)) continue
+      const stamp = name.match(/-(\d{10,})\.json$/)
+      items.push({
+        file: name,
+        id: space.id,
+        title: String(space.title || '未命名空间').slice(0, 200),
+        folderId: validId(record.folderId) ? record.folderId : null,
+        deletedAt: Number.isFinite(record.deletedAt) ? record.deletedAt : (stamp ? Number(stamp[1]) : 0),
+      })
+    }
+    return items.sort((left, right) => (right.deletedAt || 0) - (left.deletedAt || 0))
+  }
+
+  const restoreTrash = async (body) => {
+    const file = path.basename(stringOf(body.file))
+    if (!file || !file.endsWith('.json')) throw new Error('回收站记录不合法')
+    const record = await readJson(path.join(trashDir(), file))
+    if (!record) throw new Error('回收站记录不存在')
+    const space = record.space && typeof record.space === 'object' ? record.space : record
+    if (!space || !validId(space.id)) throw new Error('回收站记录损坏')
+    const result = await writeSpaceData(space, space.id)
+    const library = result.library
+    const meta = library.spaces.find((item) => item.id === space.id)
+    if (meta) {
+      meta.folderId = validId(record.folderId) && library.folders.some((folder) => folder.id === record.folderId)
+        ? record.folderId
+        : null
+      await writeJson(libraryFile(), library)
+    }
+    try { await unlink(path.join(trashDir(), file)) } catch (error) { if (error && error.code !== 'ENOENT') throw error }
+    return library
+  }
+
+  const deleteTrash = async (body) => {
+    const file = path.basename(stringOf(body.file))
+    if (!file || !file.endsWith('.json')) throw new Error('回收站记录不合法')
+    try { await unlink(path.join(trashDir(), file)) } catch (error) { if (error && error.code !== 'ENOENT') throw error }
+    return trashEntries()
   }
 
   const createFolder = async (body) => {
@@ -427,6 +486,37 @@ export function apply(ctx) {
         } catch (error) {
           if (!res.headersSent) sendJson(res, 404, { ok: false, error: messageOf(error) })
           else if (!res.writableEnded) res.end()
+        }
+      }),
+
+      route(API_ROOT + '/trash', async (req, res) => {
+        if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: '只支持 GET' })
+        try {
+          sendJson(res, 200, { ok: true, items: await trashEntries() })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/trash/restore', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          const body = await readJsonBody(req)
+          const library = await restoreTrash(body || {})
+          sendJson(res, 200, { ok: true, library })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/trash/delete', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          const body = await readJsonBody(req)
+          const items = await deleteTrash(body || {})
+          sendJson(res, 200, { ok: true, items })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
         }
       }),
 
