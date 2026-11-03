@@ -72,6 +72,7 @@ window.__ModuleLoader__.load({
       subtitle: '主线向前，追问向两侧生长',
       main: '主线',
       branch: '分支',
+      subBranch: '子分支',
       followUp: '从这里追问',
       quoteFollowUp: '引用追问',
       quotePlaceholder: '针对这段引用继续问…',
@@ -99,7 +100,7 @@ window.__ModuleLoader__.load({
       verticalShort: '竖',
       horizontalShort: '横',
       switchLayout: '切换竖向/横向布局',
-      layers: '图层',
+      layers: '列表',
       delete: '删除',
       undo: '撤销',
       deleted: '已删除',
@@ -196,6 +197,7 @@ window.__ModuleLoader__.load({
       subtitle: 'A main line that continues, branches that grow sideways',
       main: 'Main',
       branch: 'Branch',
+      subBranch: 'Sub-branch',
       followUp: 'Ask from here',
       quoteFollowUp: 'Ask with quote',
       quotePlaceholder: 'Continue with this quote…',
@@ -223,7 +225,7 @@ window.__ModuleLoader__.load({
       verticalShort: 'V',
       horizontalShort: 'H',
       switchLayout: 'Switch layout direction',
-      layers: 'Layers',
+      layers: 'List',
       delete: 'Delete',
       undo: 'Undo',
       deleted: 'Deleted',
@@ -539,7 +541,17 @@ window.__ModuleLoader__.load({
 .cs-todo-on .cs-todo-box { background: var(--cs-card-accent, var(--cs-accent)); border-color: var(--cs-card-accent, var(--cs-accent)); }
 .cs-flag { padding: 0 2px; border: 0; background: transparent; color: var(--cs-muted); font-size: 14px; line-height: 1; cursor: pointer; }
 .cs-flag-on { color: #e5484d; }
-.cs-layer-list { display: flex; flex-direction: column; gap: 4px; max-height: 360px; overflow: auto; }
+.cs-layer-list { display: flex; flex-direction: column; gap: 4px; max-height: min(520px, calc(100vh - 220px)); overflow: auto; }
+.cs-layer-modal { width: min(560px, calc(100vw - 48px)); }
+.cs-layer-tree { display: flex; flex-direction: column; gap: 2px; }
+.cs-layer-root { padding: 4px 8px 6px; color: var(--cs-muted); font-size: 10px; font-weight: 600; letter-spacing: .08em; }
+.cs-layer-children { display: flex; flex-direction: column; gap: 2px; margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--cs-border); }
+.cs-layer-tree-group { position: relative; }
+.cs-layer-tree-row { position: relative; display: flex; align-items: center; gap: 7px; width: 100%; padding: 5px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--cs-text); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.cs-layer-tree-row::before { content: ''; position: absolute; left: -10px; top: 50%; width: 8px; border-top: 1px solid var(--cs-border); }
+.cs-layer-tree-row:hover { background: var(--cs-hover); }
+.cs-layer-branch-row { color: var(--cs-muted); }
+.cs-layer-seq { flex-shrink: 0; color: var(--cs-muted); font-size: 10px; font-variant-numeric: tabular-nums; }
 .cs-layer-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: transparent; color: var(--cs-text); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
 .cs-layer-row:hover { background: var(--cs-hover); }
 .cs-layer-dot { flex-shrink: 0; width: 9px; height: 9px; border-radius: 50%; }
@@ -3865,6 +3877,60 @@ window.__ModuleLoader__.load({
 
       const renderLayers = () => {
         if (!layersOpen) return null
+        const branchesByAnchor = new Map()
+        for (const branch of branches) {
+          const key = branch.anchorTurnId
+          if (!branchesByAnchor.has(key)) branchesByAnchor.set(key, [])
+          branchesByAnchor.get(key).push(branch)
+        }
+        const branchNumber = new Map(branches.map((branch, index) => [branch.id, index + 1]))
+        const jumpToLayerTurn = (turn, kind, branchId) => {
+          bringToFront(turn, kind, branchId)
+          setSelectedIds(new Set([turn.id]))
+          setSelectedTurn(null)
+          focusTurn(turn.id)
+          setLayersOpen(false)
+        }
+        const renderLayerTurn = (turn, kind, branchId, sequence) => {
+          const children = branchesByAnchor.get(turn.id) || []
+          const color = kind === 'main' ? MAIN_COLOR : ((positions.get(branchId) || {}).color || MAIN_COLOR)
+          return h('div', { key: 'layer-turn-' + turn.id, className: 'cs-layer-tree-group' },
+            h('button', {
+              type: 'button',
+              className: 'cs-layer-tree-row',
+              onClick: () => jumpToLayerTurn(turn, kind, branchId),
+            },
+              h('span', { className: 'cs-layer-dot', style: { background: color } }),
+              h('span', { className: 'cs-layer-tag' }, kind === 'main' ? t('main') : t('branch')),
+              sequence ? h('span', { className: 'cs-layer-seq' }, sequence) : null,
+              h('span', { className: 'cs-layer-q' }, truncate(turn.question, 90))
+            ),
+            children.length > 0
+              ? h('div', { className: 'cs-layer-children' },
+                  children.map((branch) => renderLayerBranch(branch, kind !== 'main')))
+              : null
+          )
+        }
+        const renderLayerBranch = (branch, isSub) => {
+          const color = (positions.get(branch.id) || {}).color || MAIN_COLOR
+          const first = branch.turns[0]
+          const number = branchNumber.get(branch.id) || '?'
+          return h('div', { key: 'layer-branch-' + branch.id, className: 'cs-layer-tree-group' },
+            h('button', {
+              type: 'button',
+              className: 'cs-layer-tree-row cs-layer-branch-row',
+              onClick: first ? () => jumpToLayerTurn(first, 'branch', branch.id) : undefined,
+            },
+              h('span', { className: 'cs-layer-dot', style: { background: color } }),
+              h('span', { className: 'cs-layer-tag' }, isSub ? t('subBranch') : t('branch')),
+              h('span', { className: 'cs-layer-seq' }, 'B' + number),
+              h('span', { className: 'cs-layer-q' }, truncate(branch.brief || branch.anchorText || t('branch'), 70))
+            ),
+            h('div', { className: 'cs-layer-children' },
+              branch.turns.map((turn, index) => renderLayerTurn(turn, 'branch', branch.id, 'B' + number + '.' + (index + 1)))
+            )
+          )
+        }
         return h('div', {
           className: 'cs-modal-backdrop',
           style: { zIndex: 3000 },
@@ -3872,26 +3938,15 @@ window.__ModuleLoader__.load({
             if (event.target === event.currentTarget) setLayersOpen(false)
           },
         },
-          h('div', { className: 'cs-modal', role: 'dialog', 'aria-modal': 'true' },
+          h('div', { className: 'cs-modal cs-layer-modal', role: 'dialog', 'aria-modal': 'true' },
             h('div', { className: 'cs-modal-title' }, t('layers')),
             h('div', { className: 'cs-layer-list' },
-              layerEntries.map((entry) => h('button', {
-                key: entry.turn.id,
-                type: 'button',
-                className: 'cs-layer-row',
-                onClick: () => {
-                  bringToFront(entry.turn, entry.kind, entry.branchId)
-                  setSelectedIds(new Set([entry.turn.id]))
-                  setSelectedTurn(null)
-                  focusTurn(entry.turn.id)
-                  setLayersOpen(false)
-                },
-              },
-                h('span', { className: 'cs-layer-dot', style: { background: entry.color } }),
-                h('span', { className: 'cs-layer-tag' }, entry.tag),
-                h('span', { className: 'cs-layer-q' }, truncate(entry.turn.question, 90)),
-                h('span', { className: 'cs-layer-z' }, 'z ' + finite(entry.turn.z, 0))
-              ))
+              h('div', { className: 'cs-layer-tree' },
+                h('div', { className: 'cs-layer-root' }, t('main')),
+                h('div', { className: 'cs-layer-children' },
+                  mainTurns.map((turn, index) => renderLayerTurn(turn, 'main', null, 'M' + (index + 1)))
+                )
+              )
             ),
             h('div', { className: 'cs-modal-actions' },
               h('button', { type: 'button', className: 'cs-btn', onClick: () => setLayersOpen(false) }, t('close'))
@@ -3990,9 +4045,6 @@ window.__ModuleLoader__.load({
 
             h('button', { type: 'button', className: 'cs-btn', onClick: focusMainLine }, t('focusMain')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setLayersOpen(true) }, t('layers')),
-            typeof onBackToConversation === 'function'
-              ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToConversation }, t('backToConversation'))
-              : null,
             typeof onBackToLibrary === 'function'
               ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToLibrary }, t('backToLibrary'))
               : null
