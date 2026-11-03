@@ -148,6 +148,12 @@ window.__ModuleLoader__.load({
       horizontalShort: '横',
       switchLayout: '切换竖向/横向布局',
       layers: '列表',
+      memory: '记忆',
+      memoryHint: '默认零配置。语义增强使用当前空间内的词语共现向量，不调用外部 API。',
+      memoryLexical: '轻量（默认）',
+      memoryLexicalHint: '关键词 + 字符 n-gram 哈希向量；零配置、最快。',
+      memorySemantic: '本地语义增强',
+      memorySemanticHint: '在当前空间的词共现上构建语义向量；零配置、无需 embedding API。',
       delete: '删除',
       undo: '撤销',
       deleted: '已删除',
@@ -320,6 +326,12 @@ window.__ModuleLoader__.load({
       horizontalShort: 'H',
       switchLayout: 'Switch layout direction',
       layers: 'List',
+      memory: 'Memory',
+      memoryHint: 'Zero-config by default. Semantic mode uses local co-occurrence vectors, with no external embedding API.',
+      memoryLexical: 'Lightweight (default)',
+      memoryLexicalHint: 'Keywords plus character n-gram hashing; zero config and fastest.',
+      memorySemantic: 'Local semantic',
+      memorySemanticHint: 'Builds distributional vectors from term co-occurrence inside this space; no API.',
       delete: 'Delete',
       undo: 'Undo',
       deleted: 'Deleted',
@@ -671,6 +683,12 @@ window.__ModuleLoader__.load({
 .cs-card-tag { flex-shrink: 0; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 5px; border: 1px solid var(--cs-border); border-radius: 4px; color: var(--cs-muted); font-size: 9px; }
 .cs-collapse { padding: 1px 5px; }
 .cs-layer-modal { width: min(560px, calc(100vw - 48px)); }
+.cs-memory-modal { width: min(520px, calc(100vw - 48px)); }
+.cs-memory-note { margin-top: 4px; color: var(--cs-muted); font-size: 11px; line-height: 1.6; }
+.cs-memory-option { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 10px 12px; border: 1px solid var(--cs-border); border-radius: 9px; background: var(--cs-bg); color: var(--cs-text); font: inherit; text-align: left; cursor: pointer; }
+.cs-memory-option span { color: var(--cs-muted); font-size: 11px; line-height: 1.5; }
+.cs-memory-option:hover { border-color: var(--cs-accent); }
+.cs-memory-active { border-color: var(--cs-accent); background: color-mix(in srgb, var(--cs-accent) 10%, var(--cs-bg)); }
 .cs-layer-tree { display: flex; flex-direction: column; gap: 2px; }
 .cs-layer-root { padding: 4px 8px 6px; color: var(--cs-muted); font-size: 10px; font-weight: 600; letter-spacing: .08em; }
 .cs-layer-children { display: flex; flex-direction: column; gap: 2px; margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--cs-border); }
@@ -919,6 +937,7 @@ window.__ModuleLoader__.load({
         main: { turns: mainTurns },
         branches,
         layoutMode: raw.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
+        memoryMode: raw.memoryMode === 'semantic' ? 'semantic' : 'lexical',
         view: rawView
           ? {
               x: finite(rawView.x, 120),
@@ -1044,6 +1063,78 @@ window.__ModuleLoader__.load({
       }
       if (!leftNorm || !rightNorm) return 0
       return dot / Math.sqrt(leftNorm * rightNorm)
+    }
+
+    function semanticTokens(value) {
+      const text = String(value || '').toLowerCase().replace(/\s+/g, ' ').trim()
+      const tokens = []
+      for (const word of (text.match(/[\p{L}\p{N}_-]{2,}/gu) || [])) tokens.push('w:' + word)
+      for (let index = 0; index < text.length; index += 1) {
+        const char = text[index]
+        if (!/[\p{L}\p{N}]/u.test(char)) continue
+        if (index + 1 < text.length) {
+          const next = text[index + 1]
+          if (/[\p{L}\p{N}]/u.test(next)) tokens.push('b:' + char + next)
+        }
+      }
+      return tokens
+    }
+
+    function normalizeVector(vector) {
+      let norm = 0
+      for (const value of vector) norm += value * value
+      norm = Math.sqrt(norm) || 1
+      for (let index = 0; index < vector.length; index += 1) vector[index] /= norm
+      return vector
+    }
+
+    function buildCooccurrenceVectors(items) {
+      const termVectors = new Map()
+      const itemTokens = new Map()
+      const ensure = (token) => {
+        if (!termVectors.has(token)) termVectors.set(token, new Array(EMBEDDING_DIMS).fill(0))
+        return termVectors.get(token)
+      }
+      for (const item of items) {
+        const tokens = semanticTokens(stringOf(item.question) + ' ' + stringOf(item.text))
+        itemTokens.set(item.turnId, tokens)
+        for (let index = 0; index < tokens.length; index += 1) {
+          const vector = ensure(tokens[index])
+          for (let offset = -4; offset <= 4; offset += 1) {
+            if (offset === 0) continue
+            const other = tokens[index + offset]
+            if (!other) continue
+            const slot = embeddingHash(other, 3) % EMBEDDING_DIMS
+            const sign = (embeddingHash(other + ':' + offset, 5) & 1) === 0 ? 1 : -1
+            vector[slot] += sign / Math.abs(offset)
+          }
+        }
+      }
+      for (const vector of termVectors.values()) normalizeVector(vector)
+      const itemVectors = new Map()
+      for (const item of items) {
+        const tokens = itemTokens.get(item.turnId) || []
+        const vector = new Array(EMBEDDING_DIMS).fill(0)
+        for (const token of tokens) {
+          const term = termVectors.get(token)
+          if (!term) continue
+          for (let index = 0; index < EMBEDDING_DIMS; index += 1) vector[index] += term[index]
+        }
+        itemVectors.set(item.turnId, normalizeVector(vector))
+      }
+      return { termVectors, itemVectors }
+    }
+
+    function semanticQueryVector(question, termVectors) {
+      const tokens = semanticTokens(question)
+      const vector = new Array(EMBEDDING_DIMS).fill(0)
+      for (const token of tokens) {
+        const term = termVectors.get(token)
+        if (!term) continue
+        for (let index = 0; index < EMBEDDING_DIMS; index += 1) vector[index] += term[index]
+      }
+      const normalized = normalizeVector(vector)
+      return normalized.some((value) => Math.abs(value) > 0.000001) ? normalized : embedText(question)
     }
 
     function buildContextMemory(space) {
@@ -1185,7 +1276,8 @@ window.__ModuleLoader__.load({
           }
         }
       }
-      const queryVector = embedText(String(question || ''))
+      const semantic = space && space.memoryMode === 'semantic' ? buildCooccurrenceVectors(items) : null
+      const queryVector = semantic ? semanticQueryVector(String(question || ''), semantic.termVectors) : embedText(String(question || ''))
       return items
         .filter((item) => item && item.status !== 'outdated' && item.status !== 'superseded')
         .map((item) => {
@@ -1196,7 +1288,10 @@ window.__ModuleLoader__.load({
           const recency = 1 / (1 + ageDays / 45)
           const usedDays = item.lastUsedAt ? Math.max(0, (Date.now() - item.lastUsedAt) / 86400000) : 365
           const usage = 1 / (1 + usedDays / 30)
-          const vectorScore = cosineSimilarity(queryVector, Array.isArray(item.embedding) ? item.embedding : embedText(stringOf(item.question) + ' ' + stringOf(item.text)))
+          const itemVector = semantic
+            ? (semantic.itemVectors.get(item.turnId) || embedText(stringOf(item.question) + ' ' + stringOf(item.text)))
+            : (Array.isArray(item.embedding) ? item.embedding : embedText(stringOf(item.question) + ' ' + stringOf(item.text)))
+          const vectorScore = cosineSimilarity(queryVector, itemVector)
           const score = overlap * 1.5 + vectorScore * 2 + recency + usage * 0.5 + finite(item.importance, 0.5) + (item.kind === 'main' ? 0.25 : 0)
           return { item, score }
         })
@@ -2691,6 +2786,7 @@ window.__ModuleLoader__.load({
       const [highlight, setHighlight] = useState(null)
       const [hover, setHover] = useState(null)
       const [layersOpen, setLayersOpen] = useState(false)
+      const [memoryOpen, setMemoryOpen] = useState(false)
       const [marquee, setMarquee] = useState(null)
       const [selectedTurn, setSelectedTurn] = useState(null)
       const [contextMenu, setContextMenu] = useState(null)
@@ -2701,6 +2797,7 @@ window.__ModuleLoader__.load({
       const layoutTurns = space && space.main ? space.main.turns : null
       const layoutBranches = space ? space.branches : null
       const layoutModeForMemo = space && space.layoutMode === 'horizontal' ? 'horizontal' : 'vertical'
+      const memoryMode = space && space.memoryMode === 'semantic' ? 'semantic' : 'lexical'
       const layoutMemo = useMemo(
         () => (layoutTurns ? buildPositions(layoutTurns, layoutBranches || [], layoutModeForMemo) : null),
         [layoutTurns, layoutBranches, layoutModeForMemo]
@@ -4021,6 +4118,16 @@ window.__ModuleLoader__.load({
       }
 
 
+      const setMemoryMode = (mode) => {
+        pushHistory()
+        commit((previous) => ({
+          ...previous,
+          memoryMode: mode === 'semantic' ? 'semantic' : 'lexical',
+        }))
+        setMemoryOpen(false)
+        saveSoon(120)
+      }
+
       const focusMainLine = () => {
         const element = viewportRef.current
         if (!element) return
@@ -4946,6 +5053,41 @@ window.__ModuleLoader__.load({
         )
       }
 
+      const renderMemorySettings = () => {
+        if (!memoryOpen) return null
+        return h('div', {
+          className: 'cs-modal-backdrop',
+          style: { zIndex: 3100 },
+          onMouseDown: (event) => {
+            if (event.target === event.currentTarget) setMemoryOpen(false)
+          },
+        },
+          h('div', { className: 'cs-modal cs-memory-modal', role: 'dialog', 'aria-modal': 'true' },
+            h('div', { className: 'cs-modal-title' }, t('memory')),
+            h('div', { className: 'cs-memory-note' }, t('memoryHint')),
+            h('button', {
+              type: 'button',
+              className: cx('cs-memory-option', memoryMode === 'lexical' ? 'cs-memory-active' : ''),
+              onClick: () => setMemoryMode('lexical'),
+            },
+              h('strong', null, t('memoryLexical')),
+              h('span', null, t('memoryLexicalHint'))
+            ),
+            h('button', {
+              type: 'button',
+              className: cx('cs-memory-option', memoryMode === 'semantic' ? 'cs-memory-active' : ''),
+              onClick: () => setMemoryMode('semantic'),
+            },
+              h('strong', null, t('memorySemantic')),
+              h('span', null, t('memorySemanticHint'))
+            ),
+            h('div', { className: 'cs-modal-actions' },
+              h('button', { type: 'button', className: 'cs-btn', onClick: () => setMemoryOpen(false) }, t('close'))
+            )
+          )
+        )
+      }
+
       const renderLayers = () => {
         if (!layersOpen) return null
         const branchesByAnchor = new Map()
@@ -5121,6 +5263,7 @@ window.__ModuleLoader__.load({
               onClick: toggleLayout,
               title: t('toggleLayout'),
             }, layoutMode === 'horizontal' ? t('verticalShort') : t('horizontalShort')),
+            h('button', { type: 'button', className: 'cs-btn', onClick: () => setMemoryOpen(true) }, t('memory')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setLayersOpen(true) }, t('layers')),
             typeof onBackToLibrary === 'function'
               ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToLibrary }, t('backToLibrary'))
@@ -5182,6 +5325,7 @@ window.__ModuleLoader__.load({
           renderSelection(),
           renderHover(),
           renderContextMenu(),
+          renderMemorySettings(),
           renderLayers(),
           renderBottomComposer(),
           h('div', { className: 'cs-hintbar' }, detail === 'full' ? t('selectHint') : detail === 'compact' ? t('compactHint') : t('zoomHint')),
