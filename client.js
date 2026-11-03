@@ -57,6 +57,7 @@ window.__ModuleLoader__.load({
       backToConversation: '返回对话',
       resetView: '重置视图',
       fit: '适应画布',
+      focusMain: '回归主线',
       layoutVertical: '竖向布局',
       layoutHorizontal: '横向布局',
       verticalShort: '竖',
@@ -136,6 +137,7 @@ window.__ModuleLoader__.load({
       backToConversation: 'Back to chat',
       resetView: 'Reset view',
       fit: 'Fit canvas',
+      focusMain: 'Back to main line',
       layoutVertical: 'Vertical layout',
       layoutHorizontal: 'Horizontal layout',
       verticalShort: 'V',
@@ -215,7 +217,7 @@ window.__ModuleLoader__.load({
 .cs-btn-primary:hover { background: var(--cs-accent); filter: brightness(1.06); }
 .cs-viewport { position: relative; flex: 1; min-height: 0; overflow: hidden; background-color: var(--cs-bg); background-image: radial-gradient(circle, var(--cs-border) 1px, transparent 1px); background-size: 24px 24px; touch-action: none; }
 .cs-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
-.cs-links { position: absolute; left: 0; top: 0; z-index: 900; overflow: visible; pointer-events: none; }
+.cs-links { position: absolute; left: 0; top: 0; z-index: 0; overflow: visible; pointer-events: none; }
 .cs-link-main { fill: none; stroke: var(--cs-accent); stroke-width: 5; opacity: .95; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 3px rgba(79,195,247,.45)); }
 .cs-link-branch { fill: none; stroke: #7c9cff; stroke-width: 2; stroke-dasharray: 5 5; opacity: .7; vector-effect: non-scaling-stroke; }
 .cs-link-branch-spine { fill: none; stroke: #7c9cff; stroke-width: 2; stroke-dasharray: 3 5; opacity: .5; vector-effect: non-scaling-stroke; }
@@ -296,7 +298,8 @@ window.__ModuleLoader__.load({
 .cs-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
 .cs-toast { position: fixed; left: 50%; bottom: 24px; z-index: 1100; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 48px); padding: 9px 14px; border-radius: 10px; background: #1f2329; color: #ffffff; box-shadow: 0 12px 32px rgba(0,0,0,.28); font-size: 12px; line-height: 1.5; }
 .cs-toast-btn { border: none; background: transparent; color: #9db4ff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
-.cs-dot-wrap { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.cs-dot-wrap { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.cs-dot-ring { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 2px solid; border-radius: 50%; pointer-events: none; box-shadow: 0 0 8px color-mix(in srgb, currentColor 35%, transparent); }
 .cs-dot-flag { position: absolute; color: #e5484d; line-height: 1; pointer-events: none; text-shadow: 0 0 2px rgba(255,255,255,.9); }
 .cs-marquee { position: fixed; z-index: 5000; border: 1px dashed var(--cs-accent); border-radius: 2px; background: color-mix(in srgb, var(--cs-accent) 10%, transparent); pointer-events: none; }
 .cs-dot { border: none; padding: 0; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 4px rgba(51,112,255,.12); transition: transform .12s ease; }
@@ -328,9 +331,9 @@ window.__ModuleLoader__.load({
 .cs-grip:active { cursor: grabbing; }
 .cs-resize { position: absolute; right: 2px; bottom: 2px; z-index: 2; width: 16px; height: 16px; cursor: nwse-resize; }
 .cs-resize::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 7px; height: 7px; border-right: 2px solid var(--cs-border-strong); border-bottom: 2px solid var(--cs-border-strong); border-radius: 0 0 2px 0; opacity: .7; }
-.cs-main-guide { position: absolute; z-index: 0; pointer-events: none; opacity: .5; }
-.cs-main-guide-v { top: 0; width: 0; border-left: 1px dashed color-mix(in srgb, var(--cs-accent) 40%, transparent); }
-.cs-main-guide-h { left: 0; height: 0; border-top: 1px dashed color-mix(in srgb, var(--cs-accent) 40%, transparent); }
+.cs-center-guide { position: absolute; z-index: 890; pointer-events: none; opacity: .42; }
+.cs-center-guide-v { left: 50%; top: 0; bottom: 0; width: 3px; transform: translateX(-50%); background-image: repeating-linear-gradient(to bottom, var(--cs-accent) 0 14px, transparent 14px 30px); }
+.cs-center-guide-h { top: 50%; left: 0; right: 0; height: 3px; transform: translateY(-50%); background-image: repeating-linear-gradient(to right, var(--cs-accent) 0 14px, transparent 14px 30px); }
 .cs-dot-tip { position: fixed; z-index: 1200; max-width: 300px; padding: 8px 10px; border-radius: 8px; background: #1f2329; color: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,.25); font-size: 12px; line-height: 1.55; pointer-events: none; }
 .cs-bottom-composer { position: absolute; left: 50%; bottom: 18px; z-index: 950; display: flex; flex-direction: column; gap: 6px; width: min(640px, calc(100% - 220px)); transform: translateX(-50%); }
 .cs-bottom-label { align-self: flex-start; padding: 2px 8px; border: 1px solid var(--cs-border); border-radius: 999px; background: var(--cs-panel); color: var(--cs-muted); font-size: 11px; line-height: 1.4; }
@@ -639,6 +642,23 @@ window.__ModuleLoader__.load({
       return { left: 0, top: height / 2 }
     }
 
+    function rectsOverlap(a, b) {
+      return Boolean(a && b && a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y)
+    }
+
+    function lineBlocked(a, b, cards, ignore) {
+      for (const card of cards) {
+        if (!card || (ignore && ignore.has(card.id))) continue
+        for (let index = 1; index < 20; index += 1) {
+          const t = index / 20
+          const x = a.x + (b.x - a.x) * t
+          const y = a.y + (b.y - a.y) * t
+          if (x >= card.x && x <= card.x + card.w && y >= card.y && y <= card.y + card.h) return true
+        }
+      }
+      return false
+    }
+
     function sinePath(a, b, amplitude, waves) {
       const dx = b.x - a.x
       const dy = b.y - a.y
@@ -862,12 +882,22 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function Dot({ kind, zoom, label, color, flagged, onClick, onHover, onLeave, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }) {
+    function Dot({ kind, zoom, label, color, selected, flagged, onClick, onHover, onLeave, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }) {
       const edge = kind === 'main'
         ? Math.max(10, 24 / Math.max(zoom, 0.01))
         : Math.max(8, 15 / Math.max(zoom, 0.01))
       const safeZoom = Math.max(zoom, 0.01)
       return h('div', { className: 'cs-dot-wrap' },
+        selected ? h('span', {
+          className: 'cs-dot-ring',
+          style: {
+            width: edge + 8 / safeZoom,
+            height: edge + 8 / safeZoom,
+            borderColor: color,
+            borderWidth: 2 / safeZoom,
+            color,
+          },
+        }) : null,
         h('button', {
           type: 'button',
           className: cx('cs-dot', kind === 'main' ? 'cs-dot-main' : 'cs-dot-branch'),
@@ -1674,16 +1704,19 @@ window.__ModuleLoader__.load({
           let appliedDx = dx
           let appliedDy = dy
           const snapDistance = 16 / Math.max(view.zoom, 0.01)
-          for (const target of drag.targets) {
-            if (target.kind !== 'main') continue
-            if (layoutMode === 'horizontal') {
-              const center = target.rect.y + target.rect.h / 2 + appliedDy
-              const axis = target.baseY + target.rect.h / 2
-              if (Math.abs(center - axis) < snapDistance) appliedDy = axis - (target.rect.y + target.rect.h / 2)
-            } else {
-              const center = target.rect.x + target.rect.w / 2 + appliedDx
-              const axis = target.baseX + target.rect.w / 2
-              if (Math.abs(center - axis) < snapDistance) appliedDx = axis - (target.rect.x + target.rect.w / 2)
+          const guideElement = viewportRef.current
+          if (guideElement) {
+            for (const target of drag.targets) {
+              if (target.kind !== 'main') continue
+              if (layoutMode === 'horizontal') {
+                const axis = (guideElement.clientHeight / 2 - view.y) / Math.max(view.zoom, 0.01)
+                const center = target.rect.y + target.rect.h / 2 + appliedDy
+                if (Math.abs(center - axis) < snapDistance) appliedDy = axis - (target.rect.y + target.rect.h / 2)
+              } else {
+                const axis = (guideElement.clientWidth / 2 - view.x) / Math.max(view.zoom, 0.01)
+                const center = target.rect.x + target.rect.w / 2 + appliedDx
+                if (Math.abs(center - axis) < snapDistance) appliedDx = axis - (target.rect.x + target.rect.w / 2)
+              }
             }
           }
           for (const target of drag.targets) {
@@ -2166,7 +2199,36 @@ window.__ModuleLoader__.load({
         saveSoon(500)
       }
 
-      fitViewRef.current = fitView
+      const focusMainLine = () => {
+        const element = viewportRef.current
+        if (!element) return
+        const width = element.clientWidth
+        const height = element.clientHeight
+        const rects = mainTurns.map((turn) => turnRects.get(turn.id)).filter(Boolean)
+        if (!rects.length) {
+          fitView()
+          return
+        }
+        const minX = Math.min(...rects.map((rect) => rect.x))
+        const maxX = Math.max(...rects.map((rect) => rect.x + rect.w))
+        const minY = Math.min(...rects.map((rect) => rect.y))
+        const maxY = Math.max(...rects.map((rect) => rect.y + rect.h))
+        const contentWidth = Math.max(1, maxX - minX)
+        const contentHeight = Math.max(1, maxY - minY)
+        const zoom = clamp(Math.min((width - 180) / contentWidth, (height - 180) / contentHeight, 1), MIN_ZOOM, 1)
+        const viewX = layoutMode === 'horizontal'
+          ? width / 2 - ((minX + maxX) / 2) * zoom
+          : width / 2 - (MAIN_W / 2) * zoom
+        const viewY = layoutMode === 'horizontal'
+          ? height / 2 - (TOP_PAD + MAIN_H / 2) * zoom
+          : height / 2 - ((minY + maxY) / 2) * zoom
+        commit((previous) => ({ ...previous, view: { zoom, x: viewX, y: viewY } }))
+        setSelection(null)
+        setHover(null)
+        saveSoon(500)
+      }
+
+      fitViewRef.current = focusMainLine
 
       const toggleLayout = () => {
         const next = layoutMode === 'horizontal' ? 'vertical' : 'horizontal'
@@ -2601,18 +2663,26 @@ window.__ModuleLoader__.load({
 
       const renderLinks = () => {
         const paths = []
+        const allCardRects = [...turnRects.entries()].map(([id, rect]) => ({ id, ...rect }))
         const mainRects = mainTurns.map((turn) => turnRects.get(turn.id)).filter(Boolean)
         for (let index = 1; index < mainRects.length; index += 1) {
           paths.push(h('path', {
             key: 'main-' + index,
             className: 'cs-link-main',
             style: { stroke: MAIN_COLOR },
-            d: sinePath(
-              sidePoint(mainRects[index - 1], layoutMode === 'horizontal' ? 'right' : 'bottom'),
-              sidePoint(mainRects[index], layoutMode === 'horizontal' ? 'left' : 'top'),
-              9,
-              3
-            ),
+            d: (() => {
+              const a = sidePoint(mainRects[index - 1], layoutMode === 'horizontal' ? 'right' : 'bottom')
+              const b = sidePoint(mainRects[index], layoutMode === 'horizontal' ? 'left' : 'top')
+              const ignore = new Set([mainTurns[index - 1].id, mainTurns[index].id])
+              return rectsOverlap(mainRects[index - 1], mainRects[index]) || lineBlocked(a, b, allCardRects, ignore)
+                ? sinePath(a, b, 56, 1)
+                : curvePorts(
+                    mainRects[index - 1],
+                    layoutMode === 'horizontal' ? 'right' : 'bottom',
+                    mainRects[index],
+                    layoutMode === 'horizontal' ? 'left' : 'top'
+                  )
+            })(),
           }))
         }
         for (const position of branchPositions) {
@@ -2624,7 +2694,8 @@ window.__ModuleLoader__.load({
             const anchorSide = side === 'left' ? 'right' : side === 'right' ? 'left' : side === 'top' ? 'bottom' : 'top'
             const a = sidePoint(anchor, anchorSide)
             const b = sidePoint(first, side)
-            const d = sinePath(a, b, 18, 2)
+            const ignore = new Set([branch.anchorTurnId, branch.turns[0].id])
+            const d = rectsOverlap(anchor, first) || lineBlocked(a, b, allCardRects, ignore) ? sinePath(a, b, 56, 1) : curvePorts(anchor, anchorSide, first, side)
             paths.push(h('path', {
               key: 'edge-' + branch.id,
               className: 'cs-link-branch',
@@ -2640,7 +2711,14 @@ window.__ModuleLoader__.load({
               key: 'spine-' + branch.id + '-' + index,
               className: 'cs-link-branch-spine',
               style: { stroke: position.color },
-              d: sinePath(sidePoint(a, 'bottom'), sidePoint(b, 'top'), 10, 2),
+              d: (() => {
+                const pa = sidePoint(a, 'bottom')
+                const pb = sidePoint(b, 'top')
+                const ignore = new Set([branch.turns[index - 1].id, branch.turns[index].id])
+                return rectsOverlap(a, b) || lineBlocked(pa, pb, allCardRects, ignore)
+                  ? sinePath(pa, pb, 56, 1)
+                  : curvePorts(a, 'bottom', b, 'top')
+              })(),
             }))
           }
         }
@@ -2996,7 +3074,7 @@ window.__ModuleLoader__.load({
               h('span', { className: 'cs-layout-track' }, h('span', { className: 'cs-layout-knob' })),
               h('span', { className: 'cs-layout-text cs-layout-h' }, t('horizontalShort'))
             ),
-            h('button', { type: 'button', className: 'cs-btn', onClick: fitView }, t('fit')),
+            h('button', { type: 'button', className: 'cs-btn', onClick: focusMainLine }, t('focusMain')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setLayersOpen(true) }, t('layers')),
             typeof onBackToConversation === 'function'
               ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToConversation }, t('backToConversation'))
@@ -3019,13 +3097,11 @@ window.__ModuleLoader__.load({
               transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`,
             },
           },
-                      layoutMode === 'horizontal'
-            ? h('div', { className: 'cs-main-guide cs-main-guide-h', style: { top: TOP_PAD + MAIN_H / 2, width: bounds.width } })
-            : h('div', { className: 'cs-main-guide cs-main-guide-v', style: { left: MAIN_W / 2, height: bounds.height } }),
-            renderLinks(),
+                        renderLinks(),
             renderMain(),
             renderBranches()
           ),
+          h('div', { className: cx('cs-center-guide', layoutMode === 'horizontal' ? 'cs-center-guide-h' : 'cs-center-guide-v') }),
           marquee ? h('div', {
             className: 'cs-marquee',
             style: { left: marquee.left, top: marquee.top, width: marquee.width, height: marquee.height },
