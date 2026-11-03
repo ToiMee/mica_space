@@ -71,6 +71,9 @@ window.__ModuleLoader__.load({
       main: '主线',
       branch: '分支',
       followUp: '从这里追问',
+      quoteFollowUp: '引用追问',
+      quotePlaceholder: '针对这段引用继续问…',
+      removeQuote: '移除引用',
       continueFollowUp: '继续追问',
       continueMain: '继续主线',
       continueBranch: '继续这条分支',
@@ -190,6 +193,9 @@ window.__ModuleLoader__.load({
       main: 'Main',
       branch: 'Branch',
       followUp: 'Ask from here',
+      quoteFollowUp: 'Ask with quote',
+      quotePlaceholder: 'Continue with this quote…',
+      removeQuote: 'Remove quote',
       continueFollowUp: 'Continue asking',
       continueMain: 'Continue main line',
       continueBranch: 'Continue this branch',
@@ -351,6 +357,11 @@ window.__ModuleLoader__.load({
 .cs-branch-anchor-text { max-height: 58px; overflow: auto; white-space: pre-wrap; color: var(--cs-muted); font-size: 11px; line-height: 1.55; }
 .cs-brief-input { width: 100%; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--cs-text); padding: 4px 6px; font: inherit; font-size: 11px; line-height: 1.5; outline: none; }
 .cs-brief-input:hover, .cs-brief-input:focus { border-color: var(--cs-border-strong); background: var(--cs-panel); }
+.cs-composer-quote { display: flex; align-items: flex-start; gap: 8px; padding: 7px 9px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); color: var(--cs-muted); font-size: 12px; line-height: 1.55; }
+.cs-quote-line { flex-shrink: 0; width: 3px; align-self: stretch; border-radius: 2px; background: var(--cs-accent); }
+.cs-composer-quote-text { flex: 1; min-width: 0; max-height: 52px; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cs-composer-quote-remove { flex-shrink: 0; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--cs-muted); cursor: pointer; font-size: 13px; line-height: 18px; }
+.cs-composer-quote-remove:hover { background: var(--cs-hover); color: var(--cs-text); }
 .cs-composer { width: 100%; display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--cs-border); border-radius: var(--cs-radius); background: var(--cs-panel); box-shadow: var(--cs-shadow); }
 .cs-input { width: 100%; min-height: 64px; max-height: 180px; resize: vertical; overscroll-behavior: contain; border: none; outline: none; background: transparent; color: var(--cs-text); font: inherit; font-size: 13px; line-height: 1.6; }
 .cs-input::placeholder { color: var(--cs-muted); }
@@ -2307,8 +2318,9 @@ window.__ModuleLoader__.load({
         ? branches.find((branch) => branch.id === selectedTurn.branchId)
         : null
       const selectedMain = Boolean(selectedTurn && selectedTurn.kind === 'main')
+      const [quoteDraft, setQuoteDraft] = useState(null)
       const composerVisible = detail === 'full' && (
-        Boolean(selectedBranch || selectedMain) || (!selectedTurn && mainTurns.length === 0)
+        Boolean(quoteDraft || selectedBranch || selectedMain) || (!selectedTurn && mainTurns.length === 0)
       )
       const composerBusy = selectedBranch
         ? selectedBranch.turns.some((turn) => turn.status === 'streaming')
@@ -2503,7 +2515,7 @@ window.__ModuleLoader__.load({
         const drag = dragRef.current
         if (!drag) return
         dragRef.current = null
-        if (drag.mode === 'resize' && drag.kind === 'main' && drag.snapped && drag.lastResize) {
+        if (drag.mode === 'resize' && drag.kind === 'main' && drag.lastResize) {
           const layout = { ...drag.lastResize }
           if (layoutMode === 'horizontal') {
             const axis = TOP_PAD + MAIN_H / 2
@@ -3243,20 +3255,42 @@ window.__ModuleLoader__.load({
 
       const openDraftFor = (turnId, text, parentBranchId, anchorSource) => {
         if (!text || !text.trim()) return
-        setDraft({
+        setQuoteDraft({
           anchorTurnId: turnId,
           anchorText: text,
           anchorSource: anchorSource || 'selection',
           parentBranchId: parentBranchId || null,
-          question: '',
-          brief: '',
         })
+        setDraft(null)
         setSelection(null)
       }
 
       const openBranchDraft = () => {
         if (!selection) return
         openDraftFor(selection.turnId, selection.text, selection.branchId)
+      }
+
+      const submitQuote = (question, attachments) => {
+        if (!quoteDraft) return
+        const text = String(question || '').trim()
+        if (!text) return
+        const current = spaceRef.current
+        if (!current) return
+        const branch = {
+          id: uid('branch'),
+          anchorTurnId: quoteDraft.anchorTurnId,
+          anchorText: quoteDraft.anchorText,
+          anchorSource: quoteDraft.anchorSource || 'selection',
+          parentBranchId: quoteDraft.parentBranchId || null,
+          colorIndex: nextColorIndex(current.branches),
+          brief: '',
+          createdAt: Date.now(),
+          turns: [],
+        }
+        pushHistory()
+        setQuoteDraft(null)
+        commit((previous) => ({ ...previous, branches: [...previous.branches, branch] }))
+        startTurn({ kind: 'branch', branch, branchId: branch.id, question: text, attachments, skipHistory: true })
       }
 
       const submitDraft = () => {
@@ -3664,15 +3698,32 @@ window.__ModuleLoader__.load({
       const renderBottomComposer = () => {
         if (!composerVisible) return null
         const branch = selectedBranch
+        const quote = quoteDraft
         return h('div', { className: 'cs-bottom-composer' },
-          h('div', { className: 'cs-bottom-label' }, branch ? t('continueBranch') : t('continueMain')),
+          h('div', { className: 'cs-bottom-label' }, quote ? t('quoteFollowUp') : branch ? t('continueBranch') : t('continueMain')),
+          quote
+            ? h('div', { className: 'cs-composer-quote' },
+                h('span', { className: 'cs-quote-line', 'aria-hidden': true }),
+                h('span', { className: 'cs-composer-quote-text', title: quote.anchorText }, truncate(quote.anchorText, 260)),
+                h('button', {
+                  type: 'button',
+                  className: 'cs-composer-quote-remove',
+                  title: t('removeQuote'),
+                  onClick: () => setQuoteDraft(null),
+                }, '×')
+              )
+            : null,
           h(Composer, {
             t,
-            placeholder: branch ? t('branchPlaceholder') : t('mainPlaceholder'),
+            placeholder: quote ? t('quotePlaceholder') : branch ? t('branchPlaceholder') : t('mainPlaceholder'),
             busy: composerBusy,
-            autoFocus: !selectedTurn && mainTurns.length === 0,
-            storageKey: branch ? COMPOSER_PREFIX + 'branch:' + branch.id : COMPOSER_PREFIX + 'main',
+            autoFocus: Boolean(quote) || (!selectedTurn && mainTurns.length === 0),
+            storageKey: quote ? COMPOSER_PREFIX + 'quote' : branch ? COMPOSER_PREFIX + 'branch:' + branch.id : COMPOSER_PREFIX + 'main',
             onSend: (question, attachments) => {
+              if (quote) {
+                submitQuote(question, attachments)
+                return
+              }
               if (branch) startTurn({ kind: 'branch', branch, branchId: branch.id, question, attachments })
               else startTurn({ kind: 'main', question, attachments })
             },
