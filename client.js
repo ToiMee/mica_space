@@ -34,7 +34,7 @@ window.__ModuleLoader__.load({
     ]
 
     const zh = {
-      panel: '聊天空间',
+      panel: 'Mica空间',
       library: '空间库',
       backToLibrary: '返回空间库',
       libraryTitle: 'Mica空间',
@@ -66,7 +66,7 @@ window.__ModuleLoader__.load({
       libraryLoadError: '空间库读取失败',
       loading: '加载中…',
       retry: '重试',
-      title: '聊天空间',
+      title: 'Mica空间',
       subtitle: '主线向前，追问向两侧生长',
       main: '主线',
       branch: '分支',
@@ -108,7 +108,7 @@ window.__ModuleLoader__.load({
       send: '发送',
       sending: '正在回答…',
       thinking: '正在思考…',
-      loading: '正在打开聊天空间…',
+      loading: '正在打开 Mica空间…',
       loadError: '读取失败',
       saveError: '保存失败',
       saving: '保存中…',
@@ -131,7 +131,7 @@ window.__ModuleLoader__.load({
       branchBriefLabel: '分支说明',
       noAnswer: '（还没有回答）',
       loadErrorHint: '请刷新页面，或检查 DSH 是否仍在运行。',
-      renderError: '聊天空间出错了',
+      renderError: 'Mica空间出错了',
       renderErrorHint: '可以点“重试”；如果反复出现，把这段错误发给我。',
       zoomHint: '滚轮任意位置缩放 · 鼠标中键拖动画布',
       selectHint: '选中回答中的文字即可追问',
@@ -145,7 +145,7 @@ window.__ModuleLoader__.load({
     }
 
     const en = {
-      panel: 'Chat Space',
+      panel: 'Mica Space',
       library: 'Library',
       backToLibrary: 'Back to library',
       libraryTitle: 'Mica Space',
@@ -177,7 +177,7 @@ window.__ModuleLoader__.load({
       libraryLoadError: 'Failed to load the library',
       loading: 'Loading…',
       retry: 'Retry',
-      title: 'Chat Space',
+      title: 'Mica Space',
       subtitle: 'A main line that continues, branches that grow sideways',
       main: 'Main',
       branch: 'Branch',
@@ -219,7 +219,7 @@ window.__ModuleLoader__.load({
       send: 'Send',
       sending: 'Answering…',
       thinking: 'Thinking…',
-      loading: 'Opening Chat Space…',
+      loading: 'Opening Mica Space…',
       loadError: 'Could not load',
       saveError: 'Could not save',
       saving: 'Saving…',
@@ -242,7 +242,7 @@ window.__ModuleLoader__.load({
       branchBriefLabel: 'Branch note',
       noAnswer: '(no answer yet)',
       loadErrorHint: 'Refresh the page, or check that DSH is still running.',
-      renderError: 'Chat Space hit an error',
+      renderError: 'Mica Space hit an error',
       renderErrorHint: 'Try again. If it keeps happening, send me this message.',
       zoomHint: 'Wheel anywhere to zoom · Middle-drag to pan the canvas',
       selectHint: 'Select text in an answer to ask a follow-up',
