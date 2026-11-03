@@ -12,6 +12,7 @@ import { execFile } from 'node:child_process'
 import { copyFile, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
+import { inflateRawSync, inflateSync } from 'node:zlib'
 
 const execFileAsync = promisify(execFile)
 
@@ -861,6 +862,16 @@ async function handleChat(ctx, req, res) {
 
   const system = buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest, mainDigest, branchId })
   const attachments = Array.isArray(body?.attachments) ? body.attachments.slice(0, 8) : []
+  const fileTexts = []
+  for (const item of attachments) {
+    if (!item || item.kind !== 'file' || !item.attachment || typeof item.attachment !== 'object') continue
+    try {
+      const extracted = await extractAttachmentText(ctx, item.attachment)
+      if (extracted && extracted.text) fileTexts.push(extracted)
+    } catch (_error) {
+      // A bad file should not block the chat.
+    }
+  }
   if (attachments.some((item) => item && item.kind === 'image')) {
     try {
       const info = await ctx.llm.resolveModelInfo(provider, model)
@@ -871,7 +882,7 @@ async function handleChat(ctx, req, res) {
       // Capability lookup is advisory; let the provider decide.
     }
   }
-  const messages = buildMessages({ history, question, provider, model, attachments })
+  const messages = buildMessages({ history, question, provider, model, attachments, fileTexts })
 
   const controller = new AbortController()
   let closed = false
@@ -1072,7 +1083,7 @@ function buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest,
   return lines.join('\n')
 }
 
-function buildMessages({ history, question, provider, model, attachments }) {
+function buildMessages({ history, question, provider, model, attachments, fileTexts }) {
   const messages = []
   for (const item of history) {
     if (!item || typeof item !== 'object') continue
@@ -1100,8 +1111,153 @@ function buildMessages({ history, question, provider, model, attachments }) {
       content.push({ type: 'file', attachment: item.attachment })
     }
   }
+  for (const item of Array.isArray(fileTexts) ? fileTexts : []) {
+    if (!item || !item.text) continue
+    content.push({ type: 'text', text: '\n[File: ' + String(item.name || 'file') + ']\n' + String(item.text).slice(0, 12000) })
+  }
   trimmed.push({ role: 'user', content })
   return trimmed
+}
+
+const TEXT_FILE_EXTENSIONS = new Set(['txt', 'md', 'markdown', 'csv', 'tsv', 'json', 'jsonl', 'xml', 'html', 'htm', 'css', 'js', 'jsx', 'ts', 'tsx', 'py', 'java', 'c', 'h', 'cpp', 'cs', 'go', 'rs', 'rb', 'php', 'sh', 'yaml', 'yml', 'toml', 'ini', 'log', 'sql'])
+const MAX_EXTRACTED_TEXT = 12000
+
+async function extractAttachmentText(ctx, ref) {
+  const name = String(ref && ref.name || 'file')
+  const extension = (name.split('.').pop() || '').toLowerCase()
+  const chunks = []
+  for await (const chunk of ctx.attachments.readFileStream(ref)) chunks.push(Buffer.from(chunk))
+  const buffer = Buffer.concat(chunks)
+  if (buffer.length === 0 || buffer.length > 20 * 1024 * 1024) return null
+  if (TEXT_FILE_EXTENSIONS.has(extension)) {
+    const text = buffer.toString('utf8')
+    if (!text || text.indexOf('\u0000') >= 0) return null
+    return { name, text: text.slice(0, MAX_EXTRACTED_TEXT) }
+  }
+  if (extension === 'docx') {
+    const entries = readZipEntries(buffer)
+    const xml = entries.get('word/document.xml')
+    if (!xml) return null
+    let text = xml.toString('utf8')
+      .replace(/<w:tab[^>]*\/>/g, '\t')
+      .replace(/<w:br[^>]*\/>/g, '\n')
+      .replace(/<\/w:p>/g, '\n')
+      .replace(/<[^>]+>/g, '')
+    text = decodeXmlEntities(text).replace(/\n{3,}/g, '\n\n').trim()
+    return text ? { name, text: text.slice(0, MAX_EXTRACTED_TEXT) } : null
+  }
+  if (extension === 'xlsx') {
+    const entries = readZipEntries(buffer)
+    const sharedXml = entries.get('xl/sharedStrings.xml')
+    const shared = []
+    if (sharedXml) {
+      const sourceText = sharedXml.toString('utf8')
+      const matches = sourceText.match(/<si[\s\S]*?<\/si>/g) || []
+      for (const item of matches) {
+        const parts = item.match(/<t[^>]*>([\s\S]*?)<\/t>/g) || []
+        shared.push(decodeXmlEntities(parts.map((part) => part.replace(/<[^>]+>/g, '')).join('')))
+      }
+    }
+    const sheetNames = [...entries.keys()].filter((key) => /^xl\/worksheets\/sheet[^/]*\.xml$/.test(key)).sort()
+    const lines = []
+    for (const sheetName of sheetNames) {
+      const xml = entries.get(sheetName).toString('utf8')
+      const rows = xml.match(/<row[\s\S]*?<\/row>/g) || []
+      for (const row of rows) {
+        const cells = row.match(/<c[^>]*>[\s\S]*?<\/c>/g) || []
+        const values = cells.map((cell) => {
+          const isShared = /\bt="s"/.test(cell)
+          const inline = /<is>[\s\S]*?<\/is>/.exec(cell)
+          const raw = inline ? inline[0] : (/<v>([\s\S]*?)<\/v>/.exec(cell) || [])[1]
+          if (raw === undefined) return ''
+          const value = decodeXmlEntities(String(raw).replace(/<[^>]+>/g, ''))
+          if (isShared) return shared[Number(value)] || ''
+          return value
+        })
+        if (values.some(Boolean)) lines.push(values.join('\t'))
+        if (lines.join('\n').length > MAX_EXTRACTED_TEXT) break
+      }
+    }
+    const text = lines.join('\n').slice(0, MAX_EXTRACTED_TEXT)
+    return text ? { name, text } : null
+  }
+  if (extension === 'pdf') {
+    const text = extractPdfText(buffer).slice(0, MAX_EXTRACTED_TEXT)
+    return text ? { name, text } : null
+  }
+  return null
+}
+
+function decodeXmlEntities(value) {
+  return String(value)
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_match, code) => String.fromCharCode(Number(code)))
+}
+
+function readZipEntries(buffer) {
+  const entries = new Map()
+  const eocd = buffer.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]))
+  if (eocd < 0) return entries
+  const count = buffer.readUInt16LE(eocd + 10)
+  let offset = buffer.readUInt32LE(eocd + 16)
+  for (let index = 0; index < count; index += 1) {
+    if (buffer.readUInt32LE(offset) !== 0x02014b50) break
+    const method = buffer.readUInt16LE(offset + 10)
+    const compressedSize = buffer.readUInt32LE(offset + 20)
+    const nameLength = buffer.readUInt16LE(offset + 28)
+    const extraLength = buffer.readUInt16LE(offset + 30)
+    const commentLength = buffer.readUInt16LE(offset + 32)
+    const localOffset = buffer.readUInt32LE(offset + 42)
+    const name = buffer.toString('utf8', offset + 46, offset + 46 + nameLength)
+    if (buffer.readUInt32LE(localOffset) === 0x04034b50) {
+      const localNameLength = buffer.readUInt16LE(localOffset + 26)
+      const localExtraLength = buffer.readUInt16LE(localOffset + 28)
+      const dataStart = localOffset + 30 + localNameLength + localExtraLength
+      const compressed = buffer.subarray(dataStart, dataStart + compressedSize)
+      try {
+        if (method === 0) entries.set(name, Buffer.from(compressed))
+        else if (method === 8) entries.set(name, inflateRawSync(compressed))
+      } catch (_error) {
+        // Skip unsupported/corrupt entries.
+      }
+    }
+    offset += 46 + nameLength + extraLength + commentLength
+  }
+  return entries
+}
+
+function extractPdfText(buffer) {
+  const raw = buffer.toString('latin1')
+  const outputs = []
+  const streamPattern = /stream\r?\n([\s\S]*?)\r?\nendstream/g
+  let match
+  while ((match = streamPattern.exec(raw))) {
+    let content = match[1]
+    if (/\/FlateDecode/.test(raw.slice(Math.max(0, match.index - 400), match.index))) {
+      try { content = inflateSync(Buffer.from(content, 'latin1')).toString('latin1') } catch (_error) { continue }
+    }
+    const textParts = []
+    const tj = /\(((?:\\.|[^\\)])*)\)\s*Tj/g
+    let textMatch
+    while ((textMatch = tj.exec(content))) textParts.push(decodePdfString(textMatch[1]))
+    const tjArray = /\[([\s\S]*?)\]\s*TJ/g
+    while ((textMatch = tjArray.exec(content))) {
+      const parts = textMatch[1].match(/\(((?:\\.|[^\\)])*)\)/g) || []
+      textParts.push(parts.map((part) => decodePdfString(part.slice(1, -1))).join(''))
+    }
+    if (textParts.length > 0) outputs.push(textParts.join(' '))
+  }
+  return outputs.join('\n').replace(/[ \t]{2,}/g, ' ').trim()
+}
+
+function decodePdfString(value) {
+  return String(value)
+    .replace(/\\([nrtbf()\\])/g, (_match, symbol) => ({ n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', '(': '(', ')': ')', '\\': '\\' }[symbol] || symbol))
+    .replace(/\\([0-7]{1,3})/g, (_match, code) => String.fromCharCode(parseInt(code, 8)))
 }
 
 function readJsonBody(req, limit = MAX_BODY_BYTES) {
