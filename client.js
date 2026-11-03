@@ -106,6 +106,14 @@ window.__ModuleLoader__.load({
       branchPlaceholder: '继续追问这条分支…',
       composerHint: 'Enter 发送 · Shift+Enter 换行',
       send: '发送',
+      attachFile: '上传图片/文件',
+      uploading: '上传中…',
+      uploadFailed: '上传失败',
+      fileTooLarge: '文件太大（最大 20MB）',
+      attachmentLimit: '最多 6 个附件',
+      attachmentQuestion: '请查看附件',
+      removeAttachment: '移除附件',
+      attachments: '个附件',
       sending: '正在回答…',
       thinking: '正在思考…',
       loading: '正在打开 Mica空间…',
@@ -217,6 +225,14 @@ window.__ModuleLoader__.load({
       branchPlaceholder: 'Continue this branch…',
       composerHint: 'Enter to send · Shift+Enter for a new line',
       send: 'Send',
+      attachFile: 'Upload image/file',
+      uploading: 'Uploading…',
+      uploadFailed: 'Upload failed',
+      fileTooLarge: 'File too large (max 20 MB)',
+      attachmentLimit: 'Up to 6 attachments',
+      attachmentQuestion: 'Please look at the attachment',
+      removeAttachment: 'Remove attachment',
+      attachments: 'attachments',
       sending: 'Answering…',
       thinking: 'Thinking…',
       loading: 'Opening Mica Space…',
@@ -339,6 +355,23 @@ window.__ModuleLoader__.load({
 .cs-input { width: 100%; min-height: 64px; max-height: 180px; resize: vertical; overscroll-behavior: contain; border: none; outline: none; background: transparent; color: var(--cs-text); font: inherit; font-size: 13px; line-height: 1.6; }
 .cs-input::placeholder { color: var(--cs-muted); }
 .cs-composer-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cs-attach-btn { flex-shrink: 0; padding: 4px 8px; font-size: 14px; line-height: 1.2; }
+.cs-composer-attachments { display: flex; flex-wrap: wrap; gap: 6px; max-height: 84px; overflow: auto; }
+.cs-composer-attachment { display: inline-flex; align-items: center; gap: 5px; max-width: 210px; padding: 3px 5px; border: 1px solid var(--cs-border); border-radius: 7px; background: var(--cs-bg); }
+.cs-composer-attachment img { width: 38px; height: 38px; object-fit: cover; border-radius: 5px; display: block; }
+.cs-composer-file-icon { flex-shrink: 0; font-size: 18px; }
+.cs-composer-attachment-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--cs-muted); }
+.cs-composer-remove { flex-shrink: 0; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--cs-muted); cursor: pointer; font-size: 13px; line-height: 18px; }
+.cs-composer-remove:hover { background: var(--cs-hover); color: var(--cs-text); }
+.cs-upload-error { color: #d9534f; font-size: 11px; line-height: 1.4; }
+.cs-attachments { flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.cs-attachment-image { display: block; width: 88px; height: 88px; overflow: hidden; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); }
+.cs-attachment-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cs-attachment-file { display: inline-flex; align-items: center; gap: 6px; max-width: 260px; padding: 6px 8px; border: 1px solid var(--cs-border); border-radius: 7px; background: var(--cs-bg); color: var(--cs-text); text-decoration: none; font-size: 11px; }
+.cs-attachment-file:hover { border-color: var(--cs-accent); }
+.cs-attachment-icon { flex-shrink: 0; font-size: 14px; }
+.cs-attachment-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-attachment-size { flex-shrink: 0; color: var(--cs-muted); }
 .cs-hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--cs-muted); font-size: 11px; }
 .cs-card-compact { cursor: zoom-in; }
 .cs-card-compact .cs-card-actions, .cs-card-compact .cs-card-foot { display: none; }
@@ -634,6 +667,12 @@ window.__ModuleLoader__.load({
             h: clamp(finite(rawLayout.h, CARD_H), MIN_CARD_H, MAX_CARD_H),
           }
         : null
+      const attachments = Array.isArray(turn.attachments)
+        ? turn.attachments
+            .filter((item) => item && item.attachment && typeof item.attachment === 'object')
+            .slice(0, 6)
+            .map((item) => ({ kind: item.kind === 'image' ? 'image' : 'file', attachment: item.attachment }))
+        : []
       return {
         id: turn.id,
         question: stringOf(turn.question),
@@ -646,6 +685,7 @@ window.__ModuleLoader__.load({
         z: finite(turn.z, 0),
         todo: Boolean(turn.todo),
         flag: Boolean(turn.flag),
+        attachments,
         layout,
       }
     }
@@ -1060,24 +1100,109 @@ window.__ModuleLoader__.load({
       })
     }
 
+    function attachmentHref(item, download) {
+      const kind = item && item.kind === 'image' ? 'image' : 'file'
+      const ref = item && item.attachment && typeof item.attachment === 'object' ? item.attachment : {}
+      return API + '/attachment?kind=' + kind + '&ref=' + encodeURIComponent(JSON.stringify(ref)) + (download ? '&download=1' : '')
+    }
+
+    function formatBytes(value) {
+      const bytes = Number(value) || 0
+      if (bytes < 1024) return bytes + ' B'
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+      return (bytes / 1024 / 1024).toFixed(1) + ' MB'
+    }
+
+    function readFileAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const result = String(reader.result || '')
+          const comma = result.indexOf(',')
+          resolve(comma >= 0 ? result.slice(comma + 1) : result)
+        }
+        reader.onerror = () => reject(reader.error || new Error('read file failed'))
+        reader.readAsDataURL(file)
+      })
+    }
+
     function Composer({ t, placeholder, onSend, busy, autoFocus, storageKey }) {
       const [value, setValue] = useState(() => readTextStorage(storageKey))
+      const [attachments, setAttachments] = useState([])
+      const [uploading, setUploading] = useState(false)
+      const [error, setError] = useState('')
+      const fileInputRef = useRef(null)
+
       useEffect(() => {
         writeTextStorage(storageKey, value)
       }, [storageKey, value])
+
+      const addFiles = async (event) => {
+        const files = Array.from((event.target && event.target.files) || [])
+        if (!files.length) return
+        const room = Math.max(0, 6 - attachments.length)
+        if (room === 0) {
+          setError(t('attachmentLimit'))
+          if (fileInputRef.current) fileInputRef.current.value = ''
+          return
+        }
+        setUploading(true)
+        setError('')
+        const added = []
+        try {
+          for (const file of files.slice(0, room)) {
+            if (file.size > 20 * 1024 * 1024) throw new Error(t('fileTooLarge'))
+            const data = await readFileAsBase64(file)
+            const imageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+            const kind = imageTypes.indexOf(file.type) >= 0 ? 'image' : 'file'
+            const response = await fetch(API + '/upload', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ kind, name: file.name, mediaType: file.type, data }),
+            })
+            const body = await response.json()
+            if (!response.ok || !body || body.ok === false) {
+              throw new Error(body && body.error ? body.error : t('uploadFailed'))
+            }
+            added.push({ kind: body.kind, attachment: body.attachment })
+          }
+          setAttachments((previous) => previous.concat(added).slice(0, 6))
+        } catch (uploadError) {
+          setError(uploadError && uploadError.message ? uploadError.message : t('uploadFailed'))
+        } finally {
+          setUploading(false)
+          if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+      }
+
+      const removeAttachment = (index) => {
+        setAttachments((previous) => previous.filter((_item, itemIndex) => itemIndex !== index))
+      }
+
       const submit = () => {
         const question = value.trim()
-        if (!question || busy) return
+        if ((!question && attachments.length === 0) || busy || uploading) return
+        const content = question || t('attachmentQuestion')
         setValue('')
-        onSend(question)
+        setAttachments([])
+        onSend(content, attachments)
       }
+
       const keyDown = (event) => {
         if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
           event.preventDefault()
           submit()
         }
       }
+
       return h('div', { className: 'cs-composer' },
+        h('input', {
+          ref: fileInputRef,
+          type: 'file',
+          multiple: true,
+          style: { display: 'none' },
+          onChange: addFiles,
+        }),
         h('textarea', {
           className: 'cs-input',
           value,
@@ -1088,12 +1213,35 @@ window.__ModuleLoader__.load({
           onChange: (event) => setValue(event.target.value),
           onKeyDown: keyDown,
         }),
+        attachments.length > 0
+          ? h('div', { className: 'cs-composer-attachments' },
+              attachments.map((item, index) => h('div', { key: index, className: 'cs-composer-attachment' },
+                item.kind === 'image'
+                  ? h('img', { src: attachmentHref(item, false), alt: item.attachment && item.attachment.name || 'image' })
+                  : h('span', { className: 'cs-composer-file-icon' }, '📎'),
+                h('span', { className: 'cs-composer-attachment-name', title: item.attachment && item.attachment.name || '' },
+                  item.attachment && item.attachment.name || (item.kind === 'image' ? 'image' : 'file')
+                ),
+                h('button', { type: 'button', className: 'cs-composer-remove', title: t('removeAttachment'), onClick: () => removeAttachment(index) }, '×')
+              ))
+            )
+          : null,
+        error ? h('div', { className: 'cs-upload-error' }, error) : null,
         h('div', { className: 'cs-composer-bar' },
-          h('span', { className: 'cs-hint' }, busy ? t('sending') : t('composerHint')),
+          h('button', {
+            type: 'button',
+            className: 'cs-btn cs-attach-btn',
+            title: t('attachFile'),
+            disabled: busy || uploading,
+            onClick: () => { if (fileInputRef.current) fileInputRef.current.click() },
+          }, '📎'),
+          h('span', { className: 'cs-hint' },
+            uploading ? t('uploading') : busy ? t('sending') : attachments.length > 0 ? attachments.length + ' ' + t('attachments') : t('composerHint')
+          ),
           h('button', {
             type: 'button',
             className: 'cs-btn cs-btn-primary',
-            disabled: busy || !value.trim(),
+            disabled: busy || uploading || (!value.trim() && attachments.length === 0),
             onClick: submit,
           }, busy ? t('sending') : t('send'))
         )
@@ -1219,6 +1367,33 @@ window.__ModuleLoader__.load({
             h('span', { className: 'cs-q-mark' }, 'Q'),
             h('div', { className: 'cs-q-text' }, turn.question)
           ),
+          turn.attachments && turn.attachments.length > 0
+            ? h('div', { className: 'cs-attachments' },
+                turn.attachments.map((item, index) => item.kind === 'image'
+                  ? h('a', {
+                      key: 'att-' + index,
+                      className: 'cs-attachment-image',
+                      href: attachmentHref(item, false),
+                      target: '_blank',
+                      rel: 'noreferrer',
+                      onPointerDown: (event) => event.stopPropagation(),
+                      onClick: (event) => event.stopPropagation(),
+                    }, h('img', { src: attachmentHref(item, false), alt: item.attachment && item.attachment.name || 'image', loading: 'lazy' }))
+                  : h('a', {
+                      key: 'att-' + index,
+                      className: 'cs-attachment-file',
+                      href: attachmentHref(item, true),
+                      download: item.attachment && item.attachment.name || true,
+                      onPointerDown: (event) => event.stopPropagation(),
+                      onClick: (event) => event.stopPropagation(),
+                    },
+                      h('span', { className: 'cs-attachment-icon' }, '📎'),
+                      h('span', { className: 'cs-attachment-name' }, item.attachment && item.attachment.name || 'file'),
+                      h('span', { className: 'cs-attachment-size' }, formatBytes(item.attachment && item.attachment.bytes))
+                    )
+                )
+              )
+            : null,
           h('div', { className: 'cs-a', 'data-turn-id': turn.id, onMouseUp: handleSelection },
             detail === 'compact'
               ? h('div', { className: 'cs-a-compact' }, truncate(turn.answer || t('noAnswer'), 260))
@@ -2847,7 +3022,7 @@ window.__ModuleLoader__.load({
         }
       }
 
-      const startTurn = ({ kind, branch, branchId, question, retryTurnId, branchIndex, skipHistory }) => {
+      const startTurn = ({ kind, branch, branchId, question, attachments, retryTurnId, branchIndex, skipHistory }) => {
         const targetBranch = kind === 'branch'
           ? (branch || (spaceRef.current ? spaceRef.current.branches.find((item) => item.id === branchId) : null))
           : null
@@ -2857,6 +3032,10 @@ window.__ModuleLoader__.load({
         const currentTurns = kind === 'main'
           ? (spaceRef.current ? spaceRef.current.main.turns : mainTurns)
           : targetBranch.turns
+        const previousTurn = retryTurnId ? currentTurns.find((turn) => turn.id === retryTurnId) : null
+        const turnAttachments = Array.isArray(attachments)
+          ? attachments
+          : (previousTurn && Array.isArray(previousTurn.attachments) ? previousTurn.attachments : [])
         const historyTurns = currentTurns.filter((turn) => (
           turn.id !== retryTurnId && (turn.status === 'completed' || turn.status === 'cancelled')
         ))
@@ -2899,10 +3078,11 @@ window.__ModuleLoader__.load({
             status: 'streaming',
             error: '',
             usage: null,
+            attachments: turnAttachments,
           })
         } else {
           zCounterRef.current += 1
-          const turn = { id: turnId, question, answer: '', status: 'streaming', error: '', createdAt: Date.now(), usage: null, z: zCounterRef.current, todo: false, flag: false }
+          const turn = { id: turnId, question, answer: '', status: 'streaming', error: '', createdAt: Date.now(), usage: null, z: zCounterRef.current, todo: false, flag: false, attachments: turnAttachments }
           if (kind === 'main') {
             commit((previous) => ({
               ...previous,
@@ -2936,6 +3116,7 @@ window.__ModuleLoader__.load({
           mainContext,
           branchDigest,
           mainDigest,
+          attachments: turnAttachments,
         }
         runStream({ kind, branchId: targetBranch ? targetBranch.id : null, turnId, payload })
 
@@ -2961,13 +3142,13 @@ window.__ModuleLoader__.load({
         if (kind === 'main') {
           const turn = current.main.turns.find((item) => item.id === turnId)
           if (!turn) return
-          startTurn({ kind, question: turn.question, retryTurnId: turnId })
+          startTurn({ kind, question: turn.question, retryTurnId: turnId, attachments: turn.attachments })
         } else {
           const branch = current.branches.find((item) => item.id === branchId)
           if (!branch) return
           const turn = branch.turns.find((item) => item.id === turnId)
           if (!turn) return
-          startTurn({ kind, branch, branchId, question: turn.question, retryTurnId: turnId })
+          startTurn({ kind, branchId, question: turn.question, retryTurnId: turnId, attachments: turn.attachments })
         }
       }
 
@@ -3474,9 +3655,9 @@ window.__ModuleLoader__.load({
             busy: composerBusy,
             autoFocus: !selectedTurn && mainTurns.length === 0,
             storageKey: branch ? COMPOSER_PREFIX + 'branch:' + branch.id : COMPOSER_PREFIX + 'main',
-            onSend: (question) => {
-              if (branch) startTurn({ kind: 'branch', branch, branchId: branch.id, question })
-              else startTurn({ kind: 'main', question })
+            onSend: (question, attachments) => {
+              if (branch) startTurn({ kind: 'branch', branch, branchId: branch.id, question, attachments })
+              else startTurn({ kind: 'main', question, attachments })
             },
           })
         )

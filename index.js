@@ -18,11 +18,12 @@ const LEGACY_FILE_NAME = 'space.json'
 const SPACES_DIR_NAME = 'spaces'
 const TRASH_DIR_NAME = 'trash'
 const MAX_BODY_BYTES = 4 * 1024 * 1024
+const MAX_UPLOAD_BYTES = 32 * 1024 * 1024
 const MAX_ANCHOR_CHARS = 2400
 const MAX_MAIN_CONTEXT_CHARS = 1600
 const MAX_HISTORY_ITEM_CHARS = 6000
 
-export const inject = ['webServer', 'llm', 'agentDefaultModel']
+export const inject = ['webServer', 'llm', 'agentDefaultModel', 'attachments']
 
 function validId(value) {
   return typeof value === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(value)
@@ -353,6 +354,75 @@ export function apply(ctx) {
         }
       }),
 
+      route(API_ROOT + '/upload', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          if (!ctx.attachments) return sendJson(res, 503, { ok: false, error: '附件服务不可用' })
+          const body = await readJsonBody(req, MAX_UPLOAD_BYTES)
+          const raw = stringOf(body.data)
+          if (!raw) return sendJson(res, 400, { ok: false, error: '文件内容为空' })
+          const buffer = Buffer.from(raw, 'base64')
+          if (!buffer.length) return sendJson(res, 400, { ok: false, error: '文件内容为空' })
+          const name = stringOf(body.name).slice(0, 200)
+          const kind = body.kind === 'image' ? 'image' : 'file'
+          if (kind === 'image') {
+            const mediaType = stringOf(body.mediaType)
+            const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+            if (allowed.indexOf(mediaType) < 0) return sendJson(res, 415, { ok: false, error: '只支持 PNG/JPEG/WebP/GIF 图片' })
+            const attachment = await ctx.attachments.saveImage({
+              data: new Uint8Array(buffer),
+              mediaType,
+              name: name || 'image',
+            })
+            return sendJson(res, 200, { ok: true, kind: 'image', attachment })
+          }
+          const attachment = await ctx.attachments.saveFile({
+            data: new Uint8Array(buffer),
+            name: name || 'file',
+          })
+          sendJson(res, 200, { ok: true, kind: 'file', attachment })
+        } catch (error) {
+          sendJson(res, 400, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/attachment', async (req, res) => {
+        if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: '只支持 GET' })
+        try {
+          if (!ctx.attachments) return sendJson(res, 503, { ok: false, error: '附件服务不可用' })
+          const url = new URL(req.url, 'http://localhost')
+          const kind = url.searchParams.get('kind') === 'image' ? 'image' : 'file'
+          const rawRef = url.searchParams.get('ref') || ''
+          let ref
+          try { ref = JSON.parse(rawRef) } catch (_error) { ref = null }
+          if (!ref || typeof ref !== 'object') return sendJson(res, 400, { ok: false, error: '附件引用不合法' })
+          if (kind === 'image') {
+            const stored = await ctx.attachments.readImage(ref)
+            const bytes = Buffer.from(stored.data)
+            res.writeHead(200, {
+              'Content-Type': ref.mediaType || 'image/png',
+              'Content-Length': bytes.length,
+              'Cache-Control': 'private, max-age=31536000, immutable',
+            })
+            res.end(bytes)
+            return
+          }
+          const download = url.searchParams.get('download') === '1'
+          res.writeHead(200, {
+            'Content-Type': 'application/octet-stream',
+            'Content-Disposition': (download ? 'attachment' : 'inline') + "; filename*=UTF-8''" + encodeURIComponent(stringOf(ref.name) || 'file'),
+            'Cache-Control': 'private, max-age=31536000, immutable',
+          })
+          for await (const chunk of ctx.attachments.readFileStream(ref)) {
+            res.write(Buffer.from(chunk))
+          }
+          res.end()
+        } catch (error) {
+          if (!res.headersSent) sendJson(res, 404, { ok: false, error: messageOf(error) })
+          else if (!res.writableEnded) res.end()
+        }
+      }),
+
       route(API_ROOT + '/space/create', async (req, res) => {
         if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
         try {
@@ -467,7 +537,8 @@ async function handleChat(ctx, req, res) {
   const mainDigest = Array.isArray(body?.mainDigest) ? body.mainDigest.slice(-4) : []
 
   const system = buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest, mainDigest, branchId })
-  const messages = buildMessages({ history, question, provider, model })
+  const attachments = Array.isArray(body?.attachments) ? body.attachments.slice(0, 8) : []
+  const messages = buildMessages({ history, question, provider, model, attachments })
 
   const controller = new AbortController()
   let closed = false
@@ -668,7 +739,7 @@ function buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest,
   return lines.join('\n')
 }
 
-function buildMessages({ history, question, provider, model }) {
+function buildMessages({ history, question, provider, model, attachments }) {
   const messages = []
   for (const item of history) {
     if (!item || typeof item !== 'object') continue
@@ -687,7 +758,16 @@ function buildMessages({ history, question, provider, model }) {
   }
   // Keep the request bounded even if an older client sends a long transcript.
   const trimmed = messages.slice(-24)
-  trimmed.push({ role: 'user', content: [{ type: 'text', text: question }] })
+  const content = [{ type: 'text', text: question }]
+  for (const item of Array.isArray(attachments) ? attachments : []) {
+    if (!item || typeof item !== 'object' || !item.attachment || typeof item.attachment !== 'object') continue
+    if (item.kind === 'image' && item.attachment.attachmentId) {
+      content.push({ type: 'image', attachment: item.attachment })
+    } else if (item.kind === 'file' && item.attachment.attachmentId) {
+      content.push({ type: 'file', attachment: item.attachment })
+    }
+  }
+  trimmed.push({ role: 'user', content })
   return trimmed
 }
 
