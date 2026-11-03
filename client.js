@@ -991,6 +991,61 @@ window.__ModuleLoader__.load({
       return (item.pinned ? 1000 : 0) + (finite(item.importance, 0.5) * 100) + recency * 10 + usage * 5
     }
 
+    const EMBEDDING_DIMS = 96
+    const EMBEDDING_VERSION = 1
+
+    function embeddingHash(value, seed) {
+      let hash = (2166136261 ^ seed) >>> 0
+      const text = String(value || '')
+      for (let index = 0; index < text.length; index += 1) {
+        hash ^= text.charCodeAt(index)
+        hash = Math.imul(hash, 16777619) >>> 0
+      }
+      return hash >>> 0
+    }
+
+    function embedText(value) {
+      const text = String(value || '').toLowerCase().replace(/\s+/g, ' ').trim()
+      const vector = new Array(EMBEDDING_DIMS).fill(0)
+      if (!text) return vector
+      const features = []
+      const words = text.match(/[\p{L}\p{N}_-]{2,}/gu) || []
+      for (const word of words) features.push('w:' + word)
+      for (let index = 0; index < text.length; index += 1) {
+        const char = text[index]
+        if (!/[\p{L}\p{N}]/u.test(char)) continue
+        features.push('c:' + char)
+        if (index + 1 < text.length) {
+          const next = text[index + 1]
+          if (/[\p{L}\p{N}]/u.test(next)) features.push('b:' + char + next)
+        }
+      }
+      for (const feature of features) {
+        const slot = embeddingHash(feature, 0) % EMBEDDING_DIMS
+        const sign = (embeddingHash(feature, 17) & 1) === 0 ? 1 : -1
+        vector[slot] += sign
+      }
+      let norm = 0
+      for (const valueItem of vector) norm += valueItem * valueItem
+      norm = Math.sqrt(norm) || 1
+      for (let index = 0; index < vector.length; index += 1) vector[index] = vector[index] / norm
+      return vector
+    }
+
+    function cosineSimilarity(left, right) {
+      if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return 0
+      let dot = 0
+      let leftNorm = 0
+      let rightNorm = 0
+      for (let index = 0; index < left.length; index += 1) {
+        dot += left[index] * right[index]
+        leftNorm += left[index] * left[index]
+        rightNorm += right[index] * right[index]
+      }
+      if (!leftNorm || !rightNorm) return 0
+      return dot / Math.sqrt(leftNorm * rightNorm)
+    }
+
     function buildContextMemory(space) {
       if (!space) return { version: 2, main: '', branches: {}, items: [], suppressed: [], updatedAt: Date.now() }
       const previous = space.memory && typeof space.memory === 'object' ? space.memory : {}
@@ -1055,7 +1110,11 @@ window.__ModuleLoader__.load({
         existing.lastUsedAt = Math.max(existing.lastUsedAt, item.lastUsedAt)
       }
 
-      let items = deduped
+      let items = deduped.map((item) => ({
+        ...item,
+        embedding: embedText(stringOf(item.question) + ' ' + stringOf(item.text)),
+        embeddingVersion: EMBEDDING_VERSION,
+      }))
       if (items.length > MEMORY_ITEMS_LIMIT) {
         items = [...items].sort((left, right) => memoryItemScore(right) - memoryItemScore(left))
         const dropped = items.slice(MEMORY_ITEMS_LIMIT)
@@ -1099,6 +1158,8 @@ window.__ModuleLoader__.load({
           question: stringOf(turn.question),
           text: memoryTurnText(turn),
           sourceTurnIds: [turn.id],
+          embedding: embedText(turn.question + ' ' + memoryTurnText(turn)),
+          embeddingVersion: EMBEDDING_VERSION,
           createdAt: finite(turn.createdAt, Date.now()),
           lastUsedAt: 0,
           importance: 1,
@@ -1113,6 +1174,8 @@ window.__ModuleLoader__.load({
               question: stringOf(turn.question),
               text: memoryTurnText(turn),
               sourceTurnIds: [turn.id],
+              embedding: embedText(turn.question + ' ' + memoryTurnText(turn)),
+              embeddingVersion: EMBEDDING_VERSION,
               createdAt: finite(turn.createdAt, Date.now()),
               lastUsedAt: 0,
               importance: 0.72,
@@ -1122,6 +1185,7 @@ window.__ModuleLoader__.load({
           }
         }
       }
+      const queryVector = embedText(String(question || ''))
       return items
         .filter((item) => item && item.status !== 'outdated' && item.status !== 'superseded')
         .map((item) => {
@@ -1132,7 +1196,8 @@ window.__ModuleLoader__.load({
           const recency = 1 / (1 + ageDays / 45)
           const usedDays = item.lastUsedAt ? Math.max(0, (Date.now() - item.lastUsedAt) / 86400000) : 365
           const usage = 1 / (1 + usedDays / 30)
-          const score = overlap * 2 + recency + usage * 0.5 + finite(item.importance, 0.5) + (item.kind === 'main' ? 0.25 : 0)
+          const vectorScore = cosineSimilarity(queryVector, Array.isArray(item.embedding) ? item.embedding : embedText(stringOf(item.question) + ' ' + stringOf(item.text)))
+          const score = overlap * 1.5 + vectorScore * 2 + recency + usage * 0.5 + finite(item.importance, 0.5) + (item.kind === 'main' ? 0.25 : 0)
           return { item, score }
         })
         .filter((entry) => entry.score > 0 && entry.item.text)
