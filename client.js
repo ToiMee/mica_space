@@ -114,7 +114,16 @@ window.__ModuleLoader__.load({
       continueBranch: '继续这条分支',
       locateOriginal: '📌 定位原文',
       wholeAnswer: '整段回答',
-      todo: '待办',
+      todo: '待追问',
+      todoOn: '待追问',
+      markTodo: '标记待追问',
+      clearTodo: '取消待追问',
+      markFlag: '标记红旗',
+      clearFlag: '取消红旗',
+      copyMarkdown: '复制为 Markdown',
+      copySelected: '复制选中的卡片',
+      deleteSelected: '删除选中的卡片',
+      deleteOne: '只删除这张卡',
       important: '重要（红旗）',
       followUpTitle: '针对这段文字追问',
       questionPlaceholder: '你想问什么？',
@@ -271,7 +280,16 @@ window.__ModuleLoader__.load({
       continueBranch: 'Continue this branch',
       locateOriginal: '📌 Locate original',
       wholeAnswer: 'Whole answer',
-      todo: 'Todo',
+      todo: 'Follow-up',
+      todoOn: 'Follow-up',
+      markTodo: 'Mark follow-up',
+      clearTodo: 'Clear follow-up',
+      markFlag: 'Mark red flag',
+      clearFlag: 'Clear red flag',
+      copyMarkdown: 'Copy as Markdown',
+      copySelected: 'Copy selected',
+      deleteSelected: 'Delete selected',
+      deleteOne: 'Delete this card only',
       important: 'Important (red flag)',
       followUpTitle: 'Ask about this passage',
       questionPlaceholder: 'What do you want to ask?',
@@ -614,7 +632,8 @@ window.__ModuleLoader__.load({
 .cs-card.cs-active .cs-a { cursor: text; user-select: text; }
 .cs-port { position: absolute; z-index: 6; width: 10px; height: 10px; border: 2px solid var(--cs-panel); border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 1px var(--cs-border); pointer-events: none; }
 .cs-port-main { width: 12px; height: 12px; }
-.cs-todo { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+.cs-todo { position: relative; display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: transparent; color: var(--cs-muted); font: inherit; font-size: 10px; cursor: pointer; }
+.cs-todo-text { color: var(--cs-accent); font-size: 9px; }
 .cs-todo input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .cs-todo-box { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border: 1.5px solid var(--cs-border-strong); border-radius: 3px; color: #fff; font-size: 10px; line-height: 1; }
 .cs-todo-on .cs-todo-box { background: var(--cs-card-accent, var(--cs-accent)); border-color: var(--cs-card-accent, var(--cs-accent)); }
@@ -1489,17 +1508,15 @@ window.__ModuleLoader__.load({
               className: cx('cs-tag', kind === 'main' ? 'cs-tag-main' : 'cs-tag-branch'),
               style: { background: color + '22', color },
             }, t(kind === 'main' ? 'main' : 'branch')),
-            h('label', {
+            h('button', {
+              type: 'button',
               className: cx('cs-todo', turn.todo ? 'cs-todo-on' : ''),
               title: t('todo'),
-              onClick: (event) => event.stopPropagation(),
+              'aria-pressed': Boolean(turn.todo),
+              onClick: (event) => { event.stopPropagation(); onToggleTodo(!turn.todo) },
             },
-              h('input', {
-                type: 'checkbox',
-                checked: Boolean(turn.todo),
-                onChange: (event) => onToggleTodo(event.target.checked),
-              }),
-              h('span', { className: 'cs-todo-box' }, turn.todo ? '✓' : '')
+              h('span', { className: 'cs-todo-box' }, turn.todo ? '✓' : ''),
+              turn.todo ? h('span', { className: 'cs-todo-text' }, t('todoOn')) : null
             ),
             h('button', {
               type: 'button',
@@ -2960,16 +2977,86 @@ window.__ModuleLoader__.load({
         event.preventDefault()
         event.stopPropagation()
         const menuWidth = 210
-        const menuHeight = 260
-        setSelectedIds(new Set([turn.id]))
+        const menuHeight = 300
+        const ids = selectedIds.has(turn.id) && selectedIds.size > 1 ? [...selectedIds] : [turn.id]
+        setSelectedIds(new Set(ids))
         setSelectedTurn(null)
         setContextMenu({
           turn,
           kind,
           branchId,
+          ids,
           x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth)),
           y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight)),
         })
+      }
+
+      const contextCopySelected = () => {
+        if (!contextMenu) return
+        const entries = []
+        for (const turn of mainTurns) entries.push({ turn, kind: 'main', branchId: null })
+        for (const branch of branches) for (const turn of branch.turns) entries.push({ turn, kind: 'branch', branchId: branch.id })
+        const selected = entries.filter((entry) => contextMenu.ids.indexOf(entry.turn.id) >= 0)
+        const markdown = selected.map((entry) => '## ' + String(entry.turn.question || '') + '\n\n' + String(entry.turn.answer || '')).join('\n\n---\n\n')
+        setContextMenu(null)
+        copyText(markdown)
+      }
+
+      const contextDeleteSelected = () => {
+        if (!contextMenu) return
+        const snapshot = spaceRef.current
+        if (!snapshot) return
+        const keep = new Set(contextMenu.ids)
+        const removedTurns = new Set(keep)
+        const removedBranches = new Set()
+        let changed = true
+        while (changed) {
+          changed = false
+          for (const branch of snapshot.branches) {
+            if (removedBranches.has(branch.id)) {
+              for (const turn of branch.turns) removedTurns.add(turn.id)
+              continue
+            }
+            const allTurnsRemoved = branch.turns.length > 0 && branch.turns.every((turn) => removedTurns.has(turn.id))
+            const parentRemoved = branch.parentBranchId && removedBranches.has(branch.parentBranchId)
+            const anchorRemoved = removedTurns.has(branch.anchorTurnId)
+            if (allTurnsRemoved || parentRemoved || anchorRemoved) {
+              removedBranches.add(branch.id)
+              for (const turn of branch.turns) removedTurns.add(turn.id)
+              changed = true
+            }
+          }
+        }
+        if (removedBranches.size > 0 && !window.confirm(t('confirmDeleteBranch'))) return
+        pushHistory(snapshot)
+        setSelectedTurn(null)
+        setSelectedIds(new Set())
+        for (const id of removedTurns) stopTurn(id)
+        const next = {
+          ...snapshot,
+          main: { ...snapshot.main, turns: snapshot.main.turns.filter((turn) => !removedTurns.has(turn.id)) },
+          branches: snapshot.branches
+            .filter((branch) => !removedBranches.has(branch.id))
+            .map((branch) => ({ ...branch, turns: branch.turns.filter((turn) => !removedTurns.has(turn.id)) })),
+        }
+        setContextMenu(null)
+        commit(next)
+        saveSoon(80)
+        setToast({ text: t('deleted') })
+      }
+
+      const contextToggle = (field) => {
+        if (!contextMenu) return
+        const { turn, kind, branchId } = contextMenu
+        setContextMenu(null)
+        toggleMark(turn, kind, branchId, field, !turn[field])
+      }
+
+      const contextRetry = () => {
+        if (!contextMenu) return
+        const { turn, kind, branchId } = contextMenu
+        setContextMenu(null)
+        retryTurn(kind, branchId, turn.id)
       }
 
       const contextCopy = (mode) => {
@@ -2977,9 +3064,11 @@ window.__ModuleLoader__.load({
         const { turn } = contextMenu
         const question = String(turn.question || '')
         const answer = String(turn.answer || '')
-        const text = mode === 'question' ? question : mode === 'answer' ? answer : ('Q: ' + question + '\n\nA: ' + answer)
+        const markdown = mode === 'markdown'
+          ? ('## Question\n\n' + question + '\n\n## Answer\n\n' + answer)
+          : ('Q: ' + question + '\n\nA: ' + answer)
         setContextMenu(null)
-        copyText(text)
+        copyText(mode === 'question' ? question : mode === 'answer' ? answer : markdown)
       }
 
       const contextQuote = () => {
@@ -4364,14 +4453,25 @@ window.__ModuleLoader__.load({
             style: { left: contextMenu.x, top: contextMenu.y },
             onMouseDown: (event) => event.stopPropagation(),
           },
+            contextMenu.ids.length > 1
+              ? h('button', { type: 'button', onClick: contextCopySelected }, t('copySelected') + ' (' + contextMenu.ids.length + ')')
+              : null,
             h('button', { type: 'button', onClick: () => contextCopy('question') }, t('copyQuestion')),
             h('button', { type: 'button', onClick: () => contextCopy('answer') }, t('copyAnswer')),
             h('button', { type: 'button', onClick: () => contextCopy('both') }, t('copyBoth')),
+            h('button', { type: 'button', onClick: () => contextCopy('markdown') }, t('copyMarkdown')),
             h('div', { className: 'cs-context-divider' }),
+            contextMenu.turn.status === 'failed'
+              ? h('button', { type: 'button', onClick: contextRetry }, t('retry'))
+              : null,
+            h('button', { type: 'button', onClick: () => contextToggle('todo') }, contextMenu.turn.todo ? t('clearTodo') : t('markTodo')),
+            h('button', { type: 'button', onClick: () => contextToggle('flag') }, contextMenu.turn.flag ? t('clearFlag') : t('markFlag')),
             h('button', { type: 'button', onClick: contextQuote }, t('contextQuote')),
-            h('button', { type: 'button', onClick: () => { const item = contextMenu; setContextMenu(null); bringToFront(item.turn, item.kind, item.branchId) } }, t('contextFront')),
             h('div', { className: 'cs-context-divider' }),
-            h('button', { type: 'button', className: 'cs-context-danger', onClick: contextDelete }, t('delete'))
+            contextMenu.ids.length > 1
+              ? h('button', { type: 'button', className: 'cs-context-danger', onClick: contextDeleteSelected }, t('deleteSelected') + ' (' + contextMenu.ids.length + ')')
+              : null,
+            h('button', { type: 'button', className: 'cs-context-danger', onClick: contextDelete }, contextMenu.ids.length > 1 ? t('deleteOne') : t('delete'))
           )
         )
       }

@@ -1304,3 +1304,5 @@ function messageOf(error) {
   if (error instanceof Error && error.message) return error.message
   return String(error)
 }
+
+export { buildMessages }
