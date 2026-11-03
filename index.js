@@ -8,8 +8,12 @@
 // The old single .chat-space/space.json is migrated to the "default" space
 // the first time the library is read.
 
+import { execFile } from 'node:child_process'
 import { copyFile, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { promisify } from 'node:util'
+
+const execFileAsync = promisify(execFile)
 
 const API_ROOT = '/chat-space/api'
 const DATA_DIR_NAME = '.chat-space'
@@ -55,6 +59,65 @@ export function apply(ctx) {
   const spacesDir = () => path.join(dataDir(), SPACES_DIR_NAME)
   const trashDir = () => path.join(dataDir(), TRASH_DIR_NAME)
   const spaceFile = (id) => path.join(spacesDir(), id + '.json')
+  const backupFile = () => path.join(dataDir(), 'backup.json')
+
+  const readBackupConfig = async () => {
+    const config = await readJson(backupFile())
+    return {
+      remote: config && typeof config.remote === 'string' ? config.remote : '',
+      branch: config && typeof config.branch === 'string' && config.branch ? config.branch : 'main',
+    }
+  }
+
+  const saveBackupConfig = async (body) => {
+    const remote = typeof body.remote === 'string' ? body.remote.trim().slice(0, 500) : ''
+    const branch = typeof body.branch === 'string' && body.branch.trim() ? body.branch.trim().slice(0, 80) : 'main'
+    await writeJson(backupFile(), { remote, branch })
+    return { remote, branch }
+  }
+
+  const runGitBackup = async () => {
+    const directory = dataDir()
+    await mkdir(directory, { recursive: true })
+    const config = await readBackupConfig()
+    const run = async (args) => {
+      try {
+        const result = await execFileAsync('git', args, { cwd: directory, timeout: 45000, windowsHide: true, maxBuffer: 8 * 1024 * 1024 })
+        return result.stdout || ''
+      } catch (error) {
+        const detail = String((error && (error.stderr || error.stdout)) || (error && error.message) || 'git 命令失败').trim()
+        throw new Error(detail.slice(0, 1200))
+      }
+    }
+    const ignoreFile = path.join(directory, '.gitignore')
+    try { await writeFile(ignoreFile, 'backup.json\n*.tmp-*\n', 'utf8') } catch (_error) {}
+    let initialized = false
+    try {
+      await run(['rev-parse', '--is-inside-work-tree'])
+    } catch (_error) {
+      await run(['init'])
+      initialized = true
+    }
+    await run(['config', 'user.email', 'mica-space@local'])
+    await run(['config', 'user.name', 'Mica Space'])
+    await run(['add', '-A'])
+    let committed = false
+    try {
+      await run(['commit', '-m', 'Mica Space backup ' + new Date().toISOString()])
+      committed = true
+    } catch (error) {
+      if (!/nothing to commit|no changes added/i.test(String(error && error.message))) throw error
+    }
+    const commit = (await run(['rev-parse', 'HEAD'])).trim()
+    let pushed = false
+    if (config.remote) {
+      try { await run(['remote', 'remove', 'origin']) } catch (_error) {}
+      await run(['remote', 'add', 'origin', config.remote])
+      await run(['push', '-u', 'origin', config.branch || 'main'])
+      pushed = true
+    }
+    return { initialized, committed, pushed, commit, branch: config.branch || 'main', remote: config.remote }
+  }
 
   const readJson = async (file) => {
     try {
@@ -590,6 +653,34 @@ export function apply(ctx) {
         } catch (error) {
           if (!res.headersSent) sendJson(res, 404, { ok: false, error: messageOf(error) })
           else if (!res.writableEnded) res.end()
+        }
+      }),
+
+      route(API_ROOT + '/backup', async (req, res) => {
+        if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: '只支持 GET' })
+        try {
+          sendJson(res, 200, { ok: true, config: await readBackupConfig() })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/backup/config', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          const body = await readJsonBody(req)
+          sendJson(res, 200, { ok: true, config: await saveBackupConfig(body || {}) })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/backup/run', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          sendJson(res, 200, { ok: true, result: await runGitBackup() })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
         }
       }),
 

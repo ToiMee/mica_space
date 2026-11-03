@@ -3,7 +3,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const h = React.createElement
-    const { useState, useEffect, useRef, useCallback } = React
+    const { useState, useEffect, useMemo, useRef, useCallback } = React
 
     const PANEL_ID = 'chat-space'
     const NS = 'chatSpace'
@@ -46,6 +46,16 @@ window.__ModuleLoader__.load({
       noSearchResultsHint: '换个关键词，或清空搜索。',
       export: '导出',
       trash: '回收站',
+      backup: 'Git 备份',
+      backupHint: '备份库数据到本地 git；填私有仓库地址后同时 push。附件文件不包含在 git 里。',
+      backupRemote: '远程仓库（可选）',
+      backupBranch: '分支',
+      backupNow: '立即备份',
+      backupDone: '备份完成',
+      backupPushed: '已 push',
+      backupLocalOnly: '仅本地提交',
+      backupConfigSaved: '备份配置已保存',
+      backupFailed: '备份失败',
       exportLibrary: '导出库',
       importLibrary: '导入库',
       exportFailed: '导出失败',
@@ -187,6 +197,16 @@ window.__ModuleLoader__.load({
       noSearchResultsHint: 'Try another keyword or clear the search.',
       export: 'Export',
       trash: 'Trash',
+      backup: 'Git backup',
+      backupHint: 'Commit library data to a local git repo; set a private remote to push. Attachments are not included.',
+      backupRemote: 'Remote repository (optional)',
+      backupBranch: 'Branch',
+      backupNow: 'Backup now',
+      backupDone: 'Backup complete',
+      backupPushed: 'pushed',
+      backupLocalOnly: 'local commit only',
+      backupConfigSaved: 'Backup config saved',
+      backupFailed: 'Backup failed',
       exportLibrary: 'Export library',
       importLibrary: 'Import library',
       exportFailed: 'Export failed',
@@ -558,6 +578,10 @@ window.__ModuleLoader__.load({
 .cs-lib-layout-active { border-color: var(--cs-accent); background: color-mix(in srgb, var(--cs-accent) 12%, var(--cs-panel)); color: var(--cs-accent); }
 .cs-lib-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 3px; }
 .cs-lib-trash-modal { width: min(620px, calc(100vw - 48px)); }
+.cs-backup-modal { width: min(520px, calc(100vw - 48px)); }
+.cs-backup-note { margin-top: 4px; color: var(--cs-muted); font-size: 11px; line-height: 1.6; }
+.cs-backup-field { display: flex; flex-direction: column; gap: 5px; color: var(--cs-muted); font-size: 11px; }
+.cs-backup-result { max-height: 120px; overflow: auto; white-space: pre-wrap; padding: 8px 9px; border: 1px solid var(--cs-border); border-radius: 7px; background: var(--cs-bg); color: var(--cs-text); font-size: 11px; }
 .cs-lib-trash-list { display: flex; flex-direction: column; gap: 6px; max-height: min(420px, calc(100vh - 260px)); overflow: auto; }
 .cs-lib-trash-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); }
 .cs-lib-trash-info { flex: 1; min-width: 0; }
@@ -1604,6 +1628,11 @@ window.__ModuleLoader__.load({
       const [trashLoading, setTrashLoading] = useState(false)
       const libraryImportRef = useRef(null)
       const [dragOverFolder, setDragOverFolder] = useState(null)
+      const [backupOpen, setBackupOpen] = useState(false)
+      const [backupRemote, setBackupRemote] = useState('')
+      const [backupBranch, setBackupBranch] = useState('main')
+      const [backupBusy, setBackupBusy] = useState(false)
+      const [backupResult, setBackupResult] = useState('')
       const [newSpaceOpen, setNewSpaceOpen] = useState(false)
       const [newSpaceTitle, setNewSpaceTitle] = useState('')
       const [newSpaceLayout, setNewSpaceLayout] = useState('vertical')
@@ -1802,13 +1831,65 @@ window.__ModuleLoader__.load({
         setRenameValue('')
       })
 
+      const openBackup = async () => {
+        setBackupOpen(true)
+        setBackupResult('')
+        try {
+          const response = await fetch(API + '/backup', { headers: { Accept: 'application/json' } })
+          const body = await response.json()
+          if (response.ok && body && body.config) {
+            setBackupRemote(body.config.remote || '')
+            setBackupBranch(body.config.branch || 'main')
+          }
+        } catch (_error) {
+          // The modal still opens; saving config will create it.
+        }
+      }
+
+      const saveBackupConfig = async () => {
+        setBackupBusy(true)
+        setBackupResult('')
+        try {
+          const data = await post('/backup/config', { remote: backupRemote, branch: backupBranch })
+          if (data.config) {
+            setBackupRemote(data.config.remote || '')
+            setBackupBranch(data.config.branch || 'main')
+          }
+          setBackupResult(t('backupConfigSaved'))
+        } catch (error) {
+          setBackupResult(error && error.message ? error.message : t('backupFailed'))
+        } finally {
+          setBackupBusy(false)
+        }
+      }
+
+      const runBackup = async () => {
+        setBackupBusy(true)
+        setBackupResult('')
+        try {
+          const data = await post('/backup/run', {})
+          const result = data.result || {}
+          setBackupResult(
+            t('backupDone') + ' · ' + (result.pushed ? t('backupPushed') : t('backupLocalOnly')) +
+            (result.commit ? ' · ' + String(result.commit).slice(0, 12) : '')
+          )
+        } catch (error) {
+          setBackupResult(error && error.message ? error.message : t('backupFailed'))
+        } finally {
+          setBackupBusy(false)
+        }
+      }
+
       const exportLibrary = async () => {
         setNotice('')
         try {
-          const response = await fetch(API + '/export', { headers: { Accept: 'application/json' } })
-          const body = await response.json()
-          if (!response.ok || !body || body.ok === false) throw new Error(body && body.error ? body.error : t('exportFailed'))
-          const blob = new Blob([JSON.stringify(body.bundle, null, 2)], { type: 'application/json' })
+          const bundle = { version: 1, exportedAt: new Date().toISOString(), library, spaces: {} }
+          for (const meta of library.spaces || []) {
+            const response = await fetch(API + '/space?id=' + encodeURIComponent(meta.id), { headers: { Accept: 'application/json' } })
+            const body = await response.json().catch(() => null)
+            if (response.ok && body && body.ok !== false && body.space) bundle.spaces[meta.id] = body.space
+          }
+          const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
           const url = URL.createObjectURL(blob)
           const link = document.createElement('a')
           link.href = url
@@ -2046,6 +2127,7 @@ window.__ModuleLoader__.load({
             )
           ),
           h('div', { className: 'cs-top-actions' },
+            h('button', { type: 'button', className: 'cs-btn', onClick: openBackup }, t('backup')),
             h('button', { type: 'button', className: 'cs-btn', onClick: exportLibrary }, t('exportLibrary')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => { if (libraryImportRef.current) libraryImportRef.current.click() } }, t('importLibrary')),
             h('input', { ref: libraryImportRef, type: 'file', accept: '.json,application/json', style: { display: 'none' }, onChange: importLibraryFile }),
@@ -2148,6 +2230,26 @@ window.__ModuleLoader__.load({
               : null
           )
         ),
+        backupOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setBackupOpen(false) },
+          h('div', { className: 'cs-lib-modal cs-backup-modal', onClick: (event) => event.stopPropagation() },
+            h('div', { className: 'cs-lib-modal-title' }, t('backup')),
+            h('div', { className: 'cs-backup-note' }, t('backupHint')),
+            h('label', { className: 'cs-backup-field' },
+              h('span', null, t('backupRemote')),
+              h('input', { className: 'cs-lib-input', value: backupRemote, placeholder: 'git@github.com:you/mica-space-backup.git', onChange: (event) => setBackupRemote(event.target.value) })
+            ),
+            h('label', { className: 'cs-backup-field' },
+              h('span', null, t('backupBranch')),
+              h('input', { className: 'cs-lib-input', value: backupBranch, placeholder: 'main', onChange: (event) => setBackupBranch(event.target.value) })
+            ),
+            backupResult ? h('div', { className: 'cs-backup-result' }, backupResult) : null,
+            h('div', { className: 'cs-lib-modal-actions' },
+              h('button', { type: 'button', className: 'cs-btn', disabled: backupBusy, onClick: saveBackupConfig }, t('save')),
+              h('button', { type: 'button', className: 'cs-btn cs-btn-primary', disabled: backupBusy, onClick: runBackup }, t('backupNow')),
+              h('button', { type: 'button', className: 'cs-btn', onClick: () => setBackupOpen(false) }, t('close'))
+            )
+          )
+        ) : null,
         trashOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setTrashOpen(false) },
           h('div', { className: 'cs-lib-modal cs-lib-trash-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-lib-modal-title' }, t('trash')),
@@ -2272,6 +2374,13 @@ window.__ModuleLoader__.load({
       const [selectedIds, setSelectedIds] = useState(() => new Set())
       const [anchorReveal, setAnchorReveal] = useState(null)
       const [undoCount, setUndoCount] = useState(0)
+      const layoutTurns = space && space.main ? space.main.turns : null
+      const layoutBranches = space ? space.branches : null
+      const layoutModeForMemo = space && space.layoutMode === 'horizontal' ? 'horizontal' : 'vertical'
+      const layoutMemo = useMemo(
+        () => (layoutTurns ? buildPositions(layoutTurns, layoutBranches || [], layoutModeForMemo) : null),
+        [layoutTurns, layoutBranches, layoutModeForMemo]
+      )
 
       const spaceRef = useRef(null)
       const viewportRef = useRef(null)
@@ -2646,7 +2755,7 @@ window.__ModuleLoader__.load({
       const mainTurns = space.main.turns
       const branches = space.branches
       const layoutMode = space.layoutMode === 'horizontal' ? 'horizontal' : 'vertical'
-      const layout = buildPositions(mainTurns, branches, layoutMode)
+      const layout = layoutMemo || buildPositions(mainTurns, branches, layoutMode)
       const lineZoom = Math.max(0.01, Math.min(1, view.zoom))
       const mainLineWidth = 5 + (1 - lineZoom) * 5
       const branchLineWidth = 2 + (1 - lineZoom) * 3
