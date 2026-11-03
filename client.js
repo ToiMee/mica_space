@@ -940,6 +940,61 @@ window.__ModuleLoader__.load({
       }))
     }
 
+    function boundedMemory(lines, maxChars, head, tail) {
+      const text = lines.join('\n')
+      if (text.length <= maxChars) return text
+      const selected = [...lines.slice(0, head), '…', ...lines.slice(-tail)]
+      return selected.join('\n').slice(0, maxChars)
+    }
+
+    function buildContextMemory(space) {
+      if (!space) return { version: 1, main: '', branches: {}, updatedAt: Date.now() }
+      const mainTurns = Array.isArray(space.main && space.main.turns) ? space.main.turns : []
+      const mainLines = mainTurns.map((turn, index) => {
+        const detail = stringOf(turn.summary) || stringOf(turn.answer).slice(0, 180) || stringOf(turn.question)
+        return 'M' + (index + 1) + ' ' + stringOf(turn.question).slice(0, 90) + ' → ' + detail.slice(0, 220)
+      })
+      const branches = {}
+      for (const branch of Array.isArray(space.branches) ? space.branches : []) {
+        const turns = Array.isArray(branch.turns) ? branch.turns : []
+        const lines = turns.map((turn, index) => {
+          const detail = stringOf(turn.summary) || stringOf(turn.answer).slice(0, 120) || stringOf(turn.question)
+          return 'B' + (index + 1) + ' ' + stringOf(turn.question).slice(0, 70) + ' → ' + detail.slice(0, 150)
+        })
+        branches[branch.id] = boundedMemory(lines, 1000, 2, 6)
+      }
+      return {
+        version: 1,
+        main: boundedMemory(mainLines, 3000, 4, 12),
+        branches,
+        updatedAt: Date.now(),
+      }
+    }
+
+    function buildRetrieval(space, question) {
+      if (!space) return []
+      const terms = (String(question || '').toLowerCase().match(/[\p{L}\p{N}_-]{2,}/gu) || []).slice(0, 12)
+      if (terms.length === 0) return []
+      const entries = []
+      for (const turn of (Array.isArray(space.main && space.main.turns) ? space.main.turns : [])) {
+        entries.push({ kind: 'main', turn })
+      }
+      for (const branch of (Array.isArray(space.branches) ? space.branches : [])) {
+        for (const turn of (Array.isArray(branch.turns) ? branch.turns : [])) entries.push({ kind: 'branch', turn })
+      }
+      return entries.map((entry) => {
+        const text = (stringOf(entry.turn.question) + ' ' + (stringOf(entry.turn.summary) || stringOf(entry.turn.answer).slice(0, 600))).toLowerCase()
+        let score = 0
+        for (const term of terms) if (text.includes(term)) score += 1
+        if (entry.kind === 'main') score += 0.25
+        return { ...entry, score }
+      }).filter((entry) => entry.score > 0).sort((left, right) => right.score - left.score).slice(0, 4).map((entry) => ({
+        kind: entry.kind,
+        question: stringOf(entry.turn.question).slice(0, 220),
+        summary: (stringOf(entry.turn.summary) || stringOf(entry.turn.answer)).slice(0, 420),
+      }))
+    }
+
     function branchSide(anchor, first) {
       const dx = (first.x + first.w / 2) - (anchor.x + anchor.w / 2)
       const dy = (first.y + first.h / 2) - (anchor.y + anchor.h / 2)
@@ -1516,7 +1571,7 @@ window.__ModuleLoader__.load({
               onClick: (event) => { event.stopPropagation(); onToggleTodo(!turn.todo) },
             },
               h('span', { className: 'cs-todo-box' }, turn.todo ? '✓' : ''),
-              turn.todo ? h('span', { className: 'cs-todo-text' }, t('todoOn')) : null
+              h('span', { className: 'cs-todo-text' }, t('todo'))
             ),
             h('button', {
               type: 'button',
@@ -2473,10 +2528,12 @@ window.__ModuleLoader__.load({
         if (!loadedRef.current || !spaceRef.current) return
         setSaveState('saving')
         try {
+          const snapshot = spaceRef.current
+          const savedSpace = { ...snapshot, id: spaceId || snapshot.id, memory: buildContextMemory(snapshot) }
           const response = await fetch(API + '/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ space: { ...spaceRef.current, id: spaceId || spaceRef.current.id }, spaceId: spaceId || spaceRef.current.id }),
+            body: JSON.stringify({ space: savedSpace, spaceId: spaceId || snapshot.id }),
           })
           if (!response.ok) throw new Error('HTTP ' + response.status)
           setSaveState('saved')
@@ -3820,11 +3877,15 @@ window.__ModuleLoader__.load({
             question: stringOf(turn.question).slice(0, 180),
             answer: stringOf(turn.summary || turn.answer).slice(0, 360),
           }))
+        const memory = buildContextMemory(currentSpace)
+        const retrieved = buildRetrieval(currentSpace, question)
         const payload = {
           kind,
           branchId: targetBranch ? targetBranch.id : null,
           question,
           history,
+          memory,
+          retrieved,
           anchorText,
           brief,
           mainContext,

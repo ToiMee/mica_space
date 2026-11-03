@@ -860,7 +860,20 @@ async function handleChat(ctx, req, res) {
   const branchDigest = Array.isArray(body?.branchDigest) ? body.branchDigest.slice(0, 6) : []
   const mainDigest = Array.isArray(body?.mainDigest) ? body.mainDigest.slice(-4) : []
 
-  const system = buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest, mainDigest, branchId })
+  const memory = body?.memory && typeof body.memory === 'object'
+    ? {
+        main: stringOf(body.memory.main).slice(0, 4000),
+        branches: body.memory.branches && typeof body.memory.branches === 'object'
+          ? Object.fromEntries(Object.entries(body.memory.branches).slice(0, 40).map(([key, value]) => [key, stringOf(value).slice(0, 1500)]))
+          : {},
+      }
+    : null
+  const retrieved = Array.isArray(body?.retrieved) ? body.retrieved.slice(0, 4).map((item) => ({
+    kind: item && item.kind === 'branch' ? 'branch' : 'main',
+    question: stringOf(item && item.question).slice(0, 220),
+    summary: stringOf(item && item.summary).slice(0, 420),
+  })) : []
+  const system = buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest, mainDigest, branchId, memory, retrieved })
   const attachments = Array.isArray(body?.attachments) ? body.attachments.slice(0, 8) : []
   const fileTexts = []
   for (const item of attachments) {
@@ -1045,7 +1058,7 @@ function formatMainDigest(turns) {
     .slice(0, 3000)
 }
 
-function buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest, mainDigest, branchId }) {
+function buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest, mainDigest, branchId, memory, retrieved }) {
   const lines = [
     '你是“聊天空间”里的学习助手。用户把学习对话组织成一条纵向主线和若干横向分支。',
     '回答要直接、清楚，优先解释概念和原因；需要时用简短例子。',
@@ -1069,6 +1082,17 @@ function buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest,
     lines.push('', '请围绕分支问题回答。如果问题与选中的文字无关，先指出这一点，再回答。')
   } else {
     lines.push('', '当前是主线问答。请把回答控制在适合继续学习的长度，必要时在结尾给出一个可继续追问的点。')
+  }
+
+  if (memory && memory.main) {
+    lines.push('', '长期记忆（主线，优先保留；只作背景，不要逐条复述）：', memory.main)
+  }
+  if (memory && memory.branches && branchId && memory.branches[branchId]) {
+    lines.push('', '当前分支记忆（较主线压缩得更短）：', memory.branches[branchId])
+  }
+  if (retrieved.length > 0) {
+    const hits = retrieved.map((item, index) => '【相关历史 ' + (index + 1) + ' · ' + (item.kind === 'main' ? '主线' : '分支') + '】\n问：' + item.question + '\n摘要：' + item.summary).join('\n\n')
+    lines.push('', '检索到的相关历史片段（只用于补充，不要假装这是全部历史）：', hits)
   }
 
   const otherBranches = branchDigest.filter((branch) => branch && branch.id !== branchId)
