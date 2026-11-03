@@ -355,7 +355,10 @@ window.__ModuleLoader__.load({
 .cs-input { width: 100%; min-height: 64px; max-height: 180px; resize: vertical; overscroll-behavior: contain; border: none; outline: none; background: transparent; color: var(--cs-text); font: inherit; font-size: 13px; line-height: 1.6; }
 .cs-input::placeholder { color: var(--cs-muted); }
 .cs-composer-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.cs-attach-btn { flex-shrink: 0; padding: 4px 8px; font-size: 14px; line-height: 1.2; }
+.cs-add-btn { flex-shrink: 0; width: 30px; height: 30px; padding: 0; border: 1px solid var(--cs-border); border-radius: 50%; background: var(--cs-bg); color: var(--cs-muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.cs-add-btn:hover { background: var(--cs-hover); color: var(--cs-text); border-color: var(--cs-border-strong); }
+.cs-add-btn:disabled { opacity: .55; cursor: default; }
+.cs-add-icon { display: block; font-size: 20px; font-weight: 300; line-height: 1; transform: translateY(-1px); }
 .cs-composer-attachments { display: flex; flex-wrap: wrap; gap: 6px; max-height: 84px; overflow: auto; }
 .cs-composer-attachment { display: inline-flex; align-items: center; gap: 5px; max-width: 210px; padding: 3px 5px; border: 1px solid var(--cs-border); border-radius: 7px; background: var(--cs-bg); }
 .cs-composer-attachment img { width: 38px; height: 38px; object-fit: cover; border-radius: 5px; display: block; }
@@ -1230,11 +1233,12 @@ window.__ModuleLoader__.load({
         h('div', { className: 'cs-composer-bar' },
           h('button', {
             type: 'button',
-            className: 'cs-btn cs-attach-btn',
+            className: 'cs-add-btn',
             title: t('attachFile'),
+            'aria-label': t('attachFile'),
             disabled: busy || uploading,
             onClick: () => { if (fileInputRef.current) fileInputRef.current.click() },
-          }, '📎'),
+          }, h('span', { className: 'cs-add-icon', 'aria-hidden': true }, '+')),
           h('span', { className: 'cs-hint' },
             uploading ? t('uploading') : busy ? t('sending') : attachments.length > 0 ? attachments.length + ' ' + t('attachments') : t('composerHint')
           ),
@@ -2405,6 +2409,7 @@ window.__ModuleLoader__.load({
           baseX,
           baseY,
           rect: { ...rect },
+          snapped: kind === 'main' && Math.abs((layoutMode === 'horizontal' ? rect.y + rect.h / 2 : rect.x + rect.w / 2) - (layoutMode === 'horizontal' ? TOP_PAD + MAIN_H / 2 : MAIN_W / 2)) * Math.max(view.zoom, 0.01) <= 3,
           spaceBefore: spaceRef.current,
         }
         try {
@@ -2429,6 +2434,7 @@ window.__ModuleLoader__.load({
           baseX,
           baseY,
           rect: { ...rect },
+          snapped: kind === 'main' && Math.abs((layoutMode === 'horizontal' ? rect.y + rect.h / 2 : rect.x + rect.w / 2) - (layoutMode === 'horizontal' ? TOP_PAD + MAIN_H / 2 : MAIN_W / 2)) * Math.max(view.zoom, 0.01) <= 3,
           spaceBefore: spaceRef.current,
         }
         try {
@@ -2447,16 +2453,16 @@ window.__ModuleLoader__.load({
         if (drag.mode === 'move' && Array.isArray(drag.targets)) {
           let appliedDx = dx
           let appliedDy = dy
-          const snapDistance = 16 / Math.max(view.zoom, 0.01)
+              const snapDistance = 16 / Math.max(view.zoom, 0.01)
           for (const target of drag.targets) {
             if (target.kind !== 'main') continue
             if (layoutMode === 'horizontal') {
               const center = target.rect.y + target.rect.h / 2 + appliedDy
-              const axis = target.baseY + target.rect.h / 2
+              const axis = TOP_PAD + MAIN_H / 2
               if (Math.abs(center - axis) < snapDistance) appliedDy = axis - (target.rect.y + target.rect.h / 2)
             } else {
               const center = target.rect.x + target.rect.w / 2 + appliedDx
-              const axis = target.baseX + target.rect.w / 2
+              const axis = MAIN_W / 2
               if (Math.abs(center - axis) < snapDistance) appliedDx = axis - (target.rect.x + target.rect.w / 2)
             }
           }
@@ -2475,11 +2481,10 @@ window.__ModuleLoader__.load({
         }
         const resizedW = clamp(drag.rect.w + dx, MIN_CARD_W, MAX_CARD_W)
         const resizedH = clamp(drag.rect.h + dy, MIN_CARD_H, MAX_CARD_H)
-        const keepCenter = drag.mode === 'resize' && drag.kind === 'main'
         const layout = drag.mode === 'resize'
           ? {
-              dx: drag.rect.x - drag.baseX + (keepCenter ? (drag.rect.w - resizedW) / 2 : 0),
-              dy: drag.rect.y - drag.baseY + (keepCenter ? (drag.rect.h - resizedH) / 2 : 0),
+              dx: drag.rect.x - drag.baseX,
+              dy: drag.rect.y - drag.baseY,
               w: resizedW,
               h: resizedH,
             }
@@ -2489,6 +2494,7 @@ window.__ModuleLoader__.load({
               w: drag.rect.w,
               h: drag.rect.h,
             }
+        if (drag.mode === 'resize') drag.lastResize = { ...layout }
         updateTurn(drag.kind, drag.branchId, drag.turnId, { layout })
         saveSoon(600)
       }
@@ -2497,6 +2503,17 @@ window.__ModuleLoader__.load({
         const drag = dragRef.current
         if (!drag) return
         dragRef.current = null
+        if (drag.mode === 'resize' && drag.kind === 'main' && drag.snapped && drag.lastResize) {
+          const layout = { ...drag.lastResize }
+          if (layoutMode === 'horizontal') {
+            const axis = TOP_PAD + MAIN_H / 2
+            layout.dy += axis - (drag.baseY + layout.dy + layout.h / 2)
+          } else {
+            const axis = MAIN_W / 2
+            layout.dx += axis - (drag.baseX + layout.dx + layout.w / 2)
+          }
+          updateTurn('main', null, drag.turnId, { layout })
+        }
         if (drag.spaceBefore) pushHistory(drag.spaceBefore)
         try {
           event.currentTarget.releasePointerCapture(event.pointerId)
