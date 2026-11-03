@@ -1,19 +1,22 @@
 // Host half of the Chat Space plugin.
 //
-// It owns the only things the browser cannot do safely:
-//   - keep the space JSON in the current workspace
-//   - call the model that DSH is already configured to use
-//   - stream the answer back as Server-Sent Events
+// Data model (v2):
+//   .chat-space/library.json          folders + space metadata
+//   .chat-space/spaces/<id>.json      one independent canvas/conversation
+//   .chat-space/trash/                deleted space snapshots
 //
-// The browser half is a plain client bundle; it talks to these routes with
-// fetch(). No credentials or provider details ever reach the page.
+// The old single .chat-space/space.json is migrated to the "default" space
+// the first time the library is read.
 
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 const API_ROOT = '/chat-space/api'
 const DATA_DIR_NAME = '.chat-space'
-const DATA_FILE_NAME = 'space.json'
+const LIBRARY_FILE_NAME = 'library.json'
+const LEGACY_FILE_NAME = 'space.json'
+const SPACES_DIR_NAME = 'spaces'
+const TRASH_DIR_NAME = 'trash'
 const MAX_BODY_BYTES = 4 * 1024 * 1024
 const MAX_ANCHOR_CHARS = 2400
 const MAX_MAIN_CONTEXT_CHARS = 1600
@@ -21,11 +24,17 @@ const MAX_HISTORY_ITEM_CHARS = 6000
 
 export const inject = ['webServer', 'llm', 'agentDefaultModel']
 
+function validId(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(value)
+}
+
+function makeId(prefix) {
+  return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7)
+}
+
 export function apply(ctx) {
   const workingDirectory = ctx.get('workingDirectory')
 
-  // The chat space is global to this profile, but its data belongs beside the
-  // user's default workspace so it can be backed up with the rest of the work.
   const resolveBaseDir = () => {
     try {
       const registry = ctx.get('workspaceRegistry')
@@ -39,11 +48,16 @@ export function apply(ctx) {
     return workingDirectory?.defaultDirectory || process.cwd()
   }
 
-  const dataFile = () => path.join(resolveBaseDir(), DATA_DIR_NAME, DATA_FILE_NAME)
+  const dataDir = () => path.join(resolveBaseDir(), DATA_DIR_NAME)
+  const legacyFile = () => path.join(dataDir(), LEGACY_FILE_NAME)
+  const libraryFile = () => path.join(dataDir(), LIBRARY_FILE_NAME)
+  const spacesDir = () => path.join(dataDir(), SPACES_DIR_NAME)
+  const trashDir = () => path.join(dataDir(), TRASH_DIR_NAME)
+  const spaceFile = (id) => path.join(spacesDir(), id + '.json')
 
-  const readSpace = async () => {
+  const readJson = async (file) => {
     try {
-      const raw = await readFile(dataFile(), 'utf8')
+      const raw = await readFile(file, 'utf8')
       const parsed = JSON.parse(raw)
       return parsed && typeof parsed === 'object' ? parsed : null
     } catch (error) {
@@ -52,15 +66,218 @@ export function apply(ctx) {
     }
   }
 
-  const writeSpace = async (space) => {
-    const file = dataFile()
+  const writeJson = async (file, value) => {
     await mkdir(path.dirname(file), { recursive: true })
     try {
       await copyFile(file, file + '.bak')
     } catch (error) {
       if (error && error.code !== 'ENOENT') throw error
     }
-    await writeFile(file, JSON.stringify(space, null, 2), 'utf8')
+    await writeFile(file, JSON.stringify(value, null, 2), 'utf8')
+  }
+
+  const normalizeLibrary = (raw) => {
+    const folders = Array.isArray(raw && raw.folders)
+      ? raw.folders.filter((folder) => folder && validId(folder.id)).map((folder) => ({
+          id: folder.id,
+          name: String(folder.name || '未命名文件夹').slice(0, 120),
+          parentId: validId(folder.parentId) ? folder.parentId : null,
+          order: Number.isFinite(folder.order) ? folder.order : 0,
+          createdAt: Number.isFinite(folder.createdAt) ? folder.createdAt : Date.now(),
+        }))
+      : []
+    const spaces = Array.isArray(raw && raw.spaces)
+      ? raw.spaces.filter((space) => space && validId(space.id)).map((space) => ({
+          id: space.id,
+          title: String(space.title || '未命名空间').slice(0, 200),
+          folderId: validId(space.folderId) ? space.folderId : null,
+          layoutMode: space.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
+          createdAt: Number.isFinite(space.createdAt) ? space.createdAt : Date.now(),
+          updatedAt: Number.isFinite(space.updatedAt) ? space.updatedAt : Date.now(),
+          lastOpenedAt: Number.isFinite(space.lastOpenedAt) ? space.lastOpenedAt : 0,
+          turnCount: Number.isFinite(space.turnCount) ? space.turnCount : 0,
+          lastQuestion: String(space.lastQuestion || '').slice(0, 240),
+        }))
+      : []
+    return { version: 1, folders, spaces }
+  }
+
+  const spaceMeta = (space, folderId, createdAt) => {
+    const mainTurns = Array.isArray(space.main && space.main.turns) ? space.main.turns : []
+    const branches = Array.isArray(space.branches) ? space.branches : []
+    const branchTurns = branches.flatMap((branch) => (Array.isArray(branch.turns) ? branch.turns : []))
+    const allTurns = mainTurns.concat(branchTurns)
+    const last = allTurns.length > 0 ? allTurns[allTurns.length - 1] : null
+    return {
+      id: space.id,
+      title: String(space.title || '未命名空间').slice(0, 200),
+      folderId: validId(folderId) ? folderId : null,
+      layoutMode: space.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
+      createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
+      updatedAt: Date.now(),
+      lastOpenedAt: Date.now(),
+      turnCount: allTurns.length,
+      lastQuestion: String(last && last.question || '').slice(0, 240),
+    }
+  }
+
+  const readLibrary = async () => {
+    const existing = await readJson(libraryFile())
+    if (existing) return normalizeLibrary(existing)
+    const legacy = await readJson(legacyFile())
+    if (legacy && legacy.main && Array.isArray(legacy.main.turns) && Array.isArray(legacy.branches)) {
+      const id = 'default'
+      const space = {
+        ...legacy,
+        id,
+        title: String(legacy.title || '默认空间'),
+        layoutMode: legacy.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
+      }
+      await writeJson(spaceFile(id), space)
+      const library = { version: 1, folders: [], spaces: [spaceMeta(space, null, space.createdAt)] }
+      await writeJson(libraryFile(), library)
+      return library
+    }
+    const empty = { version: 1, folders: [], spaces: [] }
+    await writeJson(libraryFile(), empty)
+    return empty
+  }
+
+  const readSpace = async (requestedId) => {
+    const library = await readLibrary()
+    const id = validId(requestedId) && library.spaces.some((space) => space.id === requestedId)
+      ? requestedId
+      : (library.spaces[0] && library.spaces[0].id) || 'default'
+    if (!validId(id)) return null
+    const space = await readJson(spaceFile(id))
+    if (!space || !space.main || !Array.isArray(space.main.turns) || !Array.isArray(space.branches)) return null
+    return {
+      ...space,
+      id,
+      title: String(space.title || '未命名空间'),
+      layoutMode: space.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
+    }
+  }
+
+  const writeSpaceData = async (space, requestedId) => {
+    const id = validId(space.id) ? space.id : validId(requestedId) ? requestedId : 'default'
+    if (!validId(id)) throw new Error('空间 ID 不合法')
+    const library = await readLibrary()
+    const existing = library.spaces.find((item) => item.id === id) || null
+    const normalized = {
+      ...space,
+      id,
+      title: String(space.title || (existing && existing.title) || '未命名空间').slice(0, 200),
+      layoutMode: space.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
+    }
+    await writeJson(spaceFile(id), normalized)
+    const meta = spaceMeta(normalized, existing && existing.folderId, existing && existing.createdAt)
+    library.spaces = library.spaces.filter((item) => item.id !== id).concat([meta])
+    await writeJson(libraryFile(), library)
+    return { space: normalized, library }
+  }
+
+  const createSpace = async (body) => {
+    const library = await readLibrary()
+    const folderId = validId(body.folderId) && library.folders.some((folder) => folder.id === body.folderId)
+      ? body.folderId
+      : null
+    const id = makeId('s')
+    const space = {
+      version: 1,
+      id,
+      title: String(body.title || '未命名空间').trim().slice(0, 200) || '未命名空间',
+      layoutMode: body.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
+      main: { turns: [] },
+      branches: [],
+      view: { x: 120, y: 120, zoom: 1 },
+      createdAt: Date.now(),
+    }
+    const written = await writeSpaceData(space, id)
+    const meta = written.library.spaces.find((item) => item.id === id)
+    if (meta) meta.folderId = folderId
+    await writeJson(libraryFile(), written.library)
+    return { space: written.space, library: written.library }
+  }
+
+  const updateSpaceMeta = async (body) => {
+    const id = validId(body.id) ? body.id : ''
+    if (!id) throw new Error('空间 ID 不合法')
+    const library = await readLibrary()
+    const meta = library.spaces.find((item) => item.id === id)
+    if (!meta) throw new Error('空间不存在')
+    if (typeof body.title === 'string' && body.title.trim()) {
+      const space = await readJson(spaceFile(id))
+      if (space) {
+        space.title = body.title.trim().slice(0, 200)
+        await writeJson(spaceFile(id), space)
+      }
+      meta.title = body.title.trim().slice(0, 200)
+    }
+    if (body.folderId === null || body.folderId === '') meta.folderId = null
+    else if (validId(body.folderId) && library.folders.some((folder) => folder.id === body.folderId)) meta.folderId = body.folderId
+    meta.updatedAt = Date.now()
+    meta.lastOpenedAt = Date.now()
+    await writeJson(libraryFile(), library)
+    return library
+  }
+
+  const deleteSpace = async (body) => {
+    const id = validId(body.id) ? body.id : ''
+    if (!id) throw new Error('空间 ID 不合法')
+    const file = spaceFile(id)
+    try {
+      await mkdir(trashDir(), { recursive: true })
+      await copyFile(file, path.join(trashDir(), id + '-' + Date.now() + '.json'))
+    } catch (error) {
+      if (error && error.code !== 'ENOENT') throw error
+    }
+    try { await unlink(file) } catch (error) { if (error && error.code !== 'ENOENT') throw error }
+    const library = await readLibrary()
+    library.spaces = library.spaces.filter((item) => item.id !== id)
+    await writeJson(libraryFile(), library)
+    return library
+  }
+
+  const createFolder = async (body) => {
+    const library = await readLibrary()
+    const parentId = validId(body.parentId) && library.folders.some((folder) => folder.id === body.parentId)
+      ? body.parentId
+      : null
+    const folder = {
+      id: makeId('f'),
+      name: String(body.name || '新建文件夹').trim().slice(0, 120) || '新建文件夹',
+      parentId,
+      order: Date.now(),
+      createdAt: Date.now(),
+    }
+    library.folders.push(folder)
+    await writeJson(libraryFile(), library)
+    return library
+  }
+
+  const updateFolder = async (body) => {
+    const id = validId(body.id) ? body.id : ''
+    const library = await readLibrary()
+    const folder = library.folders.find((item) => item.id === id)
+    if (!folder) throw new Error('文件夹不存在')
+    if (typeof body.name === 'string' && body.name.trim()) folder.name = body.name.trim().slice(0, 120)
+    await writeJson(libraryFile(), library)
+    return library
+  }
+
+  const deleteFolder = async (body) => {
+    const id = validId(body.id) ? body.id : ''
+    const library = await readLibrary()
+    const folder = library.folders.find((item) => item.id === id)
+    if (!folder) throw new Error('文件夹不存在')
+    const parentId = folder.parentId
+    library.folders = library.folders
+      .filter((item) => item.id !== id)
+      .map((item) => (item.parentId === id ? { ...item, parentId } : item))
+    library.spaces = library.spaces.map((item) => (item.folderId === id ? { ...item, folderId: parentId } : item))
+    await writeJson(libraryFile(), library)
+    return library
   }
 
   const route = (pathName, handler) => ctx.webServer.register({
@@ -71,23 +288,35 @@ export function apply(ctx) {
 
   ctx.effect(() => {
     const disposers = [
-      route(`${API_ROOT}/space`, async (req, res) => {
+      route(API_ROOT + '/library', async (req, res) => {
         if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: '只支持 GET' })
         try {
-          const space = await readSpace()
+          const library = await readLibrary()
           let model = null
+          try { model = ctx.agentDefaultModel.currentSelection() } catch (_error) { model = null }
+          sendJson(res, 200, { ok: true, library, model })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/space', async (req, res) => {
+        if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: '只支持 GET' })
+        try {
+          let requestedId = ''
           try {
-            model = ctx.agentDefaultModel.currentSelection()
-          } catch (_error) {
-            model = null
-          }
+            requestedId = new URL(req.url, 'http://localhost').searchParams.get('id') || ''
+          } catch (_error) { requestedId = '' }
+          const space = await readSpace(requestedId)
+          let model = null
+          try { model = ctx.agentDefaultModel.currentSelection() } catch (_error) { model = null }
           sendJson(res, 200, { ok: true, space, model })
         } catch (error) {
           sendJson(res, 500, { ok: false, error: messageOf(error) })
         }
       }),
 
-      route(`${API_ROOT}/save`, async (req, res) => {
+      route(API_ROOT + '/save', async (req, res) => {
         if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
         try {
           const body = await readJsonBody(req)
@@ -95,19 +324,85 @@ export function apply(ctx) {
           if (!space || typeof space !== 'object' || !space.main || !Array.isArray(space.main.turns) || !Array.isArray(space.branches)) {
             return sendJson(res, 400, { ok: false, error: '聊天空间数据格式不正确' })
           }
-          await writeSpace(space)
-          sendJson(res, 200, { ok: true })
+          const result = await writeSpaceData(space, body.spaceId)
+          sendJson(res, 200, { ok: true, library: result.library, space: result.space })
         } catch (error) {
           sendJson(res, 500, { ok: false, error: messageOf(error) })
         }
       }),
 
-      route(`${API_ROOT}/chat`, async (req, res) => {
+      route(API_ROOT + '/space/create', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          const body = await readJsonBody(req)
+          const result = await createSpace(body || {})
+          sendJson(res, 200, { ok: true, space: result.space, library: result.library })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/space/update', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          const body = await readJsonBody(req)
+          const library = await updateSpaceMeta(body || {})
+          sendJson(res, 200, { ok: true, library })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/space/delete', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          const body = await readJsonBody(req)
+          const library = await deleteSpace(body || {})
+          sendJson(res, 200, { ok: true, library })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/folder/create', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          const body = await readJsonBody(req)
+          const library = await createFolder(body || {})
+          sendJson(res, 200, { ok: true, library })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/folder/update', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          const body = await readJsonBody(req)
+          const library = await updateFolder(body || {})
+          sendJson(res, 200, { ok: true, library })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/folder/delete', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          const body = await readJsonBody(req)
+          const library = await deleteFolder(body || {})
+          sendJson(res, 200, { ok: true, library })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/chat', async (req, res) => {
         if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
         await handleChat(ctx, req, res)
       }),
 
-      route(`${API_ROOT}/summary`, async (req, res) => {
+      route(API_ROOT + '/summary', async (req, res) => {
         if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
         await handleSummary(ctx, req, res)
       }),

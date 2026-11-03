@@ -35,6 +35,36 @@ window.__ModuleLoader__.load({
 
     const zh = {
       panel: '聊天空间',
+      library: '空间库',
+      libraryTitle: '聊天空间',
+      librarySubtitle: '新建一个主题，旧的会留在空间库里',
+      newSpace: '新建空间',
+      newFolder: '新建文件夹',
+      allSpaces: '全部空间',
+      uncategorized: '未分类',
+      rootFolder: '根目录',
+      folders: '文件夹',
+      spaces: '个空间',
+      turns: '轮',
+      emptySpace: '还没有内容',
+      emptyLibrary: '还没有空间',
+      emptyLibraryHint: '新建一个画布，从第一个问题开始。',
+      untitledSpace: '未命名空间',
+      titleLabel: '标题',
+      folderName: '文件夹名称',
+      folderLabel: '文件夹',
+      parentFolder: '上级文件夹',
+      layoutLabel: '画布方向',
+      create: '创建',
+      save: '保存',
+      rename: '重命名',
+      delete: '删除',
+      moveTo: '移动到',
+      confirmDeleteSpace: '删除这个空间？',
+      confirmDeleteFolder: '删除这个文件夹？里面的空间会移到上一级。',
+      libraryLoadError: '空间库读取失败',
+      loading: '加载中…',
+      retry: '重试',
       title: '聊天空间',
       subtitle: '主线向前，追问向两侧生长',
       main: '主线',
@@ -115,6 +145,36 @@ window.__ModuleLoader__.load({
 
     const en = {
       panel: 'Chat Space',
+      library: 'Library',
+      libraryTitle: 'Chat Space',
+      librarySubtitle: 'Start a new topic; old canvases stay in the library',
+      newSpace: 'New space',
+      newFolder: 'New folder',
+      allSpaces: 'All spaces',
+      uncategorized: 'Uncategorized',
+      rootFolder: 'Root',
+      folders: 'Folders',
+      spaces: 'spaces',
+      turns: 'turns',
+      emptySpace: 'No content yet',
+      emptyLibrary: 'No spaces yet',
+      emptyLibraryHint: 'Create a canvas and start with the first question.',
+      untitledSpace: 'Untitled space',
+      titleLabel: 'Title',
+      folderName: 'Folder name',
+      folderLabel: 'Folder',
+      parentFolder: 'Parent folder',
+      layoutLabel: 'Canvas direction',
+      create: 'Create',
+      save: 'Save',
+      rename: 'Rename',
+      delete: 'Delete',
+      moveTo: 'Move to',
+      confirmDeleteSpace: 'Delete this space?',
+      confirmDeleteFolder: 'Delete this folder? Its spaces will move to the parent.',
+      libraryLoadError: 'Failed to load the library',
+      loading: 'Loading…',
+      retry: 'Retry',
       title: 'Chat Space',
       subtitle: 'A main line that continues, branches that grow sideways',
       main: 'Main',
@@ -331,7 +391,61 @@ window.__ModuleLoader__.load({
 .cs-grip:active { cursor: grabbing; }
 .cs-resize { position: absolute; right: 2px; bottom: 2px; z-index: 2; width: 16px; height: 16px; cursor: nwse-resize; }
 .cs-resize::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 7px; height: 7px; border-right: 2px solid var(--cs-border-strong); border-bottom: 2px solid var(--cs-border-strong); border-radius: 0 0 2px 0; opacity: .7; }
+.cs-btn-primary { background: var(--cs-accent); border-color: var(--cs-accent); color: #ffffff; }
+.cs-btn-primary:hover { background: color-mix(in srgb, var(--cs-accent) 88%, #000000); }
+.cs-library { background: var(--cs-bg); }
+.cs-lib-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--cs-border); flex-shrink: 0; }
+.cs-lib-heading { min-width: 0; }
+.cs-lib-body { flex: 1; min-height: 0; display: flex; }
+.cs-lib-side { width: 230px; flex-shrink: 0; padding: 12px 8px; border-right: 1px solid var(--cs-border); overflow: auto; }
+.cs-lib-side-title { padding: 0 10px 8px; color: var(--cs-muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.cs-lib-folder { display: flex; align-items: center; gap: 6px; min-height: 30px; padding: 5px 8px; border-radius: 7px; color: var(--cs-text); cursor: pointer; font-size: 13px; }
+.cs-lib-folder:hover { background: var(--cs-hover); }
+.cs-lib-folder-active { background: color-mix(in srgb, var(--cs-accent) 12%, transparent); color: var(--cs-accent); }
+.cs-lib-folder-icon { flex-shrink: 0; width: 12px; color: var(--cs-muted); font-size: 10px; }
+.cs-lib-folder-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-lib-folder-count { flex-shrink: 0; color: var(--cs-muted); font-size: 11px; }
+.cs-lib-folder-actions { display: none; flex-shrink: 0; gap: 1px; }
+.cs-lib-folder:hover .cs-lib-folder-actions { display: inline-flex; }
+.cs-lib-folder-actions button { border: 0; background: transparent; color: var(--cs-muted); cursor: pointer; font-size: 12px; padding: 1px 3px; border-radius: 3px; }
+.cs-lib-folder-actions button:hover { background: var(--cs-border); color: var(--cs-text); }
+.cs-lib-newfolder { width: 100%; margin-top: 10px; padding: 8px; border: 1px dashed var(--cs-border); border-radius: 7px; background: transparent; color: var(--cs-muted); cursor: pointer; font: inherit; font-size: 12px; text-align: left; }
+.cs-lib-newfolder:hover { border-color: var(--cs-accent); color: var(--cs-accent); }
+.cs-lib-main { flex: 1; min-width: 0; overflow: auto; padding: 16px 20px 28px; }
+.cs-lib-main-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.cs-lib-main-title { font-size: 17px; font-weight: 600; }
+.cs-lib-main-sub { margin-top: 3px; color: var(--cs-muted); font-size: 12px; }
+.cs-lib-spaces { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.cs-lib-space-card { display: flex; flex-direction: column; gap: 9px; min-height: 154px; padding: 13px; border: 1px solid var(--cs-border); border-radius: 10px; background: var(--cs-panel); box-shadow: 0 1px 2px rgba(0,0,0,.03); cursor: pointer; transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease; }
+.cs-lib-space-card:hover { border-color: color-mix(in srgb, var(--cs-accent) 55%, var(--cs-border)); box-shadow: var(--cs-shadow); transform: translateY(-1px); }
+.cs-lib-space-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.cs-lib-space-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; }
+.cs-lib-layout-badge { flex-shrink: 0; padding: 1px 6px; border: 1px solid var(--cs-border); border-radius: 999px; color: var(--cs-muted); font-size: 10px; line-height: 1.6; }
+.cs-lib-space-question { flex: 1; min-height: 34px; overflow: hidden; color: var(--cs-muted); font-size: 12px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cs-lib-space-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--cs-muted); font-size: 11px; }
+.cs-lib-space-actions { display: flex; align-items: center; gap: 5px; padding-top: 6px; border-top: 1px solid var(--cs-border); }
+.cs-lib-move { flex: 1; min-width: 0; padding: 3px 5px; border: 1px solid var(--cs-border); border-radius: 5px; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 11px; }
+.cs-lib-mini { flex-shrink: 0; padding: 3px 6px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--cs-muted); cursor: pointer; font: inherit; font-size: 11px; }
+.cs-lib-mini:hover { background: var(--cs-hover); color: var(--cs-text); }
+.cs-lib-mini-danger:hover { color: #d9534f; }
+.cs-lib-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 260px; border: 1px dashed var(--cs-border); border-radius: 12px; color: var(--cs-muted); text-align: center; }
+.cs-lib-empty-title { color: var(--cs-text); font-size: 15px; font-weight: 600; }
+.cs-lib-empty-text { max-width: 360px; color: var(--cs-muted); font-size: 12px; line-height: 1.6; }
+.cs-lib-notice { padding: 7px 20px; border-bottom: 1px solid var(--cs-border); background: color-mix(in srgb, #d9534f 8%, var(--cs-bg)); color: #b8453f; font-size: 12px; }
+.cs-lib-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--cs-muted); }
+.cs-lib-modal-backdrop { position: fixed; inset: 0; z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(14, 20, 28, .34); backdrop-filter: blur(2px); }
+.cs-lib-modal { width: min(440px, 100%); display: flex; flex-direction: column; gap: 13px; padding: 18px; border: 1px solid var(--cs-border); border-radius: 12px; background: var(--cs-panel); box-shadow: 0 18px 48px rgba(0,0,0,.22); }
+.cs-lib-modal-title { font-size: 16px; font-weight: 600; }
+.cs-lib-field { display: flex; flex-direction: column; gap: 5px; color: var(--cs-muted); font-size: 12px; }
+.cs-lib-input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--cs-border); border-radius: 7px; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 13px; outline: none; }
+.cs-lib-input:focus { border-color: var(--cs-accent); }
+.cs-lib-layout-choice { display: flex; gap: 8px; }
+.cs-lib-layout-option { flex: 1; padding: 8px; border: 1px solid var(--cs-border); border-radius: 7px; background: var(--cs-bg); color: var(--cs-muted); cursor: pointer; font: inherit; font-size: 12px; }
+.cs-lib-layout-active { border-color: var(--cs-accent); background: color-mix(in srgb, var(--cs-accent) 12%, var(--cs-panel)); color: var(--cs-accent); }
+.cs-lib-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 3px; }
 .cs-main-guide { position: absolute; z-index: 0; pointer-events: none; opacity: .42; }
+.cs-main-guide-v { top: 0; bottom: 0; width: 3px; background-image: repeating-linear-gradient(to bottom, var(--cs-accent) 0 14px, transparent 14px 30px); }
+.cs-main-guide-h { left: 0; right: 0; height: 3px; background-image: repeating-linear-gradient(to right, var(--cs-accent) 0 14px, transparent 14px 30px); }
 .cs-dot-tip { position: fixed; z-index: 1200; max-width: 300px; padding: 8px 10px; border-radius: 8px; background: #1f2329; color: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,.25); font-size: 12px; line-height: 1.55; pointer-events: none; }
 .cs-bottom-composer { position: absolute; left: 50%; bottom: 18px; z-index: 950; display: flex; flex-direction: column; gap: 6px; width: min(640px, calc(100% - 220px)); transform: translateX(-50%); }
 .cs-bottom-label { align-self: flex-start; padding: 2px 8px; border: 1px solid var(--cs-border); border-radius: 999px; background: var(--cs-panel); color: var(--cs-muted); font-size: 11px; line-height: 1.4; }
@@ -534,6 +648,7 @@ window.__ModuleLoader__.load({
     function normalizeSpace(raw) {
       const fallback = {
         version: 1,
+        id: '',
         title: '学习空间',
         main: { turns: [] },
         branches: [],
@@ -575,6 +690,7 @@ window.__ModuleLoader__.load({
       const rawView = raw.view && typeof raw.view === 'object' ? raw.view : null
       return {
         version: 1,
+        id: stringOf(raw.id),
         title: stringOf(raw.title) || '学习空间',
         main: { turns: mainTurns },
         branches,
@@ -1121,7 +1237,388 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function ChatSpacePanel({ tr, t: slotT, onBackToConversation }) {
+    function ChatSpaceRoot({ tr, t: slotT, onBackToConversation }) {
+      const t = typeof tr === 'function' ? tr : typeof slotT === 'function' ? slotT : (key) => key
+      const [library, setLibrary] = useState(null)
+      const [loadState, setLoadState] = useState('loading')
+      const [loadError, setLoadError] = useState('')
+      const [activeId, setActiveId] = useState(null)
+      const [selectedFolder, setSelectedFolder] = useState('all')
+      const [newSpaceOpen, setNewSpaceOpen] = useState(false)
+      const [newSpaceTitle, setNewSpaceTitle] = useState('')
+      const [newSpaceLayout, setNewSpaceLayout] = useState('vertical')
+      const [newSpaceFolder, setNewSpaceFolder] = useState('')
+      const [newFolderOpen, setNewFolderOpen] = useState(false)
+      const [newFolderName, setNewFolderName] = useState('')
+      const [newFolderParent, setNewFolderParent] = useState('')
+      const [renameTarget, setRenameTarget] = useState(null)
+      const [renameValue, setRenameValue] = useState('')
+      const [busy, setBusy] = useState(false)
+      const [notice, setNotice] = useState('')
+
+      const loadLibrary = useCallback(async (silent) => {
+        if (!silent) setLoadState('loading')
+        try {
+          const response = await fetch(API + '/library', { headers: { Accept: 'application/json' } })
+          const body = await response.json()
+          if (!response.ok || !body || body.ok === false) throw new Error(body && body.error ? body.error : '读取空间库失败')
+          setLibrary(body.library || { folders: [], spaces: [] })
+          setLoadError('')
+          setLoadState('ready')
+        } catch (error) {
+          setLoadError(error && error.message ? error.message : '读取空间库失败')
+          setLoadState('error')
+        }
+      }, [])
+
+      useEffect(() => {
+        loadLibrary()
+      }, [loadLibrary])
+
+      const post = async (pathName, body) => {
+        const response = await fetch(API + pathName, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body || {}),
+        })
+        const data = await response.json()
+        if (!response.ok || !data || data.ok === false) throw new Error(data && data.error ? data.error : '操作失败')
+        return data
+      }
+
+      const run = async (action) => {
+        setBusy(true)
+        setNotice('')
+        try {
+          await action()
+        } catch (error) {
+          setNotice(error && error.message ? error.message : '操作失败')
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      const folders = library && Array.isArray(library.folders) ? library.folders : []
+      const spaces = library && Array.isArray(library.spaces) ? library.spaces : []
+      const folderById = new Map(folders.map((folder) => [folder.id, folder]))
+      const childrenOf = (parentId) => folders
+        .filter((folder) => (folder.parentId || null) === parentId)
+        .sort((left, right) => (left.order || 0) - (right.order || 0))
+      const folderDepth = (folder) => {
+        let depth = 0
+        let current = folder
+        while (current && current.parentId && folderById.has(current.parentId) && depth < 30) {
+          depth += 1
+          current = folderById.get(current.parentId)
+        }
+        return depth
+      }
+      const flatten = (parentId, depth, output) => {
+        for (const folder of childrenOf(parentId)) {
+          output.push({ folder, depth })
+          flatten(folder.id, depth + 1, output)
+        }
+        return output
+      }
+      const flatFolders = flatten(null, 0, [])
+      const selectedName = selectedFolder === 'all'
+        ? t('allSpaces')
+        : selectedFolder === 'none'
+          ? t('uncategorized')
+          : (folderById.get(selectedFolder) && folderById.get(selectedFolder).name) || t('allSpaces')
+      const visibleSpaces = spaces
+        .filter((space) => {
+          if (selectedFolder === 'all') return true
+          if (selectedFolder === 'none') return !space.folderId
+          return space.folderId === selectedFolder
+        })
+        .sort((left, right) => (right.updatedAt || 0) - (left.updatedAt || 0))
+      const formatDate = (value) => {
+        const date = new Date(value || Date.now())
+        const month = date.getMonth() + 1
+        const day = date.getDate()
+        const hour = String(date.getHours()).padStart(2, '0')
+        const minute = String(date.getMinutes()).padStart(2, '0')
+        return month + '/' + day + ' ' + hour + ':' + minute
+      }
+      const folderOptions = (selected, rootLabel) => [
+        h('option', { key: 'none', value: '' }, rootLabel || t('uncategorized')),
+        ...flatFolders.map(({ folder, depth }) => h('option', { key: folder.id, value: folder.id }, '—'.repeat(depth) + ' ' + folder.name)),
+      ]
+      const openSpace = (id) => setActiveId(id)
+
+      const createSpace = () => run(async () => {
+        const data = await post('/space/create', {
+          title: newSpaceTitle.trim() || t('untitledSpace'),
+          layoutMode: newSpaceLayout,
+          folderId: newSpaceFolder || null,
+        })
+        setLibrary(data.library || library)
+        setNewSpaceOpen(false)
+        setNewSpaceTitle('')
+        setNewSpaceLayout('vertical')
+        setNewSpaceFolder('')
+        if (data.space && data.space.id) setActiveId(data.space.id)
+      })
+
+      const createFolder = () => run(async () => {
+        const name = newFolderName.trim()
+        if (!name) return
+        const data = await post('/folder/create', { name, parentId: newFolderParent || null })
+        setLibrary(data.library || library)
+        setNewFolderOpen(false)
+        setNewFolderName('')
+        setNewFolderParent('')
+      })
+
+      const moveSpace = (space, folderId) => run(async () => {
+        const data = await post('/space/update', { id: space.id, folderId: folderId || null })
+        if (data.library) setLibrary(data.library)
+      })
+
+      const deleteSpace = (space) => run(async () => {
+        if (!window.confirm(t('confirmDeleteSpace'))) return
+        const data = await post('/space/delete', { id: space.id })
+        if (data.library) setLibrary(data.library)
+        if (selectedFolder !== 'all' && selectedFolder !== 'none' && !folderById.has(selectedFolder)) setSelectedFolder('all')
+      })
+
+      const deleteFolder = (folder) => run(async () => {
+        if (!window.confirm(t('confirmDeleteFolder'))) return
+        const data = await post('/folder/delete', { id: folder.id })
+        if (data.library) setLibrary(data.library)
+        if (selectedFolder === folder.id) setSelectedFolder('all')
+      })
+
+      const saveRename = () => run(async () => {
+        if (!renameTarget) return
+        const name = renameValue.trim()
+        if (!name) return
+        const data = renameTarget.kind === 'folder'
+          ? await post('/folder/update', { id: renameTarget.id, name })
+          : await post('/space/update', { id: renameTarget.id, title: name })
+        if (data.library) setLibrary(data.library)
+        setRenameTarget(null)
+        setRenameValue('')
+      })
+
+      const openNewSpace = () => {
+        setNewSpaceTitle('')
+        setNewSpaceLayout('vertical')
+        setNewSpaceFolder(selectedFolder !== 'all' && selectedFolder !== 'none' ? selectedFolder : '')
+        setNewSpaceOpen(true)
+      }
+
+      const openNewFolder = () => {
+        setNewFolderName('')
+        setNewFolderParent(selectedFolder !== 'all' && selectedFolder !== 'none' ? selectedFolder : '')
+        setNewFolderOpen(true)
+      }
+
+      const startRename = (kind, id, name) => {
+        setRenameTarget({ kind, id })
+        setRenameValue(name || '')
+      }
+
+      const renderFolderRow = (folder, depth) => {
+        const childCount = spaces.filter((space) => space.folderId === folder.id).length
+        return h('div', {
+          key: folder.id,
+          className: cx('cs-lib-folder', selectedFolder === folder.id ? 'cs-lib-folder-active' : ''),
+          style: { paddingLeft: 10 + depth * 14 },
+          onClick: () => setSelectedFolder(folder.id),
+        },
+          h('span', { className: 'cs-lib-folder-icon' }, '▸'),
+          h('span', { className: 'cs-lib-folder-name' }, folder.name),
+          h('span', { className: 'cs-lib-folder-count' }, childCount || ''),
+          h('span', { className: 'cs-lib-folder-actions' },
+            h('button', { type: 'button', title: t('rename'), onClick: (event) => { event.stopPropagation(); startRename('folder', folder.id, folder.name) } }, '✎'),
+            h('button', { type: 'button', title: t('delete'), onClick: (event) => { event.stopPropagation(); deleteFolder(folder) } }, '×')
+          )
+        )
+      }
+
+      const renderFolderTree = (parentId, depth) => childrenOf(parentId).flatMap((folder) => [
+        renderFolderRow(folder, depth),
+        ...renderFolderTree(folder.id, depth + 1),
+      ])
+
+      const renderSpaceCard = (space) => {
+        const layoutLabel = space.layoutMode === 'horizontal' ? t('horizontalShort') : t('verticalShort')
+        return h('div', {
+          key: space.id,
+          className: 'cs-lib-space-card',
+          onClick: () => openSpace(space.id),
+        },
+          h('div', { className: 'cs-lib-space-head' },
+            h('div', { className: 'cs-lib-space-title', title: space.title }, space.title),
+            h('span', { className: 'cs-lib-layout-badge' }, layoutLabel)
+          ),
+          h('div', { className: 'cs-lib-space-question' }, space.lastQuestion || t('emptySpace')),
+          h('div', { className: 'cs-lib-space-meta' },
+            h('span', null, (space.turnCount || 0) + ' ' + t('turns')),
+            h('span', null, formatDate(space.updatedAt))
+          ),
+          h('div', { className: 'cs-lib-space-actions' },
+            h('select', {
+              className: 'cs-lib-move',
+              value: space.folderId || '',
+              title: t('moveTo'),
+              onClick: (event) => event.stopPropagation(),
+              onChange: (event) => { event.stopPropagation(); moveSpace(space, event.target.value) },
+            }, folderOptions(space.folderId || '', t('uncategorized'))),
+            h('button', { type: 'button', className: 'cs-lib-mini', onClick: (event) => { event.stopPropagation(); startRename('space', space.id, space.title) } }, t('rename')),
+            h('button', { type: 'button', className: 'cs-lib-mini cs-lib-mini-danger', onClick: (event) => { event.stopPropagation(); deleteSpace(space) } }, t('delete'))
+          )
+        )
+      }
+
+      if (activeId) {
+        return h(ChatSpacePanel, {
+          key: activeId,
+          tr,
+          t,
+          onBackToConversation,
+          spaceId: activeId,
+          onBackToLibrary: () => {
+            setActiveId(null)
+            loadLibrary(true)
+          },
+        })
+      }
+
+      if (loadState === 'loading') {
+        return h('div', { className: 'cs-root cs-library' },
+          h('style', null, CSS),
+          h('div', { className: 'cs-lib-center' }, t('loading'))
+        )
+      }
+
+      if (loadState === 'error') {
+        return h('div', { className: 'cs-root cs-library' },
+          h('style', null, CSS),
+          h('div', { className: 'cs-lib-center' },
+            h('div', { className: 'cs-lib-empty-title' }, t('libraryLoadError')),
+            h('div', { className: 'cs-lib-empty-text' }, loadError),
+            h('button', { type: 'button', className: 'cs-btn', onClick: () => loadLibrary() }, t('retry'))
+          )
+        )
+      }
+
+      return h('div', { className: 'cs-root cs-library' },
+        h('style', null, CSS),
+        h('div', { className: 'cs-lib-header' },
+          h('div', { className: 'cs-lib-heading' },
+            h('div', { className: 'cs-title' }, t('libraryTitle')),
+            h('div', { className: 'cs-subtitle' }, t('librarySubtitle'))
+          ),
+          h('div', { className: 'cs-top-actions' },
+            h('button', { type: 'button', className: 'cs-btn', onClick: openNewFolder }, t('newFolder')),
+            h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, t('newSpace')),
+            typeof onBackToConversation === 'function'
+              ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToConversation }, t('backToConversation'))
+              : null
+          )
+        ),
+        notice ? h('div', { className: 'cs-lib-notice' }, notice) : null,
+        h('div', { className: 'cs-lib-body' },
+          h('aside', { className: 'cs-lib-side' },
+            h('div', { className: 'cs-lib-side-title' }, t('folders')),
+            h('div', {
+              className: cx('cs-lib-folder', selectedFolder === 'all' ? 'cs-lib-folder-active' : ''),
+              onClick: () => setSelectedFolder('all'),
+            },
+              h('span', { className: 'cs-lib-folder-icon' }, '◆'),
+              h('span', { className: 'cs-lib-folder-name' }, t('allSpaces')),
+              h('span', { className: 'cs-lib-folder-count' }, spaces.length)
+            ),
+            h('div', {
+              className: cx('cs-lib-folder', selectedFolder === 'none' ? 'cs-lib-folder-active' : ''),
+              onClick: () => setSelectedFolder('none'),
+            },
+              h('span', { className: 'cs-lib-folder-icon' }, '·'),
+              h('span', { className: 'cs-lib-folder-name' }, t('uncategorized')),
+              h('span', { className: 'cs-lib-folder-count' }, spaces.filter((space) => !space.folderId).length)
+            ),
+            renderFolderTree(null, 0),
+            h('button', { type: 'button', className: 'cs-lib-newfolder', onClick: openNewFolder }, '+ ' + t('newFolder'))
+          ),
+          h('section', { className: 'cs-lib-main' },
+            h('div', { className: 'cs-lib-main-head' },
+              h('div', null,
+                h('div', { className: 'cs-lib-main-title' }, selectedName),
+                h('div', { className: 'cs-lib-main-sub' }, visibleSpaces.length + ' ' + t('spaces'))
+              ),
+              h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, '+ ' + t('newSpace'))
+            ),
+            visibleSpaces.length === 0
+              ? h('div', { className: 'cs-lib-empty' },
+                  h('div', { className: 'cs-lib-empty-title' }, t('emptyLibrary')),
+                  h('div', { className: 'cs-lib-empty-text' }, t('emptyLibraryHint')),
+                  h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, t('newSpace'))
+                )
+              : h('div', { className: 'cs-lib-spaces' }, visibleSpaces.map(renderSpaceCard))
+          )
+        ),
+        newSpaceOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setNewSpaceOpen(false) },
+          h('div', { className: 'cs-lib-modal', onClick: (event) => event.stopPropagation() },
+            h('div', { className: 'cs-lib-modal-title' }, t('newSpace')),
+            h('label', { className: 'cs-lib-field' },
+              h('span', null, t('titleLabel')),
+              h('input', { className: 'cs-lib-input', value: newSpaceTitle, autoFocus: true, placeholder: t('untitledSpace'), onChange: (event) => setNewSpaceTitle(event.target.value) })
+            ),
+            h('div', { className: 'cs-lib-field' },
+              h('span', null, t('layoutLabel')),
+              h('div', { className: 'cs-lib-layout-choice' },
+                h('button', { type: 'button', className: cx('cs-lib-layout-option', newSpaceLayout === 'vertical' ? 'cs-lib-layout-active' : ''), onClick: () => setNewSpaceLayout('vertical') }, t('layoutVertical')),
+                h('button', { type: 'button', className: cx('cs-lib-layout-option', newSpaceLayout === 'horizontal' ? 'cs-lib-layout-active' : ''), onClick: () => setNewSpaceLayout('horizontal') }, t('layoutHorizontal'))
+              )
+            ),
+            h('label', { className: 'cs-lib-field' },
+              h('span', null, t('folderLabel')),
+              h('select', { className: 'cs-lib-input', value: newSpaceFolder, onChange: (event) => setNewSpaceFolder(event.target.value) }, folderOptions(newSpaceFolder, t('uncategorized')))
+            ),
+            h('div', { className: 'cs-lib-modal-actions' },
+              h('button', { type: 'button', className: 'cs-btn', onClick: () => setNewSpaceOpen(false) }, t('cancel')),
+              h('button', { type: 'button', className: 'cs-btn cs-btn-primary', disabled: busy, onClick: createSpace }, t('create'))
+            )
+          )
+        ) : null,
+        newFolderOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setNewFolderOpen(false) },
+          h('div', { className: 'cs-lib-modal', onClick: (event) => event.stopPropagation() },
+            h('div', { className: 'cs-lib-modal-title' }, t('newFolder')),
+            h('label', { className: 'cs-lib-field' },
+              h('span', null, t('folderName')),
+              h('input', { className: 'cs-lib-input', value: newFolderName, autoFocus: true, onChange: (event) => setNewFolderName(event.target.value) })
+            ),
+            h('label', { className: 'cs-lib-field' },
+              h('span', null, t('parentFolder')),
+              h('select', { className: 'cs-lib-input', value: newFolderParent, onChange: (event) => setNewFolderParent(event.target.value) }, folderOptions(newFolderParent, t('rootFolder')))
+            ),
+            h('div', { className: 'cs-lib-modal-actions' },
+              h('button', { type: 'button', className: 'cs-btn', onClick: () => setNewFolderOpen(false) }, t('cancel')),
+              h('button', { type: 'button', className: 'cs-btn cs-btn-primary', disabled: busy, onClick: createFolder }, t('create'))
+            )
+          )
+        ) : null,
+        renameTarget ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setRenameTarget(null) },
+          h('div', { className: 'cs-lib-modal', onClick: (event) => event.stopPropagation() },
+            h('div', { className: 'cs-lib-modal-title' }, t('rename')),
+            h('label', { className: 'cs-lib-field' },
+              h('span', null, renameTarget.kind === 'folder' ? t('folderName') : t('titleLabel')),
+              h('input', { className: 'cs-lib-input', value: renameValue, autoFocus: true, onChange: (event) => setRenameValue(event.target.value) })
+            ),
+            h('div', { className: 'cs-lib-modal-actions' },
+              h('button', { type: 'button', className: 'cs-btn', onClick: () => setRenameTarget(null) }, t('cancel')),
+              h('button', { type: 'button', className: 'cs-btn cs-btn-primary', disabled: busy, onClick: saveRename }, t('save'))
+            )
+          )
+        ) : null
+      )
+    }
+
+
+    function ChatSpacePanel({ tr, t: slotT, onBackToConversation, spaceId, onBackToLibrary }) {
       const t = typeof tr === 'function' ? tr : typeof slotT === 'function' ? slotT : (key) => key
       const [space, setSpace] = useState(null)
       const [model, setModel] = useState(null)
@@ -1209,7 +1706,7 @@ window.__ModuleLoader__.load({
           const response = await fetch(API + '/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ space: spaceRef.current }),
+            body: JSON.stringify({ space: { ...spaceRef.current, id: spaceId || spaceRef.current.id }, spaceId: spaceId || spaceRef.current.id }),
           })
           if (!response.ok) throw new Error('HTTP ' + response.status)
           setSaveState('saved')
@@ -1228,7 +1725,7 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         let alive = true
-        fetch(API + '/space', { headers: { Accept: 'application/json' } })
+        fetch(API + '/space?id=' + encodeURIComponent(spaceId || 'default'), { headers: { Accept: 'application/json' } })
           .then((response) => response.json().then((body) => ({ response, body })))
           .then(({ response, body }) => {
             if (!alive) return
@@ -1264,7 +1761,7 @@ window.__ModuleLoader__.load({
         return () => {
           alive = false
         }
-      }, [])
+      }, [spaceId])
 
       useEffect(() => {
         writeJsonStorage(DRAFT_KEY, draft)
@@ -3036,13 +3533,16 @@ window.__ModuleLoader__.load({
         h('div', { className: 'cs-topbar' },
           h('div', { className: 'cs-title-wrap' },
             h('div', { className: 'cs-title' }, t('title')),
-            h('div', { className: 'cs-subtitle' }, t('subtitle'))
+            h('div', { className: 'cs-subtitle' }, space ? space.title : t('subtitle'))
           ),
           h('div', { className: 'cs-top-actions' },
             h('span', { className: 'cs-model', title: model ? `${model.provider} / ${model.model}` : '' }, model ? `${t('model')}: ${model.model}` : t('noModel')),
             h('span', { className: cx('cs-save', saveState === 'error' ? 'cs-save-error' : '') },
               saveState === 'saving' ? t('saving') : saveState === 'saved' ? t('saved') : saveState === 'error' ? t('saveError') : ''
             ),
+            typeof onBackToLibrary === 'function'
+              ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToLibrary }, t('library'))
+              : null,
             h('button', { type: 'button', className: 'cs-btn', disabled: undoCount === 0, onClick: undo }, t('undo')),
             h('button', {
               type: 'button',
@@ -3070,6 +3570,12 @@ window.__ModuleLoader__.load({
           onPointerCancel: endPan,
         },
           h('div', {
+            className: cx('cs-main-guide', layoutMode === 'horizontal' ? 'cs-main-guide-h' : 'cs-main-guide-v'),
+            style: layoutMode === 'horizontal'
+              ? { top: view.y + (TOP_PAD + MAIN_H / 2) * view.zoom }
+              : { left: view.x + (MAIN_W / 2) * view.zoom },
+          }),
+          h('div', {
             className: 'cs-world',
             style: {
               width: bounds.width,
@@ -3077,25 +3583,7 @@ window.__ModuleLoader__.load({
               transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`,
             },
           },
-                        h('div', {
-              className: cx('cs-main-guide', layoutMode === 'horizontal' ? 'cs-main-guide-h' : 'cs-main-guide-v'),
-              style: layoutMode === 'horizontal'
-                ? {
-                    top: TOP_PAD + MAIN_H / 2 - 1.5 / view.zoom,
-                    left: 0,
-                    width: bounds.width,
-                    height: 3 / view.zoom,
-                    backgroundImage: 'repeating-linear-gradient(to right, var(--cs-accent) 0 ' + (14 / view.zoom) + 'px, transparent ' + (14 / view.zoom) + 'px ' + (30 / view.zoom) + 'px)',
-                  }
-                : {
-                    left: MAIN_W / 2 - 1.5 / view.zoom,
-                    top: 0,
-                    width: 3 / view.zoom,
-                    height: bounds.height,
-                    backgroundImage: 'repeating-linear-gradient(to bottom, var(--cs-accent) 0 ' + (14 / view.zoom) + 'px, transparent ' + (14 / view.zoom) + 'px ' + (30 / view.zoom) + 'px)',
-                  },
-            }),
-            renderLinks(),
+                        renderLinks(),
             renderMain(),
             renderBranches()
           ),
@@ -3155,7 +3643,7 @@ window.__ModuleLoader__.load({
             )
           )
         }
-        return h(ChatSpacePanel, this.props)
+        return h(ChatSpaceRoot, this.props)
       }
     }
 
