@@ -36,7 +36,8 @@ window.__ModuleLoader__.load({
     const zh = {
       panel: '聊天空间',
       library: '空间库',
-      libraryTitle: '聊天空间',
+      backToLibrary: '返回空间库',
+      libraryTitle: 'Mica空间',
       librarySubtitle: '新建一个主题，旧的会留在空间库里',
       newSpace: '新建空间',
       newFolder: '新建文件夹',
@@ -146,7 +147,8 @@ window.__ModuleLoader__.load({
     const en = {
       panel: 'Chat Space',
       library: 'Library',
-      libraryTitle: 'Chat Space',
+      backToLibrary: 'Back to library',
+      libraryTitle: 'Mica Space',
       librarySubtitle: 'Start a new topic; old canvases stay in the library',
       newSpace: 'New space',
       newFolder: 'New folder',
@@ -264,6 +266,8 @@ window.__ModuleLoader__.load({
 .cs-error-screen strong { color: var(--cs-text); font-size: 15px; }
 .cs-topbar { flex-shrink: 0; height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 18px; border-bottom: 1px solid var(--cs-border); background: var(--cs-panel); }
 .cs-title-wrap { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cs-title-brand { min-width: 0; display: flex; align-items: center; gap: 10px; }
+.cs-logo-mark { flex-shrink: 0; border-radius: 8px; }
 .cs-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
 .cs-subtitle { font-size: 11px; color: var(--cs-muted); line-height: 1.3; }
 .cs-top-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -1042,6 +1046,25 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function MicaLogo({ size }) {
+      const dimension = size || 28
+      return h('svg', {
+        width: dimension,
+        height: dimension,
+        viewBox: '0 0 64 64',
+        className: 'cs-logo-mark',
+        'aria-hidden': true,
+      },
+        h('rect', { width: 64, height: 64, rx: 14, fill: '#2f4bd8' }),
+        h('path', { d: 'M20 16v32', fill: 'none', stroke: '#ffffff', strokeWidth: 4, strokeLinecap: 'round' }),
+        h('circle', { cx: 20, cy: 18, r: 5, fill: '#ffffff' }),
+        h('circle', { cx: 20, cy: 32, r: 5, fill: '#ffffff' }),
+        h('circle', { cx: 20, cy: 46, r: 5, fill: '#ffffff' }),
+        h('path', { d: 'M20 32h12a8 8 0 0 1 8 8v8', fill: 'none', stroke: '#a9bcff', strokeWidth: 4, strokeLinecap: 'round' }),
+        h('circle', { cx: 40, cy: 50, r: 5, fill: '#a9bcff' })
+      )
+    }
+
     function Composer({ t, placeholder, onSend, busy, autoFocus, storageKey }) {
       const [value, setValue] = useState(() => readTextStorage(storageKey))
       useEffect(() => {
@@ -1509,9 +1532,12 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'cs-root cs-library' },
         h('style', null, CSS),
         h('div', { className: 'cs-lib-header' },
-          h('div', { className: 'cs-lib-heading' },
-            h('div', { className: 'cs-title' }, t('libraryTitle')),
-            h('div', { className: 'cs-subtitle' }, t('librarySubtitle'))
+          h('div', { className: 'cs-title-brand' },
+            h(MicaLogo, { size: 28 }),
+            h('div', { className: 'cs-lib-heading' },
+              h('div', { className: 'cs-title' }, t('libraryTitle')),
+              h('div', { className: 'cs-subtitle' }, t('librarySubtitle'))
+            )
           ),
           h('div', { className: 'cs-top-actions' },
             h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, t('newSpace')),
@@ -1667,6 +1693,7 @@ window.__ModuleLoader__.load({
       const panRef = useRef(null)
       const marqueeRef = useRef(null)
       const fitViewRef = useRef(null)
+      const alignedSpaceRef = useRef('')
       const highlightTimerRef = useRef(null)
       const draftQuestionRef = useRef(null)
       const suppressSelectionClearRef = useRef(false)
@@ -1764,6 +1791,38 @@ window.__ModuleLoader__.load({
           alive = false
         }
       }, [spaceId])
+
+      useEffect(() => {
+        if (loadState !== 'ready' || !spaceRef.current) return
+        if (alignedSpaceRef.current === spaceId) return
+        const element = viewportRef.current
+        if (!element) return
+        const width = element.clientWidth
+        const height = element.clientHeight
+        if (!width || !height) return
+        const current = spaceRef.current
+        const currentView = current.view || { x: 120, y: 120, zoom: 1 }
+        const zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentView.zoom || 1))
+        let x = currentView.x
+        let y = currentView.y
+        if (current.layoutMode === 'horizontal') {
+          const axisY = TOP_PAD + MAIN_H / 2
+          y = height / 2 - axisY * zoom
+          const guideY = y + axisY * zoom
+          const dotY = 12 + Math.round((guideY - 12) / 24) * 24
+          y += dotY - guideY
+        } else {
+          const axisX = MAIN_W / 2
+          x = width / 2 - axisX * zoom
+          const guideX = x + axisX * zoom
+          const dotX = 12 + Math.round((guideX - 12) / 24) * 24
+          x += dotX - guideX
+        }
+        alignedSpaceRef.current = spaceId
+        if (Math.abs(x - currentView.x) < 0.1 && Math.abs(y - currentView.y) < 0.1) return
+        commit((previous) => ({ ...previous, view: { ...currentView, x, y } }))
+        saveSoon(500)
+      }, [loadState, spaceId, commit, saveSoon])
 
       useEffect(() => {
         writeJsonStorage(DRAFT_KEY, draft)
@@ -3536,9 +3595,12 @@ window.__ModuleLoader__.load({
       },
         h('style', null, CSS),
         h('div', { className: 'cs-topbar' },
-          h('div', { className: 'cs-title-wrap' },
-            h('div', { className: 'cs-title' }, t('title')),
-            h('div', { className: 'cs-subtitle' }, space ? space.title : t('subtitle'))
+          h('div', { className: 'cs-title-brand' },
+            h(MicaLogo, { size: 28 }),
+            h('div', { className: 'cs-title-wrap' },
+              h('div', { className: 'cs-title' }, t('title')),
+              h('div', { className: 'cs-subtitle' }, space ? space.title : t('subtitle'))
+            )
           ),
           h('div', { className: 'cs-top-actions' },
             h('span', { className: 'cs-model', title: model ? `${model.provider} / ${model.model}` : '' }, model ? `${t('model')}: ${model.model}` : t('noModel')),
@@ -3550,11 +3612,11 @@ window.__ModuleLoader__.load({
 
             h('button', { type: 'button', className: 'cs-btn', onClick: focusMainLine }, t('focusMain')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setLayersOpen(true) }, t('layers')),
-            typeof onBackToLibrary === 'function'
-              ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToLibrary }, t('library'))
-              : null,
             typeof onBackToConversation === 'function'
               ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToConversation }, t('backToConversation'))
+              : null,
+            typeof onBackToLibrary === 'function'
+              ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToLibrary }, t('backToLibrary'))
               : null
           )
         ),
