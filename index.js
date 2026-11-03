@@ -8,7 +8,7 @@
 // The old single .chat-space/space.json is migrated to the "default" space
 // the first time the library is read.
 
-import { copyFile, mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 const API_ROOT = '/chat-space/api'
@@ -74,7 +74,14 @@ export function apply(ctx) {
     } catch (error) {
       if (error && error.code !== 'ENOENT') throw error
     }
-    await writeFile(file, JSON.stringify(value, null, 2), 'utf8')
+    const temp = file + '.tmp-' + process.pid + '-' + Date.now()
+    await writeFile(temp, JSON.stringify(value, null, 2), 'utf8')
+    try {
+      await rename(temp, file)
+    } catch (_error) {
+      try { await unlink(file) } catch (unlinkError) { if (unlinkError && unlinkError.code !== 'ENOENT') throw unlinkError }
+      await rename(temp, file)
+    }
   }
 
   const normalizeLibrary = (raw) => {
@@ -538,6 +545,16 @@ async function handleChat(ctx, req, res) {
 
   const system = buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest, mainDigest, branchId })
   const attachments = Array.isArray(body?.attachments) ? body.attachments.slice(0, 8) : []
+  if (attachments.some((item) => item && item.kind === 'image')) {
+    try {
+      const info = await ctx.llm.resolveModelInfo(provider, model)
+      if (Array.isArray(info?.inputModalities) && info.inputModalities.indexOf('image') < 0) {
+        return sendJson(res, 400, { ok: false, error: '当前模型不支持图片输入，请先在设置里切换到支持视觉的模型。' })
+      }
+    } catch (_error) {
+      // Capability lookup is advisory; let the provider decide.
+    }
+  }
   const messages = buildMessages({ history, question, provider, model, attachments })
 
   const controller = new AbortController()

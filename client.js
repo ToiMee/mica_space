@@ -40,6 +40,11 @@ window.__ModuleLoader__.load({
       libraryTitle: 'Mica空间',
       librarySubtitle: 'Mica Space - 让一个话题长成可回溯的对话地图',
       newSpace: '新建空间',
+      searchSpaces: '搜索空间',
+      searchResults: '搜索结果',
+      noSearchResults: '没有匹配的空间',
+      noSearchResultsHint: '换个关键词，或清空搜索。',
+      export: '导出',
       newFolder: '新建文件夹',
       allSpaces: '全部空间',
       uncategorized: '未分类',
@@ -165,6 +170,11 @@ window.__ModuleLoader__.load({
       libraryTitle: 'Mica Space',
       librarySubtitle: 'Mica Space - Grow a topic into a traceable conversation map',
       newSpace: 'New space',
+      searchSpaces: 'Search spaces',
+      searchResults: 'Search results',
+      noSearchResults: 'No matching spaces',
+      noSearchResultsHint: 'Try another keyword or clear the search.',
+      export: 'Export',
       newFolder: 'New folder',
       allSpaces: 'All spaces',
       uncategorized: 'Uncategorized',
@@ -459,6 +469,8 @@ window.__ModuleLoader__.load({
 .cs-library { background: var(--cs-bg); }
 .cs-lib-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--cs-border); flex-shrink: 0; }
 .cs-lib-heading { min-width: 0; }
+.cs-lib-search { width: 180px; height: 30px; box-sizing: border-box; padding: 0 9px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 12px; outline: none; }
+.cs-lib-search:focus { border-color: var(--cs-accent); }
 .cs-lib-body { flex: 1; min-height: 0; display: flex; }
 .cs-lib-side { width: 230px; flex-shrink: 0; padding: 12px 8px; border-right: 1px solid var(--cs-border); overflow: auto; }
 .cs-lib-side-title { padding: 0 10px 8px; color: var(--cs-muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
@@ -1517,6 +1529,37 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function spaceToMarkdown(space) {
+      const title = String(space.title || 'Mica Space')
+      const lines = ['# ' + title, '']
+      lines.push('## ' + 'Main line')
+      const mainTurns = Array.isArray(space.main && space.main.turns) ? space.main.turns : []
+      mainTurns.forEach((turn, index) => {
+        lines.push('')
+        lines.push('### M' + (index + 1) + ' · ' + String(turn.question || ''))
+        lines.push('')
+        lines.push(String(turn.answer || ''))
+      })
+      const branches = Array.isArray(space.branches) ? space.branches : []
+      branches.forEach((branch, index) => {
+        lines.push('')
+        lines.push('## Branch B' + (index + 1))
+        if (branch.anchorText) {
+          lines.push('')
+          lines.push('> ' + String(branch.anchorText).replace(/\n/g, '\n> '))
+        }
+        if (branch.brief) lines.push('', String(branch.brief))
+        const turns = Array.isArray(branch.turns) ? branch.turns : []
+        turns.forEach((turn, turnIndex) => {
+          lines.push('')
+          lines.push('### B' + (index + 1) + '.' + (turnIndex + 1) + ' · ' + String(turn.question || ''))
+          lines.push('')
+          lines.push(String(turn.answer || ''))
+        })
+      })
+      return lines.join('\n')
+    }
+
     function ChatSpaceRoot({ tr, t: slotT, onBackToConversation }) {
       const t = typeof tr === 'function' ? tr : typeof slotT === 'function' ? slotT : (key) => key
       const [library, setLibrary] = useState(null)
@@ -1524,6 +1567,7 @@ window.__ModuleLoader__.load({
       const [loadError, setLoadError] = useState('')
       const [activeId, setActiveId] = useState(() => readTextStorage(LAST_SPACE_KEY) || null)
       const [selectedFolder, setSelectedFolder] = useState('all')
+      const [search, setSearch] = useState('')
       const [newSpaceOpen, setNewSpaceOpen] = useState(false)
       const [newSpaceTitle, setNewSpaceTitle] = useState('')
       const [newSpaceLayout, setNewSpaceLayout] = useState('vertical')
@@ -1620,19 +1664,26 @@ window.__ModuleLoader__.load({
       const folderSpaceCount = (folderId) => spaces.filter((space) => (
         space.folderId === folderId || isDescendantFolder(folderById.get(space.folderId), folderId)
       )).length
-      const selectedName = selectedFolder === 'all'
-        ? t('allSpaces')
-        : selectedFolder === 'none'
-          ? t('uncategorized')
-          : (folderById.get(selectedFolder) && folderById.get(selectedFolder).name) || t('allSpaces')
+      const searchActive = Boolean(search.trim())
+      const query = search.trim().toLowerCase()
+      const selectedName = searchActive
+        ? t('searchResults')
+        : selectedFolder === 'all'
+          ? t('allSpaces')
+          : selectedFolder === 'none'
+            ? t('uncategorized')
+            : (folderById.get(selectedFolder) && folderById.get(selectedFolder).name) || t('allSpaces')
       const visibleSpaces = spaces
         .filter((space) => {
+          if (searchActive) {
+            return [space.title, space.firstSummary, space.lastQuestion].some((value) => String(value || '').toLowerCase().includes(query))
+          }
           if (selectedFolder === 'all') return true
           if (selectedFolder === 'none') return !space.folderId
           return space.folderId === selectedFolder
         })
         .sort((left, right) => (right.updatedAt || 0) - (left.updatedAt || 0))
-      const visibleFolders = selectedFolder !== 'all' && selectedFolder !== 'none'
+      const visibleFolders = !searchActive && selectedFolder !== 'all' && selectedFolder !== 'none'
         ? childrenOf(selectedFolder)
         : []
       const formatDate = (value) => {
@@ -1710,6 +1761,22 @@ window.__ModuleLoader__.load({
         setRenameValue('')
       })
 
+      const exportSpace = (space) => run(async () => {
+        const response = await fetch(API + '/space?id=' + encodeURIComponent(space.id), { headers: { Accept: 'application/json' } })
+        const body = await response.json()
+        if (!response.ok || !body || body.ok === false || !body.space) throw new Error(body && body.error ? body.error : '导出失败')
+        const markdown = spaceToMarkdown(body.space)
+        const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = String(body.space.title || 'Mica Space').replace(/[\\/:*?"<>|]/g, '_') + '.md'
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 1000)
+      })
+
       const openNewSpace = () => {
         setNewSpaceTitle('')
         setNewSpaceLayout('vertical')
@@ -1784,6 +1851,7 @@ window.__ModuleLoader__.load({
               onClick: (event) => event.stopPropagation(),
               onChange: (event) => { event.stopPropagation(); moveSpace(space, event.target.value) },
             }, folderOptions(space.folderId || '', t('uncategorized'))),
+            h('button', { type: 'button', className: 'cs-lib-mini', onClick: (event) => { event.stopPropagation(); exportSpace(space) } }, t('export')),
             h('button', { type: 'button', className: 'cs-lib-mini', onClick: (event) => { event.stopPropagation(); startRename('space', space.id, space.title) } }, t('rename')),
             h('button', { type: 'button', className: 'cs-lib-mini cs-lib-mini-danger', onClick: (event) => { event.stopPropagation(); deleteSpace(space) } }, t('delete'))
           )
@@ -1834,6 +1902,13 @@ window.__ModuleLoader__.load({
             )
           ),
           h('div', { className: 'cs-top-actions' },
+            h('input', {
+              className: 'cs-lib-search',
+              type: 'search',
+              value: search,
+              placeholder: t('searchSpaces'),
+              onChange: (event) => setSearch(event.target.value),
+            }),
             h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, t('newSpace')),
           )
         ),
@@ -1896,8 +1971,8 @@ window.__ModuleLoader__.load({
               : null,
             visibleSpaces.length === 0 && visibleFolders.length === 0
               ? h('div', { className: 'cs-lib-empty' },
-                  h('div', { className: 'cs-lib-empty-title' }, t('emptyLibrary')),
-                  h('div', { className: 'cs-lib-empty-text' }, t('emptyLibraryHint')),
+                  h('div', { className: 'cs-lib-empty-title' }, searchActive ? t('noSearchResults') : t('emptyLibrary')),
+                  h('div', { className: 'cs-lib-empty-text' }, searchActive ? t('noSearchResultsHint') : t('emptyLibraryHint')),
                   h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, t('newSpace'))
                 )
               : null
