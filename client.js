@@ -138,6 +138,7 @@ window.__ModuleLoader__.load({
       focusMain: '回归主线',
       layoutVertical: '竖向布局',
       layoutHorizontal: '横向布局',
+      toggleLayout: '切换横竖',
       verticalShort: '竖',
       horizontalShort: '横',
       switchLayout: '切换竖向/横向布局',
@@ -304,6 +305,7 @@ window.__ModuleLoader__.load({
       focusMain: 'Back to main line',
       layoutVertical: 'Vertical layout',
       layoutHorizontal: 'Horizontal layout',
+      toggleLayout: 'Toggle layout',
       verticalShort: 'V',
       horizontalShort: 'H',
       switchLayout: 'Switch layout direction',
@@ -636,7 +638,12 @@ window.__ModuleLoader__.load({
 .cs-todo-text { color: var(--cs-accent); font-size: 9px; }
 .cs-todo input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .cs-todo-box { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border: 1.5px solid var(--cs-border-strong); border-radius: 3px; color: #fff; font-size: 10px; line-height: 1; }
-.cs-todo-on .cs-todo-box { background: var(--cs-card-accent, var(--cs-accent)); border-color: var(--cs-card-accent, var(--cs-accent)); }
+.cs-todo-on .cs-todo-box { background: #e8b84a; border-color: #e8b84a; color: #1d1a12; font-weight: 800; }
+.cs-todo-on .cs-todo-text { color: #e8b84a; }
+.cs-pending-layer { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
+.cs-pending-marker { position: absolute; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; padding: 0; border: 2px solid #fff3c4; border-radius: 50%; background: #e8b84a; color: #241d0c; box-shadow: 0 0 0 3px rgba(232,184,74,.22), 0 7px 18px rgba(0,0,0,.35); transform: translate(-50%,-50%); font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; pointer-events: auto; animation: cs-pending-pulse 1.8s ease-in-out infinite; }
+.cs-pending-marker:hover { transform: translate(-50%,-50%) scale(1.12); }
+@keyframes cs-pending-pulse { 0%,100% { box-shadow: 0 0 0 3px rgba(232,184,74,.22), 0 7px 18px rgba(0,0,0,.35); } 50% { box-shadow: 0 0 0 7px rgba(232,184,74,.10), 0 7px 18px rgba(0,0,0,.35); } }
 .cs-flag { padding: 0 2px; border: 0; background: transparent; color: var(--cs-muted); font-size: 14px; line-height: 1; cursor: pointer; }
 .cs-flag-on { color: #e5484d; }
 .cs-layer-list { display: flex; flex-direction: column; gap: 4px; max-height: min(520px, calc(100vh - 220px)); overflow: auto; }
@@ -1570,7 +1577,7 @@ window.__ModuleLoader__.load({
               'aria-pressed': Boolean(turn.todo),
               onClick: (event) => { event.stopPropagation(); onToggleTodo(!turn.todo) },
             },
-              h('span', { className: 'cs-todo-box' }, turn.todo ? '✓' : ''),
+              h('span', { className: 'cs-todo-box' }, turn.todo ? '!' : ''),
               h('span', { className: 'cs-todo-text' }, t('todo'))
             ),
             h('button', {
@@ -3714,6 +3721,7 @@ window.__ModuleLoader__.load({
         saveSoon(500)
       }
 
+
       const focusMainLine = () => {
         const element = viewportRef.current
         if (!element) return
@@ -4502,6 +4510,51 @@ window.__ModuleLoader__.load({
         )
       }
 
+      const renderPendingMarkers = () => {
+        const viewport = viewportRef.current
+        if (!viewport) return null
+        const width = viewport.clientWidth
+        const height = viewport.clientHeight
+        if (width <= 0 || height <= 0) return null
+        const padding = 24
+        const entries = [
+          ...mainTurns.map((turn) => ({ turn, kind: 'main', branchId: null })),
+          ...branches.flatMap((branch) => branch.turns.map((turn) => ({ turn, kind: 'branch', branchId: branch.id }))),
+        ]
+        const markers = []
+        for (const entry of entries) {
+          if (!entry.turn.todo) continue
+          const rect = turnRects.get(entry.turn.id)
+          if (!rect) continue
+          const left = view.x + rect.x * view.zoom
+          const top = view.y + rect.y * view.zoom
+          const right = left + rect.w * view.zoom
+          const bottom = top + rect.h * view.zoom
+          if (right >= 0 && left <= width && bottom >= 0 && top <= height) continue
+          const cardX = left + (rect.w * view.zoom) / 2
+          const cardY = top + (rect.h * view.zoom) / 2
+          const dx = cardX - width / 2
+          const dy = cardY - height / 2
+          if (dx === 0 && dy === 0) continue
+          const tx = dx === 0 ? Infinity : (width / 2 - padding) / Math.abs(dx)
+          const ty = dy === 0 ? Infinity : (height / 2 - padding) / Math.abs(dy)
+          const scale = Math.min(tx, ty)
+          if (!Number.isFinite(scale)) continue
+          const markerX = Math.max(padding, Math.min(width - padding, width / 2 + dx * scale))
+          const markerY = Math.max(padding, Math.min(height - padding, height / 2 + dy * scale))
+          markers.push(h('button', {
+            key: 'pending-' + entry.turn.id,
+            type: 'button',
+            className: 'cs-pending-marker',
+            style: { left: markerX, top: markerY },
+            title: t('todo') + '：' + truncate(entry.turn.question, 70),
+            onPointerDown: (event) => event.stopPropagation(),
+            onClick: (event) => { event.stopPropagation(); focusTurn(entry.turn.id) },
+          }, '!'))
+        }
+        return markers.length > 0 ? h('div', { className: 'cs-pending-layer' }, markers) : null
+      }
+
       const renderContextMenu = () => {
         if (!contextMenu) return null
         return h('div', {
@@ -4706,6 +4759,12 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'cs-btn', disabled: undoCount === 0, onClick: undo, title: 'Ctrl+Z' }, t('undo')),
 
             h('button', { type: 'button', className: 'cs-btn', onClick: focusMainLine }, t('focusMain')),
+            h('button', {
+              type: 'button',
+              className: 'cs-btn',
+              onClick: toggleLayout,
+              title: t('toggleLayout'),
+            }, layoutMode === 'horizontal' ? t('verticalShort') : t('horizontalShort')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setLayersOpen(true) }, t('layers')),
             typeof onBackToLibrary === 'function'
               ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToLibrary }, t('backToLibrary'))
@@ -4759,6 +4818,7 @@ window.__ModuleLoader__.load({
             renderMain(),
             renderBranches()
           ),
+          renderPendingMarkers(),
           marquee ? h('div', {
             className: 'cs-marquee',
             style: { left: marquee.left, top: marquee.top, width: marquee.width, height: marquee.height },
