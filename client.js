@@ -1835,9 +1835,6 @@ window.__ModuleLoader__.load({
           ),
           h('div', { className: 'cs-top-actions' },
             h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, t('newSpace')),
-            typeof onBackToConversation === 'function'
-              ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToConversation }, t('backToConversation'))
-              : null
           )
         ),
         notice ? h('div', { className: 'cs-lib-notice' }, notice) : null,
