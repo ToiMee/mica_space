@@ -329,8 +329,8 @@ window.__ModuleLoader__.load({
 .cs-resize { position: absolute; right: 2px; bottom: 2px; z-index: 2; width: 16px; height: 16px; cursor: nwse-resize; }
 .cs-resize::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 7px; height: 7px; border-right: 2px solid var(--cs-border-strong); border-bottom: 2px solid var(--cs-border-strong); border-radius: 0 0 2px 0; opacity: .7; }
 .cs-main-guide { position: absolute; z-index: 0; pointer-events: none; opacity: .5; }
-.cs-main-guide-v { width: 0; border-left: 1px dashed color-mix(in srgb, var(--cs-accent) 40%, transparent); }
-.cs-main-guide-h { height: 0; border-top: 1px dashed color-mix(in srgb, var(--cs-accent) 40%, transparent); }
+.cs-main-guide-v { top: 0; width: 0; border-left: 1px dashed color-mix(in srgb, var(--cs-accent) 40%, transparent); }
+.cs-main-guide-h { left: 0; height: 0; border-top: 1px dashed color-mix(in srgb, var(--cs-accent) 40%, transparent); }
 .cs-dot-tip { position: fixed; z-index: 1200; max-width: 300px; padding: 8px 10px; border-radius: 8px; background: #1f2329; color: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,.25); font-size: 12px; line-height: 1.55; pointer-events: none; }
 .cs-bottom-composer { position: absolute; left: 50%; bottom: 18px; z-index: 950; display: flex; flex-direction: column; gap: 6px; width: min(640px, calc(100% - 220px)); transform: translateX(-50%); }
 .cs-bottom-label { align-self: flex-start; padding: 2px 8px; border: 1px solid var(--cs-border); border-radius: 999px; background: var(--cs-panel); color: var(--cs-muted); font-size: 11px; line-height: 1.4; }
