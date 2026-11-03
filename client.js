@@ -55,6 +55,7 @@ window.__ModuleLoader__.load({
       folderName: '文件夹名称',
       folderLabel: '文件夹',
       parentFolder: '上级文件夹',
+      createInFolder: '创建在',
       layoutLabel: '画布方向',
       create: '创建',
       save: '保存',
@@ -177,6 +178,7 @@ window.__ModuleLoader__.load({
       folderName: 'Folder name',
       folderLabel: 'Folder',
       parentFolder: 'Parent folder',
+      createInFolder: 'Create in',
       layoutLabel: 'Canvas direction',
       create: 'Create',
       save: 'Save',
@@ -467,6 +469,13 @@ window.__ModuleLoader__.load({
 .cs-lib-main-actions { display: flex; align-items: center; gap: 8px; }
 .cs-lib-main-title { font-size: 17px; font-weight: 600; }
 .cs-lib-main-sub { margin-top: 3px; color: var(--cs-muted); font-size: 12px; }
+.cs-lib-subfolders { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.cs-lib-subfolder { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 8px 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-panel); color: var(--cs-text); cursor: pointer; font: inherit; font-size: 12px; text-align: left; }
+.cs-lib-subfolder:hover { border-color: var(--cs-accent); }
+.cs-lib-subfolder-icon { flex-shrink: 0; color: var(--cs-muted); }
+.cs-lib-subfolder-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-lib-subfolder-count { flex-shrink: 0; color: var(--cs-muted); font-size: 11px; }
+.cs-lib-fixed-parent { padding: 7px 9px; border: 1px solid var(--cs-border); border-radius: 7px; background: var(--cs-bg); color: var(--cs-muted); font-size: 12px; }
 .cs-lib-spaces { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
 .cs-lib-space-card { display: flex; flex-direction: column; gap: 9px; min-height: 154px; padding: 13px; border: 1px solid var(--cs-border); border-radius: 10px; background: var(--cs-panel); box-shadow: 0 1px 2px rgba(0,0,0,.03); cursor: pointer; transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease; }
 .cs-lib-space-card:hover { border-color: color-mix(in srgb, var(--cs-accent) 55%, var(--cs-border)); box-shadow: var(--cs-shadow); transform: translateY(-1px); }
@@ -1538,6 +1547,17 @@ window.__ModuleLoader__.load({
         return output
       }
       const flatFolders = flatten(null, 0, [])
+      const isDescendantFolder = (folder, ancestorId) => {
+        let current = folder
+        while (current && current.parentId && folderById.has(current.parentId)) {
+          if (current.parentId === ancestorId) return true
+          current = folderById.get(current.parentId)
+        }
+        return false
+      }
+      const folderSpaceCount = (folderId) => spaces.filter((space) => (
+        space.folderId === folderId || isDescendantFolder(folderById.get(space.folderId), folderId)
+      )).length
       const selectedName = selectedFolder === 'all'
         ? t('allSpaces')
         : selectedFolder === 'none'
@@ -1550,6 +1570,9 @@ window.__ModuleLoader__.load({
           return space.folderId === selectedFolder
         })
         .sort((left, right) => (right.updatedAt || 0) - (left.updatedAt || 0))
+      const visibleFolders = selectedFolder !== 'all' && selectedFolder !== 'none'
+        ? childrenOf(selectedFolder)
+        : []
       const formatDate = (value) => {
         const date = new Date(value || Date.now())
         const month = date.getMonth() + 1
@@ -1653,7 +1676,7 @@ window.__ModuleLoader__.load({
         },
           h('span', { className: 'cs-lib-folder-icon' }, '▸'),
           h('span', { className: 'cs-lib-folder-name' }, folder.name),
-          h('span', { className: 'cs-lib-folder-count' }, childCount || ''),
+          h('span', { className: 'cs-lib-folder-count' }, folderSpaceCount(folder.id) || ''),
           h('span', { className: 'cs-lib-folder-actions' },
             h('button', { type: 'button', title: t('rename'), onClick: (event) => { event.stopPropagation(); startRename('folder', folder.id, folder.name) } }, '✎'),
             h('button', { type: 'button', title: t('delete'), onClick: (event) => { event.stopPropagation(); deleteFolder(folder) } }, '×')
@@ -1772,20 +1795,39 @@ window.__ModuleLoader__.load({
             h('div', { className: 'cs-lib-main-head' },
               h('div', null,
                 h('div', { className: 'cs-lib-main-title' }, selectedName),
-                h('div', { className: 'cs-lib-main-sub' }, visibleSpaces.length + ' ' + t('spaces'))
+                h('div', { className: 'cs-lib-main-sub' },
+                  visibleSpaces.length + ' ' + t('spaces') + (visibleFolders.length > 0 ? ' · ' + visibleFolders.length + ' ' + t('folders') : '')
+                )
               ),
               h('div', { className: 'cs-lib-main-actions' },
                 h('button', { type: 'button', className: 'cs-btn', onClick: openNewFolder }, '+ ' + t('newFolder')),
                 h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, '+ ' + t('newSpace'))
               )
             ),
-            visibleSpaces.length === 0
+            visibleFolders.length > 0
+              ? h('div', { className: 'cs-lib-subfolders' },
+                  visibleFolders.map((folder) => h('button', {
+                    key: folder.id,
+                    type: 'button',
+                    className: 'cs-lib-subfolder',
+                    onClick: () => setSelectedFolder(folder.id),
+                  },
+                    h('span', { className: 'cs-lib-subfolder-icon' }, '▸'),
+                    h('span', { className: 'cs-lib-subfolder-name' }, folder.name),
+                    h('span', { className: 'cs-lib-subfolder-count' }, folderSpaceCount(folder.id) + ' ' + t('spaces'))
+                  ))
+                )
+              : null,
+            visibleSpaces.length > 0
+              ? h('div', { className: 'cs-lib-spaces' }, visibleSpaces.map(renderSpaceCard))
+              : null,
+            visibleSpaces.length === 0 && visibleFolders.length === 0
               ? h('div', { className: 'cs-lib-empty' },
                   h('div', { className: 'cs-lib-empty-title' }, t('emptyLibrary')),
                   h('div', { className: 'cs-lib-empty-text' }, t('emptyLibraryHint')),
                   h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, t('newSpace'))
                 )
-              : h('div', { className: 'cs-lib-spaces' }, visibleSpaces.map(renderSpaceCard))
+              : null
           )
         ),
         newSpaceOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setNewSpaceOpen(false) },
@@ -1819,9 +1861,12 @@ window.__ModuleLoader__.load({
               h('span', null, t('folderName')),
               h('input', { className: 'cs-lib-input', value: newFolderName, autoFocus: true, onChange: (event) => setNewFolderName(event.target.value) })
             ),
-            h('label', { className: 'cs-lib-field' },
-              h('span', null, t('parentFolder')),
-              h('select', { className: 'cs-lib-input', value: newFolderParent, onChange: (event) => setNewFolderParent(event.target.value) }, folderOptions(newFolderParent, t('rootFolder')))
+            h('div', { className: 'cs-lib-fixed-parent' },
+              t('createInFolder') + '：' + (
+                selectedFolder !== 'all' && selectedFolder !== 'none'
+                  ? ((folderById.get(selectedFolder) && folderById.get(selectedFolder).name) || t('rootFolder'))
+                  : t('rootFolder')
+              )
             ),
             h('div', { className: 'cs-lib-modal-actions' },
               h('button', { type: 'button', className: 'cs-btn', onClick: () => setNewFolderOpen(false) }, t('cancel')),
@@ -3899,12 +3944,14 @@ window.__ModuleLoader__.load({
           onPointerUp: endPan,
           onPointerCancel: endPan,
         },
-          h('div', {
-            className: cx('cs-main-guide', layoutMode === 'horizontal' ? 'cs-main-guide-h' : 'cs-main-guide-v'),
-            style: layoutMode === 'horizontal'
-              ? { top: view.y + (TOP_PAD + MAIN_H / 2) * view.zoom }
-              : { left: view.x + (MAIN_W / 2) * view.zoom },
-          }),
+          view.zoom >= 0.25
+            ? h('div', {
+                className: cx('cs-main-guide', layoutMode === 'horizontal' ? 'cs-main-guide-h' : 'cs-main-guide-v'),
+                style: layoutMode === 'horizontal'
+                  ? { top: view.y + (TOP_PAD + MAIN_H / 2) * view.zoom }
+                  : { left: view.x + (MAIN_W / 2) * view.zoom },
+              })
+            : null,
           h('div', {
             className: 'cs-world',
             style: {
