@@ -63,9 +63,10 @@ test('puts main memory before branch memory and includes retrieval', () => {
     mainDigest: [],
     branchId: 'b1',
     memory: { main: 'MAIN-MEMORY', branches: { b1: 'BRANCH-MEMORY' } },
-    retrieved: [{ kind: 'main', question: 'old question', summary: 'old answer' }],
+    retrieved: [{ kind: 'main', question: 'old question', summary: 'old answer', sourceTurnIds: ['turn-old'] }],
   })
   assert.ok(prompt.indexOf('MAIN-MEMORY') < prompt.indexOf('BRANCH-MEMORY'))
   assert.match(prompt, /old question/)
   assert.match(prompt, /old answer/)
+  assert.match(prompt, /turn-old/)
 })

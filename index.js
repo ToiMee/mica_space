@@ -872,6 +872,7 @@ async function handleChat(ctx, req, res) {
     kind: item && item.kind === 'branch' ? 'branch' : 'main',
     question: stringOf(item && item.question).slice(0, 220),
     summary: stringOf(item && item.summary).slice(0, 420),
+    sourceTurnIds: Array.isArray(item && item.sourceTurnIds) ? item.sourceTurnIds.slice(0, 4).map((id) => stringOf(id).slice(0, 80)) : [],
   })) : []
   const system = buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest, mainDigest, branchId, memory, retrieved })
   const attachments = Array.isArray(body?.attachments) ? body.attachments.slice(0, 8) : []
@@ -1091,8 +1092,8 @@ function buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest,
     lines.push('', '当前分支记忆（较主线压缩得更短）：', memory.branches[branchId])
   }
   if (retrieved.length > 0) {
-    const hits = retrieved.map((item, index) => '【相关历史 ' + (index + 1) + ' · ' + (item.kind === 'main' ? '主线' : '分支') + '】\n问：' + item.question + '\n摘要：' + item.summary).join('\n\n')
-    lines.push('', '检索到的相关历史片段（只用于补充，不要假装这是全部历史）：', hits)
+    const hits = retrieved.map((item, index) => '【相关历史 ' + (index + 1) + ' · ' + (item.kind === 'main' ? '主线' : '分支') + '】\n问：' + item.question + '\n摘要：' + item.summary + (item.sourceTurnIds && item.sourceTurnIds.length > 0 ? '\n来源：' + item.sourceTurnIds.join(', ') : '')).join('\n\n')
+    lines.push('', '检索到的相关历史片段（只用于补充，不要假装这是全部历史；需要指出来源时使用来源 ID，不要编造来源）：', hits)
   }
 
   const otherBranches = branchDigest.filter((branch) => branch && branch.id !== branchId)

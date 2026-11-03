@@ -973,26 +973,115 @@ window.__ModuleLoader__.load({
       return selected.join('\n').slice(0, maxChars)
     }
 
+    const MEMORY_ITEMS_LIMIT = 120
+    const MEMORY_SUPPRESSED_LIMIT = 500
+
+    function memoryNormalize(value) {
+      return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 120)
+    }
+
+    function memoryTurnText(turn) {
+      return stringOf(turn.summary) || stringOf(turn.answer).slice(0, 240) || stringOf(turn.question)
+    }
+
+    function memoryItemScore(item) {
+      const ageDays = Math.max(0, (Date.now() - finite(item.createdAt, Date.now())) / 86400000)
+      const recency = 1 / (1 + ageDays / 45)
+      const usage = item.lastUsedAt ? 1 / (1 + Math.max(0, Date.now() - item.lastUsedAt) / 86400000 / 30) : 0
+      return (item.pinned ? 1000 : 0) + (finite(item.importance, 0.5) * 100) + recency * 10 + usage * 5
+    }
+
     function buildContextMemory(space) {
-      if (!space) return { version: 1, main: '', branches: {}, updatedAt: Date.now() }
+      if (!space) return { version: 2, main: '', branches: {}, items: [], suppressed: [], updatedAt: Date.now() }
+      const previous = space.memory && typeof space.memory === 'object' ? space.memory : {}
+      const existingItems = Array.isArray(previous.items) ? previous.items : []
+      const byTurn = new Map()
+      for (const item of existingItems) {
+        if (item && typeof item.turnId === 'string') byTurn.set(item.turnId, item)
+      }
+      const suppressed = new Set(Array.isArray(previous.suppressed) ? previous.suppressed : [])
       const mainTurns = Array.isArray(space.main && space.main.turns) ? space.main.turns : []
+      const branches = Array.isArray(space.branches) ? space.branches : []
+      const entries = [
+        ...mainTurns.map((turn, index) => ({ turn, kind: 'main', branchId: null, index })),
+        ...branches.flatMap((branch) => (Array.isArray(branch.turns) ? branch.turns : []).map((turn, index) => ({ turn, kind: 'branch', branchId: branch.id, index }))),
+      ]
+      const rawItems = []
+      for (const entry of entries) {
+        const turn = entry.turn
+        if (!turn || !turn.id) continue
+        const prior = byTurn.get(turn.id)
+        if (!prior && suppressed.has(turn.id)) continue
+        const text = memoryTurnText(turn)
+        const pinned = Boolean(prior && prior.pinned) || (entry.kind === 'main' && entry.index < 3) || Boolean(turn.flag || turn.todo)
+        const importance = Math.max(
+          finite(prior && prior.importance, entry.kind === 'main' ? 1 : 0.72),
+          turn.flag ? 0.95 : 0,
+          turn.todo ? 0.85 : 0,
+        )
+        rawItems.push({
+          id: prior && prior.id ? prior.id : 'mem-' + turn.id,
+          turnId: turn.id,
+          kind: entry.kind,
+          branchId: entry.branchId,
+          question: stringOf(turn.question).slice(0, 240),
+          text: text.slice(0, 360),
+          sourceTurnIds: [turn.id],
+          createdAt: finite(prior && prior.createdAt, finite(turn.createdAt, Date.now())),
+          updatedAt: Date.now(),
+          lastUsedAt: finite(prior && prior.lastUsedAt, 0),
+          importance,
+          pinned,
+          status: prior && prior.status ? prior.status : 'active',
+        })
+      }
+
+      const deduped = []
+      const byText = new Map()
+      for (const item of rawItems) {
+        const key = memoryNormalize(item.text)
+        if (!key) continue
+        const existing = byText.get(key)
+        if (!existing) {
+          byText.set(key, item)
+          deduped.push(item)
+          continue
+        }
+        existing.sourceTurnIds = [...new Set([...existing.sourceTurnIds, ...item.sourceTurnIds])]
+        existing.importance = Math.max(existing.importance, item.importance)
+        existing.pinned = existing.pinned || item.pinned
+        existing.createdAt = Math.min(existing.createdAt, item.createdAt)
+        existing.updatedAt = Math.max(existing.updatedAt, item.updatedAt)
+        existing.lastUsedAt = Math.max(existing.lastUsedAt, item.lastUsedAt)
+      }
+
+      let items = deduped
+      if (items.length > MEMORY_ITEMS_LIMIT) {
+        items = [...items].sort((left, right) => memoryItemScore(right) - memoryItemScore(left))
+        const dropped = items.slice(MEMORY_ITEMS_LIMIT)
+        for (const item of dropped) suppressed.add(item.turnId)
+        items = items.slice(0, MEMORY_ITEMS_LIMIT)
+      }
+
       const mainLines = mainTurns.map((turn, index) => {
-        const detail = stringOf(turn.summary) || stringOf(turn.answer).slice(0, 180) || stringOf(turn.question)
+        const detail = memoryTurnText(turn)
         return 'M' + (index + 1) + ' ' + stringOf(turn.question).slice(0, 90) + ' → ' + detail.slice(0, 220)
       })
-      const branches = {}
-      for (const branch of Array.isArray(space.branches) ? space.branches : []) {
+      const branchMemory = {}
+      for (const branch of branches) {
         const turns = Array.isArray(branch.turns) ? branch.turns : []
         const lines = turns.map((turn, index) => {
-          const detail = stringOf(turn.summary) || stringOf(turn.answer).slice(0, 120) || stringOf(turn.question)
+          const detail = memoryTurnText(turn)
           return 'B' + (index + 1) + ' ' + stringOf(turn.question).slice(0, 70) + ' → ' + detail.slice(0, 150)
         })
-        branches[branch.id] = boundedMemory(lines, 1000, 2, 6)
+        branchMemory[branch.id] = boundedMemory(lines, 1000, 2, 6)
       }
       return {
-        version: 1,
+        version: 2,
         main: boundedMemory(mainLines, 3000, 4, 12),
-        branches,
+        branches: branchMemory,
+        items,
+        suppressed: [...suppressed].slice(-MEMORY_SUPPRESSED_LIMIT),
         updatedAt: Date.now(),
       }
     }
@@ -1001,24 +1090,60 @@ window.__ModuleLoader__.load({
       if (!space) return []
       const terms = (String(question || '').toLowerCase().match(/[\p{L}\p{N}_-]{2,}/gu) || []).slice(0, 12)
       if (terms.length === 0) return []
-      const entries = []
-      for (const turn of (Array.isArray(space.main && space.main.turns) ? space.main.turns : [])) {
-        entries.push({ kind: 'main', turn })
+      let items = space.memory && Array.isArray(space.memory.items) ? space.memory.items : []
+      if (items.length === 0) {
+        const mainTurns = Array.isArray(space.main && space.main.turns) ? space.main.turns : []
+        items = mainTurns.map((turn, index) => ({
+          turnId: turn.id,
+          kind: 'main',
+          question: stringOf(turn.question),
+          text: memoryTurnText(turn),
+          sourceTurnIds: [turn.id],
+          createdAt: finite(turn.createdAt, Date.now()),
+          lastUsedAt: 0,
+          importance: 1,
+          pinned: index < 3,
+          status: 'active',
+        }))
+        for (const branch of Array.isArray(space.branches) ? space.branches : []) {
+          for (const turn of (Array.isArray(branch.turns) ? branch.turns : [])) {
+            items.push({
+              turnId: turn.id,
+              kind: 'branch',
+              question: stringOf(turn.question),
+              text: memoryTurnText(turn),
+              sourceTurnIds: [turn.id],
+              createdAt: finite(turn.createdAt, Date.now()),
+              lastUsedAt: 0,
+              importance: 0.72,
+              pinned: false,
+              status: 'active',
+            })
+          }
+        }
       }
-      for (const branch of (Array.isArray(space.branches) ? space.branches : [])) {
-        for (const turn of (Array.isArray(branch.turns) ? branch.turns : [])) entries.push({ kind: 'branch', turn })
-      }
-      return entries.map((entry) => {
-        const text = (stringOf(entry.turn.question) + ' ' + (stringOf(entry.turn.summary) || stringOf(entry.turn.answer).slice(0, 600))).toLowerCase()
-        let score = 0
-        for (const term of terms) if (text.includes(term)) score += 1
-        if (entry.kind === 'main') score += 0.25
-        return { ...entry, score }
-      }).filter((entry) => entry.score > 0).sort((left, right) => right.score - left.score).slice(0, 4).map((entry) => ({
-        kind: entry.kind,
-        question: stringOf(entry.turn.question).slice(0, 220),
-        summary: (stringOf(entry.turn.summary) || stringOf(entry.turn.answer)).slice(0, 420),
-      }))
+      return items
+        .filter((item) => item && item.status !== 'outdated' && item.status !== 'superseded')
+        .map((item) => {
+          const haystack = (stringOf(item.question) + ' ' + stringOf(item.text)).toLowerCase()
+          let overlap = 0
+          for (const term of terms) if (haystack.includes(term)) overlap += 1
+          const ageDays = Math.max(0, (Date.now() - finite(item.createdAt, Date.now())) / 86400000)
+          const recency = 1 / (1 + ageDays / 45)
+          const usedDays = item.lastUsedAt ? Math.max(0, (Date.now() - item.lastUsedAt) / 86400000) : 365
+          const usage = 1 / (1 + usedDays / 30)
+          const score = overlap * 2 + recency + usage * 0.5 + finite(item.importance, 0.5) + (item.kind === 'main' ? 0.25 : 0)
+          return { item, score }
+        })
+        .filter((entry) => entry.score > 0 && entry.item.text)
+        .sort((left, right) => right.score - left.score)
+        .slice(0, 4)
+        .map((entry) => ({
+          kind: entry.item.kind,
+          question: stringOf(entry.item.question).slice(0, 220),
+          summary: stringOf(entry.item.text).slice(0, 420),
+          sourceTurnIds: Array.isArray(entry.item.sourceTurnIds) ? entry.item.sourceTurnIds.slice(0, 4) : [],
+        }))
     }
 
     function branchSide(anchor, first) {
@@ -3226,6 +3351,27 @@ window.__ModuleLoader__.load({
         saveSoon(100)
       }
 
+      const touchRetrievedMemory = (retrieved) => {
+        const ids = new Set((Array.isArray(retrieved) ? retrieved : []).flatMap((item) => (
+          Array.isArray(item && item.sourceTurnIds) ? item.sourceTurnIds : []
+        )))
+        if (ids.size === 0) return
+        commit((previous) => {
+          if (!previous.memory || !Array.isArray(previous.memory.items)) return previous
+          const now = Date.now()
+          return {
+            ...previous,
+            memory: {
+              ...previous.memory,
+              items: previous.memory.items.map((item) => (
+                item && ids.has(item.turnId) ? { ...item, lastUsedAt: now } : item
+              )),
+            },
+          }
+        })
+        saveSoon(250)
+      }
+
       const setBranchTag = (branchId, tag) => {
         pushHistory()
         commit((previous) => ({
@@ -3975,6 +4121,7 @@ window.__ModuleLoader__.load({
           }))
         const memory = buildContextMemory(currentSpace)
         const retrieved = buildRetrieval(currentSpace, question)
+        touchRetrievedMemory(retrieved)
         const payload = {
           kind,
           branchId: targetBranch ? targetBranch.id : null,
