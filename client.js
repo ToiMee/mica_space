@@ -1261,7 +1261,7 @@ window.__ModuleLoader__.load({
       const [library, setLibrary] = useState(null)
       const [loadState, setLoadState] = useState('loading')
       const [loadError, setLoadError] = useState('')
-      const [activeId, setActiveId] = useState(null)
+      const [activeId, setActiveId] = useState(() => readTextStorage(LAST_SPACE_KEY) || null)
       const [selectedFolder, setSelectedFolder] = useState('all')
       const [newSpaceOpen, setNewSpaceOpen] = useState(false)
       const [newSpaceTitle, setNewSpaceTitle] = useState('')
@@ -1281,7 +1281,15 @@ window.__ModuleLoader__.load({
           const response = await fetch(API + '/library', { headers: { Accept: 'application/json' } })
           const body = await response.json()
           if (!response.ok || !body || body.ok === false) throw new Error(body && body.error ? body.error : '读取空间库失败')
-          setLibrary(body.library || { folders: [], spaces: [] })
+          const nextLibrary = body.library || { folders: [], spaces: [] }
+          setLibrary(nextLibrary)
+          setActiveId((current) => {
+            if (current && !(nextLibrary.spaces || []).some((space) => space.id === current)) {
+              writeTextStorage(LAST_SPACE_KEY, '')
+              return null
+            }
+            return current
+          })
           setLoadError('')
           setLoadState('ready')
         } catch (error) {
@@ -1364,7 +1372,10 @@ window.__ModuleLoader__.load({
         h('option', { key: 'none', value: '' }, rootLabel || t('uncategorized')),
         ...flatFolders.map(({ folder, depth }) => h('option', { key: folder.id, value: folder.id }, '—'.repeat(depth) + ' ' + folder.name)),
       ]
-      const openSpace = (id) => setActiveId(id)
+      const openSpace = (id) => {
+        writeTextStorage(LAST_SPACE_KEY, id)
+        setActiveId(id)
+      }
 
       const createSpace = () => run(async () => {
         const data = await post('/space/create', {
@@ -1377,7 +1388,10 @@ window.__ModuleLoader__.load({
         setNewSpaceTitle('')
         setNewSpaceLayout('vertical')
         setNewSpaceFolder('')
-        if (data.space && data.space.id) setActiveId(data.space.id)
+        if (data.space && data.space.id) {
+          writeTextStorage(LAST_SPACE_KEY, data.space.id)
+          setActiveId(data.space.id)
+        }
       })
 
       const createFolder = () => run(async () => {
@@ -1500,6 +1514,7 @@ window.__ModuleLoader__.load({
           onBackToConversation,
           spaceId: activeId,
           onBackToLibrary: () => {
+            writeTextStorage(LAST_SPACE_KEY, '')
             setActiveId(null)
             loadLibrary(true)
           },
@@ -2073,7 +2088,7 @@ window.__ModuleLoader__.load({
           addPort(branch.turns[index].id, 'top')
         }
       }
-      const detail = view.zoom >= 0.55 ? 'full' : view.zoom >= 0.25 ? 'compact' : 'dot'
+      const detail = view.zoom >= 0.25 ? 'full' : 'dot'
       const bounds = layout.bounds
       const renderPorts = (turnId, rect, color, isMain) => {
         if (detail === 'dot') return null
@@ -2283,12 +2298,15 @@ window.__ModuleLoader__.load({
           saveSoon(600)
           return
         }
+        const resizedW = clamp(drag.rect.w + dx, MIN_CARD_W, MAX_CARD_W)
+        const resizedH = clamp(drag.rect.h + dy, MIN_CARD_H, MAX_CARD_H)
+        const keepCenter = drag.mode === 'resize' && drag.kind === 'main'
         const layout = drag.mode === 'resize'
           ? {
-              dx: drag.rect.x - drag.baseX,
-              dy: drag.rect.y - drag.baseY,
-              w: clamp(drag.rect.w + dx, MIN_CARD_W, MAX_CARD_W),
-              h: clamp(drag.rect.h + dy, MIN_CARD_H, MAX_CARD_H),
+              dx: drag.rect.x - drag.baseX + (keepCenter ? (drag.rect.w - resizedW) / 2 : 0),
+              dy: drag.rect.y - drag.baseY + (keepCenter ? (drag.rect.h - resizedH) / 2 : 0),
+              w: resizedW,
+              h: resizedH,
             }
           : {
               dx: drag.rect.x - drag.baseX + dx,
@@ -3214,6 +3232,13 @@ window.__ModuleLoader__.load({
 
       const renderLinks = () => {
         const paths = []
+        const dotMode = view.zoom < 0.25
+        const centerOf = (rect) => ({ x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 })
+        const centerPath = (left, right) => {
+          const a = centerOf(left)
+          const b = centerOf(right)
+          return 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y
+        }
         const allCardRects = [...turnRects.entries()].map(([id, rect]) => ({ id, ...rect }))
         const mainRects = mainTurns.map((turn) => turnRects.get(turn.id)).filter(Boolean)
         for (let index = 1; index < mainRects.length; index += 1) {
@@ -3221,12 +3246,14 @@ window.__ModuleLoader__.load({
             key: 'main-' + index,
             className: 'cs-link-main',
             style: { stroke: MAIN_COLOR, strokeWidth: mainLineWidth },
-            d: curvePorts(
-              mainRects[index - 1],
-              layoutMode === 'horizontal' ? 'right' : 'bottom',
-              mainRects[index],
-              layoutMode === 'horizontal' ? 'left' : 'top'
-            ),
+            d: dotMode
+              ? centerPath(mainRects[index - 1], mainRects[index])
+              : curvePorts(
+                  mainRects[index - 1],
+                  layoutMode === 'horizontal' ? 'right' : 'bottom',
+                  mainRects[index],
+                  layoutMode === 'horizontal' ? 'left' : 'top'
+                ),
           }))
         }
         for (const position of branchPositions) {
@@ -3238,7 +3265,7 @@ window.__ModuleLoader__.load({
             const anchorSide = side === 'left' ? 'right' : side === 'right' ? 'left' : side === 'top' ? 'bottom' : 'top'
             const a = sidePoint(anchor, anchorSide)
             const b = sidePoint(first, side)
-            const d = curvePorts(anchor, anchorSide, first, side)
+            const d = dotMode ? centerPath(anchor, first) : curvePorts(anchor, anchorSide, first, side)
             paths.push(h('path', {
               key: 'edge-' + branch.id,
               className: 'cs-link-branch',
@@ -3254,7 +3281,7 @@ window.__ModuleLoader__.load({
               key: 'spine-' + branch.id + '-' + index,
               className: 'cs-link-branch-spine',
               style: { stroke: position.color, strokeWidth: branchLineWidth },
-              d: curvePorts(a, 'bottom', b, 'top'),
+              d: dotMode ? centerPath(a, b) : curvePorts(a, 'bottom', b, 'top'),
             }))
           }
         }
@@ -3702,6 +3729,7 @@ window.__ModuleLoader__.load({
     }
 
     const ACTIVE_KEY = 'chat-space:active'
+    const LAST_SPACE_KEY = 'chat-space:last-space'
 
     function apply(ctx) {
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'chat-space: dictionaries')
