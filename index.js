@@ -252,6 +252,27 @@ export function apply(ctx) {
     return library
   }
 
+  const duplicateSpace = async (body) => {
+    const id = validId(body.id) ? body.id : ''
+    if (!id) throw new Error('空间 ID 不合法')
+    const sourceSpace = await readJson(spaceFile(id))
+    if (!sourceSpace) throw new Error('空间不存在')
+    const library = await readLibrary()
+    const sourceMeta = library.spaces.find((item) => item.id === id)
+    const newId = makeId('s')
+    const copy = {
+      ...sourceSpace,
+      id: newId,
+      title: String(sourceSpace.title || '未命名空间') + ' 副本',
+      createdAt: Date.now(),
+    }
+    const result = await writeSpaceData(copy, newId)
+    const meta = result.library.spaces.find((item) => item.id === newId)
+    if (meta && sourceMeta) meta.folderId = sourceMeta.folderId
+    await writeJson(libraryFile(), result.library)
+    return { space: result.space, library: result.library }
+  }
+
   const deleteSpace = async (body) => {
     const id = validId(body.id) ? body.id : ''
     if (!id) throw new Error('空间 ID 不合法')
@@ -328,6 +349,75 @@ export function apply(ctx) {
     return trashEntries()
   }
 
+  const exportLibrary = async () => {
+    const library = await readLibrary()
+    const spaces = {}
+    for (const meta of library.spaces) {
+      const space = await readJson(spaceFile(meta.id))
+      if (space) spaces[meta.id] = space
+    }
+    return { version: 1, exportedAt: new Date().toISOString(), library, spaces }
+  }
+
+  const importLibrary = async (body) => {
+    const bundle = body && body.bundle && typeof body.bundle === 'object' ? body.bundle : body
+    const sourceLibrary = bundle && bundle.library
+    const sourceSpaces = bundle && bundle.spaces
+    if (!sourceLibrary || !sourceSpaces || typeof sourceSpaces !== 'object') throw new Error('导入文件格式不正确')
+    const library = await readLibrary()
+    const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ')
+    const root = {
+      id: makeId('f'),
+      name: '导入 ' + stamp,
+      parentId: null,
+      order: Date.now(),
+      createdAt: Date.now(),
+    }
+    library.folders.push(root)
+    const sourceFolders = Array.isArray(sourceLibrary.folders) ? sourceLibrary.folders : []
+    const folderMap = new Map()
+    for (const folder of sourceFolders) {
+      if (!folder || !validId(folder.id)) continue
+      folderMap.set(folder.id, makeId('f'))
+    }
+    for (const folder of sourceFolders) {
+      if (!folder || !validId(folder.id)) continue
+      const mapped = folderMap.get(folder.id)
+      const parent = folder.parentId && folderMap.has(folder.parentId) ? folderMap.get(folder.parentId) : root.id
+      library.folders.push({
+        id: mapped,
+        name: String(folder.name || '未命名文件夹').slice(0, 120),
+        parentId: parent,
+        order: Number.isFinite(folder.order) ? folder.order : Date.now(),
+        createdAt: Number.isFinite(folder.createdAt) ? folder.createdAt : Date.now(),
+      })
+    }
+    await writeJson(libraryFile(), library)
+    const sourceMetas = Array.isArray(sourceLibrary.spaces) ? sourceLibrary.spaces : []
+    let currentLibrary = library
+    for (const meta of sourceMetas) {
+      if (!meta || !validId(meta.id)) continue
+      const data = sourceSpaces[meta.id] || (Array.isArray(sourceSpaces) ? sourceSpaces.find((space) => space && space.id === meta.id) : null)
+      if (!data || !data.main || !Array.isArray(data.main.turns) || !Array.isArray(data.branches)) continue
+      const id = makeId('s')
+      const space = {
+        ...data,
+        id,
+        title: String(meta.title || data.title || '导入空间').slice(0, 200),
+        layoutMode: meta.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
+        createdAt: Date.now(),
+      }
+      const written = await writeSpaceData(space, id)
+      currentLibrary = written.library
+      const newMeta = currentLibrary.spaces.find((item) => item.id === id)
+      if (newMeta) {
+        newMeta.folderId = meta.folderId && folderMap.has(meta.folderId) ? folderMap.get(meta.folderId) : root.id
+        await writeJson(libraryFile(), currentLibrary)
+      }
+    }
+    return currentLibrary
+  }
+
   const createFolder = async (body) => {
     const library = await readLibrary()
     const parentId = validId(body.parentId) && library.folders.some((folder) => folder.id === body.parentId)
@@ -351,6 +441,20 @@ export function apply(ctx) {
     const folder = library.folders.find((item) => item.id === id)
     if (!folder) throw new Error('文件夹不存在')
     if (typeof body.name === 'string' && body.name.trim()) folder.name = body.name.trim().slice(0, 120)
+    if (Object.prototype.hasOwnProperty.call(body, 'parentId')) {
+      let parentId = null
+      if (body.parentId) {
+        if (!validId(body.parentId) || !library.folders.some((item) => item.id === body.parentId)) throw new Error('目标文件夹不存在')
+        parentId = body.parentId
+      }
+      let cursor = parentId
+      while (cursor) {
+        if (cursor === id) throw new Error('不能把文件夹移动到自身或子文件夹里')
+        const parent = library.folders.find((item) => item.id === cursor)
+        cursor = parent ? parent.parentId : null
+      }
+      folder.parentId = parentId
+    }
     await writeJson(libraryFile(), library)
     return library
   }
@@ -489,6 +593,26 @@ export function apply(ctx) {
         }
       }),
 
+      route(API_ROOT + '/export', async (req, res) => {
+        if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: '只支持 GET' })
+        try {
+          sendJson(res, 200, { ok: true, bundle: await exportLibrary() })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/import', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          const body = await readJsonBody(req, MAX_UPLOAD_BYTES)
+          const library = await importLibrary(body || {})
+          sendJson(res, 200, { ok: true, library })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
       route(API_ROOT + '/trash', async (req, res) => {
         if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: '只支持 GET' })
         try {
@@ -515,6 +639,17 @@ export function apply(ctx) {
           const body = await readJsonBody(req)
           const items = await deleteTrash(body || {})
           sendJson(res, 200, { ok: true, items })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/space/duplicate', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          const body = await readJsonBody(req)
+          const result = await duplicateSpace(body || {})
+          sendJson(res, 200, { ok: true, space: result.space, library: result.library })
         } catch (error) {
           sendJson(res, 500, { ok: false, error: messageOf(error) })
         }
