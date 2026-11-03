@@ -1329,4 +1329,4 @@ function messageOf(error) {
   return String(error)
 }
 
-export { buildMessages }
+export { buildMessages, buildSystemPrompt }

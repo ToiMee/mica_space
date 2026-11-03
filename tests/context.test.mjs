@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMessages } from '../index.js'
+import { buildMessages, buildSystemPrompt } from '../index.js'
 
 const base = { provider: 'test-provider', model: 'test-model' }
 
@@ -52,4 +52,20 @@ test('appends extracted file text as a bounded text block', () => {
   const content = messages[0].content
   assert.match(content[content.length - 1].text, /\[File: notes\.txt\]/)
   assert.match(content[content.length - 1].text, /hello from file/)
+})
+test('puts main memory before branch memory and includes retrieval', () => {
+  const prompt = buildSystemPrompt({
+    kind: 'branch',
+    anchorText: '',
+    brief: '',
+    mainContext: [],
+    branchDigest: [],
+    mainDigest: [],
+    branchId: 'b1',
+    memory: { main: 'MAIN-MEMORY', branches: { b1: 'BRANCH-MEMORY' } },
+    retrieved: [{ kind: 'main', question: 'old question', summary: 'old answer' }],
+  })
+  assert.ok(prompt.indexOf('MAIN-MEMORY') < prompt.indexOf('BRANCH-MEMORY'))
+  assert.match(prompt, /old question/)
+  assert.match(prompt, /old answer/)
 })
