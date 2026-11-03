@@ -1880,6 +1880,7 @@ window.__ModuleLoader__.load({
       const [layersOpen, setLayersOpen] = useState(false)
       const [marquee, setMarquee] = useState(null)
       const [selectedTurn, setSelectedTurn] = useState(null)
+      const [quoteDraft, setQuoteDraft] = useState(null)
       const [selectedIds, setSelectedIds] = useState(() => new Set())
       const [anchorReveal, setAnchorReveal] = useState(null)
       const [undoCount, setUndoCount] = useState(0)
@@ -2318,7 +2319,6 @@ window.__ModuleLoader__.load({
         ? branches.find((branch) => branch.id === selectedTurn.branchId)
         : null
       const selectedMain = Boolean(selectedTurn && selectedTurn.kind === 'main')
-      const [quoteDraft, setQuoteDraft] = useState(null)
       const composerVisible = detail === 'full' && (
         Boolean(quoteDraft || selectedBranch || selectedMain) || (!selectedTurn && mainTurns.length === 0)
       )
