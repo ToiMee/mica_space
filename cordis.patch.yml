@@ -1,0 +1,4 @@
+- insert:
+    - id: chat-space
+      name: '@local/dsh-chat-space'
+      config: {}
