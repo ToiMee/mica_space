@@ -413,6 +413,7 @@ window.__ModuleLoader__.load({
 .cs-lib-newfolder:hover { border-color: var(--cs-accent); color: var(--cs-accent); }
 .cs-lib-main { flex: 1; min-width: 0; overflow: auto; padding: 16px 20px 28px; }
 .cs-lib-main-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.cs-lib-main-actions { display: flex; align-items: center; gap: 8px; }
 .cs-lib-main-title { font-size: 17px; font-weight: 600; }
 .cs-lib-main-sub { margin-top: 3px; color: var(--cs-muted); font-size: 12px; }
 .cs-lib-spaces { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
@@ -1454,7 +1455,7 @@ window.__ModuleLoader__.load({
             h('div', { className: 'cs-lib-space-title', title: space.title }, space.title),
             h('span', { className: 'cs-lib-layout-badge' }, layoutLabel)
           ),
-          h('div', { className: 'cs-lib-space-question' }, space.lastQuestion || t('emptySpace')),
+          h('div', { className: 'cs-lib-space-question' }, space.firstSummary || space.lastQuestion || t('emptySpace')),
           h('div', { className: 'cs-lib-space-meta' },
             h('span', null, (space.turnCount || 0) + ' ' + t('turns')),
             h('span', null, formatDate(space.updatedAt))
@@ -1513,7 +1514,6 @@ window.__ModuleLoader__.load({
             h('div', { className: 'cs-subtitle' }, t('librarySubtitle'))
           ),
           h('div', { className: 'cs-top-actions' },
-            h('button', { type: 'button', className: 'cs-btn', onClick: openNewFolder }, t('newFolder')),
             h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, t('newSpace')),
             typeof onBackToConversation === 'function'
               ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToConversation }, t('backToConversation'))
@@ -1541,7 +1541,6 @@ window.__ModuleLoader__.load({
               h('span', { className: 'cs-lib-folder-count' }, spaces.filter((space) => !space.folderId).length)
             ),
             renderFolderTree(null, 0),
-            h('button', { type: 'button', className: 'cs-lib-newfolder', onClick: openNewFolder }, '+ ' + t('newFolder'))
           ),
           h('section', { className: 'cs-lib-main' },
             h('div', { className: 'cs-lib-main-head' },
@@ -1549,7 +1548,10 @@ window.__ModuleLoader__.load({
                 h('div', { className: 'cs-lib-main-title' }, selectedName),
                 h('div', { className: 'cs-lib-main-sub' }, visibleSpaces.length + ' ' + t('spaces'))
               ),
-              h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, '+ ' + t('newSpace'))
+              h('div', { className: 'cs-lib-main-actions' },
+                h('button', { type: 'button', className: 'cs-btn', onClick: openNewFolder }, '+ ' + t('newFolder')),
+                h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, '+ ' + t('newSpace'))
+              )
             ),
             visibleSpaces.length === 0
               ? h('div', { className: 'cs-lib-empty' },
@@ -3544,16 +3546,7 @@ window.__ModuleLoader__.load({
               ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToLibrary }, t('library'))
               : null,
             h('button', { type: 'button', className: 'cs-btn', disabled: undoCount === 0, onClick: undo }, t('undo')),
-            h('button', {
-              type: 'button',
-              className: cx('cs-layout-switch', layoutMode === 'horizontal' ? 'cs-layout-horizontal' : 'cs-layout-vertical'),
-              onClick: toggleLayout,
-              title: t('switchLayout'),
-            },
-              h('span', { className: 'cs-layout-text cs-layout-v' }, t('verticalShort')),
-              h('span', { className: 'cs-layout-track' }, h('span', { className: 'cs-layout-knob' })),
-              h('span', { className: 'cs-layout-text cs-layout-h' }, t('horizontalShort'))
-            ),
+
             h('button', { type: 'button', className: 'cs-btn', onClick: focusMainLine }, t('focusMain')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setLayersOpen(true) }, t('layers')),
             typeof onBackToConversation === 'function'

@@ -97,6 +97,7 @@ export function apply(ctx) {
           lastOpenedAt: Number.isFinite(space.lastOpenedAt) ? space.lastOpenedAt : 0,
           turnCount: Number.isFinite(space.turnCount) ? space.turnCount : 0,
           lastQuestion: String(space.lastQuestion || '').slice(0, 240),
+          firstSummary: String(space.firstSummary || '').slice(0, 240),
         }))
       : []
     return { version: 1, folders, spaces }
@@ -108,6 +109,8 @@ export function apply(ctx) {
     const branchTurns = branches.flatMap((branch) => (Array.isArray(branch.turns) ? branch.turns : []))
     const allTurns = mainTurns.concat(branchTurns)
     const last = allTurns.length > 0 ? allTurns[allTurns.length - 1] : null
+    const firstMain = mainTurns.length > 0 ? mainTurns[0] : null
+    const firstSummary = firstMain ? String(firstMain.summary || firstMain.question || '').slice(0, 240) : ''
     return {
       id: space.id,
       title: String(space.title || '未命名空间').slice(0, 200),
@@ -118,12 +121,31 @@ export function apply(ctx) {
       lastOpenedAt: Date.now(),
       turnCount: allTurns.length,
       lastQuestion: String(last && last.question || '').slice(0, 240),
+      firstSummary,
     }
+  }
+
+  const syncFirstSummaries = async (library) => {
+    let changed = false
+    for (const meta of library.spaces) {
+      if (meta.firstSummary) continue
+      const space = await readJson(spaceFile(meta.id))
+      const first = space && space.main && Array.isArray(space.main.turns) ? space.main.turns[0] : null
+      if (first) {
+        meta.firstSummary = String(first.summary || first.question || '').slice(0, 240)
+        changed = true
+      }
+    }
+    if (changed) await writeJson(libraryFile(), library)
+    return library
   }
 
   const readLibrary = async () => {
     const existing = await readJson(libraryFile())
-    if (existing) return normalizeLibrary(existing)
+    if (existing) {
+      const library = normalizeLibrary(existing)
+      return syncFirstSummaries(library)
+    }
     const legacy = await readJson(legacyFile())
     if (legacy && legacy.main && Array.isArray(legacy.main.turns) && Array.isArray(legacy.branches)) {
       const id = 'default'
