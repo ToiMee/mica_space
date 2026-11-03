@@ -413,10 +413,12 @@ window.__ModuleLoader__.load({
 .cs-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
 .cs-toast { position: fixed; left: 50%; bottom: 24px; z-index: 1100; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 48px); padding: 9px 14px; border-radius: 10px; background: #1f2329; color: #ffffff; box-shadow: 0 12px 32px rgba(0,0,0,.28); font-size: 12px; line-height: 1.5; }
 .cs-toast-btn { border: none; background: transparent; color: #9db4ff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
-.cs-detail-dot .cs-dot-wrap { animation: cs-dot-in .22s ease both; }
-.cs-detail-full .cs-card { animation: cs-card-in .22s ease both; }
-@keyframes cs-dot-in { from { opacity: 0; transform: scale(.62); } to { opacity: 1; transform: scale(1); } }
-@keyframes cs-card-in { from { opacity: 0; transform: scale(.965); } to { opacity: 1; transform: scale(1); } }
+.cs-node > .cs-dot-wrap { position: absolute; inset: 0; opacity: 0; transform: scale(.62); pointer-events: none; transition: opacity .55s cubic-bezier(.22,1,.36,1), transform .55s cubic-bezier(.22,1,.36,1); }
+.cs-node > .cs-card { position: absolute; inset: 0; opacity: 1; transform: scale(1); pointer-events: auto; transition: opacity .55s cubic-bezier(.22,1,.36,1), transform .55s cubic-bezier(.22,1,.36,1); }
+.cs-detail-dot > .cs-dot-wrap { opacity: 1; transform: scale(1); pointer-events: auto; }
+.cs-detail-dot > .cs-card { opacity: 0; transform: scale(.94); pointer-events: none; }
+.cs-detail-full > .cs-dot-wrap { opacity: 0; transform: scale(.62); pointer-events: none; }
+.cs-detail-full > .cs-card { opacity: 1; transform: scale(1); pointer-events: auto; }
 .cs-dot-wrap { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .cs-dot-ring { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 2px solid; border-radius: 50%; pointer-events: none; box-shadow: 0 0 8px color-mix(in srgb, currentColor 35%, transparent); }
 .cs-dot-flag { position: absolute; color: #e5484d; line-height: 1; pointer-events: none; text-shadow: 0 0 2px rgba(255,255,255,.9); }
@@ -3655,9 +3657,8 @@ window.__ModuleLoader__.load({
             className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : ''),
             style: { left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: turn.z || 0 },
           }, [
-            detail === 'dot'
-            ? h(Dot, {
-                key: 'card',
+            h(Dot, {
+                key: 'dot',
                 kind: 'main',
                 flagged: Boolean(turn.flag),
                 zoom: view.zoom,
@@ -3676,8 +3677,8 @@ window.__ModuleLoader__.load({
                 onPointerMove: moveDotPress,
                 onPointerUp: endDotPress,
                 onPointerCancel: endDotPress,
-              })
-            : h(TurnCard, {
+              }),
+            h(TurnCard, {
                 key: 'card',
                 t,
                 turn,
@@ -3731,9 +3732,8 @@ window.__ModuleLoader__.load({
             className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : ''),
             style: { left: rect.x - position.x, top: rect.y - position.y, width: rect.w, height: rect.h, zIndex: turn.z || 0 },
           }, [
-            detail === 'dot'
-            ? h(Dot, {
-                key: 'card',
+            h(Dot, {
+                key: 'dot',
                 kind: 'branch',
                 flagged: Boolean(turn.flag),
                 zoom: view.zoom,
@@ -3752,8 +3752,8 @@ window.__ModuleLoader__.load({
                 onPointerMove: moveDotPress,
                 onPointerUp: endDotPress,
                 onPointerCancel: endDotPress,
-              })
-            : h(TurnCard, {
+              }),
+            h(TurnCard, {
                 key: 'card',
                 t,
                 turn,
