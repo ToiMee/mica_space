@@ -1275,11 +1275,24 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function Dot({ kind, zoom, label, color, selected, flagged, onClick, onHover, onLeave, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }) {
+    function Dot({ kind, zoom, label, color, selected, flagged, pending, onClick, onHover, onLeave, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }) {
       const edge = kind === 'main'
         ? Math.max(10, 24 / Math.max(zoom, 0.01))
         : Math.max(8, 15 / Math.max(zoom, 0.01))
       const safeZoom = Math.max(zoom, 0.01)
+      const badge = 14 / safeZoom
+      const offset = edge / 2 + 7 / safeZoom + badge / 2
+      const badgeStyle = (side) => ({
+        width: badge,
+        height: badge,
+        fontSize: badge * 0.76,
+        borderWidth: 1.5 / safeZoom,
+        left: '50%',
+        top: '50%',
+        transform: side === 'flag'
+          ? 'translate(calc(-50% - ' + offset + 'px), calc(-50% - ' + offset + 'px))'
+          : 'translate(calc(-50% + ' + offset + 'px), calc(-50% - ' + offset + 'px))',
+      })
       return h('div', { className: 'cs-dot-wrap' },
         selected ? h('span', {
           className: 'cs-dot-ring',
@@ -1304,19 +1317,13 @@ window.__ModuleLoader__.load({
           onPointerUp,
           onPointerCancel,
           onContextMenu: (event) => event.preventDefault(),
-        },
-          flagged
-            ? h('span', {
-                className: 'cs-dot-flag',
-                style: {
-                  left: '50%',
-                  top: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  fontSize: 14 / safeZoom,
-                },
-              }, '⚑')
-            : null
-        )
+        }),
+        flagged
+          ? h('span', { className: 'cs-dot-badge cs-dot-badge-flag', style: badgeStyle('flag'), title: label }, '⚑')
+          : null,
+        pending
+          ? h('span', { className: 'cs-dot-badge cs-dot-badge-pending', style: badgeStyle('pending'), title: label }, '!')
+          : null
       )
     }
 
@@ -4388,6 +4395,7 @@ window.__ModuleLoader__.load({
                 key: 'dot',
                 kind: 'main',
                 flagged: Boolean(turn.flag),
+                pending: Boolean(turn.todo),
                 zoom: view.zoom,
                 label: turn.summary || truncate(turn.question, 80),
                 color: MAIN_COLOR,
@@ -4466,6 +4474,7 @@ window.__ModuleLoader__.load({
                 key: 'dot',
                 kind: 'branch',
                 flagged: Boolean(turn.flag),
+                pending: Boolean(turn.todo),
                 zoom: view.zoom,
                 label: turn.summary || truncate(turn.question, 80),
                 color: position.color,
