@@ -121,6 +121,11 @@ window.__ModuleLoader__.load({
       markFlag: '标记红旗',
       clearFlag: '取消红旗',
       copyMarkdown: '复制为 Markdown',
+      pendingCount: '{n} 张待追问',
+      collapseBranch: '折叠分支',
+      expandBranch: '展开分支',
+      branchColor: '分支颜色',
+      branchTag: '分支标签',
       copySelected: '复制选中的卡片',
       deleteSelected: '删除选中的卡片',
       deleteOne: '只删除这张卡',
@@ -288,6 +293,11 @@ window.__ModuleLoader__.load({
       markFlag: 'Mark red flag',
       clearFlag: 'Clear red flag',
       copyMarkdown: 'Copy as Markdown',
+      pendingCount: '{n} pending follow-ups',
+      collapseBranch: 'Collapse branch',
+      expandBranch: 'Expand branch',
+      branchColor: 'Branch color',
+      branchTag: 'Branch tag',
       copySelected: 'Copy selected',
       deleteSelected: 'Delete selected',
       deleteOne: 'Delete this card only',
@@ -643,6 +653,7 @@ window.__ModuleLoader__.load({
 .cs-pending-layer { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
 .cs-pending-marker { position: absolute; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; padding: 0; border: 2px solid #fff3c4; border-radius: 50%; background: #e8b84a; color: #241d0c; box-shadow: 0 0 0 3px rgba(232,184,74,.22), 0 7px 18px rgba(0,0,0,.35); transform: translate(-50%,-50%); font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; pointer-events: auto; animation: cs-pending-pulse 1.8s ease-in-out infinite; }
 .cs-pending-marker:hover { transform: translate(-50%,-50%) scale(1.12); }
+.cs-pending-count { position: absolute; top: -6px; right: -6px; min-width: 15px; height: 15px; display: flex; align-items: center; justify-content: center; padding: 0 3px; border-radius: 8px; background: #1d1a12; color: #ffe7a3; font-size: 9px; font-weight: 700; }
 @keyframes cs-pending-pulse { 0%,100% { box-shadow: 0 0 0 3px rgba(232,184,74,.22), 0 7px 18px rgba(0,0,0,.35); } 50% { box-shadow: 0 0 0 7px rgba(232,184,74,.10), 0 7px 18px rgba(0,0,0,.35); } }
 .cs-flag { padding: 0 2px; border: 0; background: transparent; color: var(--cs-muted); font-size: 14px; line-height: 1; cursor: pointer; }
 .cs-flag-on { color: #e5484d; }
@@ -653,6 +664,12 @@ window.__ModuleLoader__.load({
 .cs-context-menu button:hover { background: var(--cs-hover); }
 .cs-context-danger { color: var(--cs-danger) !important; }
 .cs-context-divider { height: 1px; margin: 4px 6px; background: var(--cs-border); }
+.cs-context-label { padding: 5px 8px 3px; color: var(--cs-muted); font-size: 10px; }
+.cs-context-swatches { display: flex; gap: 6px; padding: 3px 8px 6px; }
+.cs-context-swatch { width: 18px; height: 18px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
+.cs-context-swatch:hover { border-color: var(--cs-text); }
+.cs-card-tag { flex-shrink: 0; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 5px; border: 1px solid var(--cs-border); border-radius: 4px; color: var(--cs-muted); font-size: 9px; }
+.cs-collapse { padding: 1px 5px; }
 .cs-layer-modal { width: min(560px, calc(100vw - 48px)); }
 .cs-layer-tree { display: flex; flex-direction: column; gap: 2px; }
 .cs-layer-root { padding: 4px 8px 6px; color: var(--cs-muted); font-size: 10px; font-weight: 600; letter-spacing: .08em; }
@@ -874,6 +891,8 @@ window.__ModuleLoader__.load({
               brief: stringOf(branch.brief),
               parentBranchId: typeof branch.parentBranchId === 'string' && branch.parentBranchId ? branch.parentBranchId : null,
               colorIndex: Number.isInteger(branch.colorIndex) ? branch.colorIndex : index,
+              collapsed: Boolean(branch.collapsed),
+              tag: stringOf(branch.tag).slice(0, 20),
               createdAt: finite(branch.createdAt, Date.now()),
               turns: Array.isArray(branch.turns) ? branch.turns.map(normalizeTurn).filter(Boolean) : [],
             }))
@@ -1506,7 +1525,7 @@ window.__ModuleLoader__.load({
       onDragStart, onDragMove, onDragEnd, onResizeStart, onResizeMove, onResizeEnd,
       onBringToFront, selected, active, side, sequence, onToggleTodo, onToggleFlag,
       onCardPointerDown, onCardPointerMove, onCardPointerUp, onCardPointerCancel, onCardClick, onCardDoubleClick, onLocateAnchor,
-      onContextMenu,
+      onContextMenu, tag, collapsed, hiddenCount, onToggleCollapse,
     }) {
       const streaming = turn.status === 'streaming'
       const failed = turn.status === 'failed'
@@ -1586,6 +1605,10 @@ window.__ModuleLoader__.load({
               title: t('important'),
               onClick: () => onToggleFlag(!turn.flag),
             }, '⚑'),
+            tag ? h('span', { className: 'cs-card-tag' }, tag) : null,
+            kind === 'branch' && isFirst && hiddenCount > 0
+              ? h('button', { type: 'button', className: 'cs-mini cs-collapse', title: collapsed ? t('expandBranch') : t('collapseBranch'), onClick: (event) => { event.stopPropagation(); onToggleCollapse() } }, collapsed ? '+' + hiddenCount : '−')
+              : null,
             kind === 'branch' && isFirst && branch.anchorText
               ? h('span', { className: 'cs-anchor', title: branch.anchorText }, t('branchFrom') + ' · ' + (branch.anchorSource === 'answer' ? t('wholeAnswer') : truncate(branch.anchorText, 26)))
               : null
@@ -2886,16 +2909,17 @@ window.__ModuleLoader__.load({
       }
       for (const position of branchPositions) {
         const branch = position.branch
-        const first = branch.turns.length > 0 ? branch.turns[0] : null
+        const visibleTurns = branch.collapsed ? branch.turns.slice(0, 1) : branch.turns
+        const first = visibleTurns.length > 0 ? visibleTurns[0] : null
         if (first) {
           const side = position.side || 'left'
           const anchorSide = side === 'left' ? 'right' : side === 'right' ? 'left' : side === 'top' ? 'bottom' : 'top'
           addPort(branch.anchorTurnId, anchorSide)
           addPort(first.id, side)
         }
-        for (let index = 1; index < branch.turns.length; index += 1) {
-          addPort(branch.turns[index - 1].id, 'bottom')
-          addPort(branch.turns[index].id, 'top')
+        for (let index = 1; index < visibleTurns.length; index += 1) {
+          addPort(visibleTurns[index - 1].id, 'bottom')
+          addPort(visibleTurns[index].id, 'top')
         }
       }
       const detail = view.zoom >= 0.25 ? 'full' : 'dot'
@@ -3109,6 +3133,30 @@ window.__ModuleLoader__.load({
         setToast({ text: t('deleted') })
       }
 
+      const contextToggleCollapse = () => {
+        if (!contextMenu || !contextMenu.branchId) return
+        const branchId = contextMenu.branchId
+        setContextMenu(null)
+        toggleBranchCollapse(branchId)
+      }
+
+      const contextSetColor = (colorIndex) => {
+        if (!contextMenu || !contextMenu.branchId) return
+        const branchId = contextMenu.branchId
+        setContextMenu(null)
+        setBranchColor(branchId, colorIndex)
+      }
+
+      const contextSetTag = () => {
+        if (!contextMenu || !contextMenu.branchId) return
+        const branch = branches.find((item) => item.id === contextMenu.branchId)
+        if (!branch) return
+        const next = window.prompt(t('branchTag'), branch.tag || '')
+        if (next === null) return
+        setContextMenu(null)
+        setBranchTag(branch.id, next)
+      }
+
       const contextToggle = (field) => {
         if (!contextMenu) return
         const { turn, kind, branchId } = contextMenu
@@ -3147,6 +3195,39 @@ window.__ModuleLoader__.load({
         const { turn, kind, branchId } = contextMenu
         setContextMenu(null)
         deleteTurn(kind, branchId, turn.id)
+      }
+
+      const toggleBranchCollapse = (branchId) => {
+        pushHistory()
+        commit((previous) => ({
+          ...previous,
+          branches: previous.branches.map((branch) => (
+            branch.id === branchId ? { ...branch, collapsed: !branch.collapsed } : branch
+          )),
+        }))
+        saveSoon(100)
+      }
+
+      const setBranchColor = (branchId, colorIndex) => {
+        pushHistory()
+        commit((previous) => ({
+          ...previous,
+          branches: previous.branches.map((branch) => (
+            branch.id === branchId ? { ...branch, colorIndex } : branch
+          )),
+        }))
+        saveSoon(100)
+      }
+
+      const setBranchTag = (branchId, tag) => {
+        pushHistory()
+        commit((previous) => ({
+          ...previous,
+          branches: previous.branches.map((branch) => (
+            branch.id === branchId ? { ...branch, tag: String(tag || '').slice(0, 20) } : branch
+          )),
+        }))
+        saveSoon(100)
       }
 
       const toggleMark = (turn, kind, branchId, field, value) => {
@@ -4244,8 +4325,9 @@ window.__ModuleLoader__.load({
         }
         for (const position of branchPositions) {
           const branch = position.branch
+          const visibleTurns = branch.collapsed ? branch.turns.slice(0, 1) : branch.turns
           const anchor = turnRects.get(branch.anchorTurnId)
-          const first = branch.turns.length > 0 ? turnRects.get(branch.turns[0].id) : null
+          const first = visibleTurns.length > 0 ? turnRects.get(visibleTurns[0].id) : null
           if (anchor && first) {
             const side = position.side || 'left'
             const anchorSide = side === 'left' ? 'right' : side === 'right' ? 'left' : side === 'top' ? 'bottom' : 'top'
@@ -4259,9 +4341,9 @@ window.__ModuleLoader__.load({
               d,
             }))
           }
-          for (let index = 1; index < branch.turns.length; index += 1) {
-            const a = turnRects.get(branch.turns[index - 1].id)
-            const b = turnRects.get(branch.turns[index].id)
+          for (let index = 1; index < visibleTurns.length; index += 1) {
+            const a = turnRects.get(visibleTurns[index - 1].id)
+            const b = turnRects.get(visibleTurns[index].id)
             if (!a || !b) continue
             paths.push(h('path', {
               key: 'spine-' + branch.id + '-' + index,
@@ -4370,7 +4452,9 @@ window.__ModuleLoader__.load({
 
       const renderBranches = () => branchPositions.map((position) => {
         const branch = position.branch
-        const nodes = branch.turns.map((turn, index) => {
+        const visibleTurns = branch.collapsed ? branch.turns.slice(0, 1) : branch.turns
+        const hiddenCount = branch.turns.length - visibleTurns.length
+        const nodes = visibleTurns.map((turn, index) => {
           const rect = turnRects.get(turn.id)
           if (!rect) return null
           return h('div', {
@@ -4421,6 +4505,10 @@ window.__ModuleLoader__.load({
                 active: Boolean(selectedTurn && selectedTurn.turnId === turn.id),
                 side: position.side,
                 sequence: 'B' + (position.index + 1),
+                tag: branch.tag,
+                collapsed: Boolean(branch.collapsed),
+                hiddenCount,
+                onToggleCollapse: () => toggleBranchCollapse(branch.id),
                 onToggleTodo: (value) => toggleMark(turn, 'branch', branch.id, 'todo', value),
                 onToggleFlag: (value) => toggleMark(turn, 'branch', branch.id, 'flag', value),
                 onCardPointerDown: (event) => beginCardPress(event, turn, 'branch', branch.id, position.x, position.y + index * TURN_STEP, rect),
@@ -4519,9 +4607,11 @@ window.__ModuleLoader__.load({
         const padding = 24
         const entries = [
           ...mainTurns.map((turn) => ({ turn, kind: 'main', branchId: null })),
-          ...branches.flatMap((branch) => branch.turns.map((turn) => ({ turn, kind: 'branch', branchId: branch.id }))),
+          ...branches.flatMap((branch) => branch.turns
+            .filter((turn, index) => !branch.collapsed || index === 0)
+            .map((turn) => ({ turn, kind: 'branch', branchId: branch.id }))),
         ]
-        const markers = []
+        const groups = new Map()
         for (const entry of entries) {
           if (!entry.turn.todo) continue
           const rect = turnRects.get(entry.turn.id)
@@ -4536,21 +4626,45 @@ window.__ModuleLoader__.load({
           const dx = cardX - width / 2
           const dy = cardY - height / 2
           if (dx === 0 && dy === 0) continue
-          const tx = dx === 0 ? Infinity : (width / 2 - padding) / Math.abs(dx)
-          const ty = dy === 0 ? Infinity : (height / 2 - padding) / Math.abs(dy)
-          const scale = Math.min(tx, ty)
-          if (!Number.isFinite(scale)) continue
-          const markerX = Math.max(padding, Math.min(width - padding, width / 2 + dx * scale))
-          const markerY = Math.max(padding, Math.min(height - padding, height / 2 + dy * scale))
+          let side
+          let coord
+          if (Math.abs(dx) >= Math.abs(dy)) {
+            side = dx > 0 ? 'right' : 'left'
+            coord = cardY
+          } else {
+            side = dy > 0 ? 'bottom' : 'top'
+            coord = cardX
+          }
+          if (!groups.has(side)) groups.set(side, [])
+          groups.get(side).push({ entry, coord })
+        }
+        const markers = []
+        for (const [side, items] of groups) {
+          items.sort((left, right) => left.coord - right.coord)
+          const count = items.length
+          const average = items.reduce((sum, item) => sum + item.coord, 0) / count
+          let markerX = width / 2
+          let markerY = height / 2
+          if (side === 'top' || side === 'bottom') {
+            markerX = Math.max(padding, Math.min(width - padding, average))
+            markerY = side === 'top' ? padding : height - padding
+          } else {
+            markerX = side === 'left' ? padding : width - padding
+            markerY = Math.max(padding, Math.min(height - padding, average))
+          }
+          const titles = items.map((item) => truncate(item.entry.turn.question, 50)).join(' / ')
           markers.push(h('button', {
-            key: 'pending-' + entry.turn.id,
+            key: 'pending-' + side,
             type: 'button',
             className: 'cs-pending-marker',
             style: { left: markerX, top: markerY },
-            title: t('todo') + '：' + truncate(entry.turn.question, 70),
+            title: (count > 1 ? t('pendingCount').replace('{n}', String(count)) + '：' : t('todo') + '：') + titles,
             onPointerDown: (event) => event.stopPropagation(),
-            onClick: (event) => { event.stopPropagation(); focusTurn(entry.turn.id) },
-          }, '!'))
+            onClick: (event) => { event.stopPropagation(); focusTurn(items[0].entry.turn.id) },
+          },
+            h('span', null, '!'),
+            count > 1 ? h('span', { className: 'cs-pending-count' }, String(count)) : null
+          ))
         }
         return markers.length > 0 ? h('div', { className: 'cs-pending-layer' }, markers) : null
       }
@@ -4580,6 +4694,27 @@ window.__ModuleLoader__.load({
               : null,
             h('button', { type: 'button', onClick: () => contextToggle('todo') }, contextMenu.turn.todo ? t('clearTodo') : t('markTodo')),
             h('button', { type: 'button', onClick: () => contextToggle('flag') }, contextMenu.turn.flag ? t('clearFlag') : t('markFlag')),
+            contextMenu.branchId
+              ? h('button', { type: 'button', onClick: contextToggleCollapse }, (branches.find((branch) => branch.id === contextMenu.branchId) || {}).collapsed ? t('expandBranch') : t('collapseBranch'))
+              : null,
+            contextMenu.branchId
+              ? h('div', null,
+                  h('div', { className: 'cs-context-label' }, t('branchColor')),
+                  h('div', { className: 'cs-context-swatches' },
+                    MINERAL_COLORS.map((color, index) => h('button', {
+                      key: 'color-' + index,
+                      type: 'button',
+                      className: 'cs-context-swatch',
+                      style: { background: color },
+                      title: t('branchColor') + ' ' + (index + 1),
+                      onClick: () => contextSetColor(index),
+                    }))
+                  )
+                )
+              : null,
+            contextMenu.branchId
+              ? h('button', { type: 'button', onClick: contextSetTag }, t('branchTag'))
+              : null,
             h('button', { type: 'button', onClick: contextQuote }, t('contextQuote')),
             h('div', { className: 'cs-context-divider' }),
             contextMenu.ids.length > 1
