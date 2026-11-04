@@ -5953,7 +5953,13 @@ window.__ModuleLoader__.load({
         setSelectedIds(new Set([turn.id]))
         setSelection(null)
         setContextMenu(null)
-        focusTurn(turn.id)
+        if (entry.collapsed && branchId) {
+          const branch = spaceRef.current && spaceRef.current.branches.find((item) => item.id === branchId)
+          if (branch && branch.collapsed) toggleBranchCollapse(branchId)
+          setTimeout(() => focusTurn(turn.id), 80)
+        } else {
+          focusTurn(turn.id)
+        }
       }
 
       const renderPendingMarkers = () => {
@@ -5965,9 +5971,12 @@ window.__ModuleLoader__.load({
         const padding = 24
         const entries = [
           ...mainTurns.map((turn) => ({ turn, kind: 'main', branchId: null })),
-          ...branches.flatMap((branch) => branch.turns
-            .filter((turn, index) => !branch.collapsed || index === 0)
-            .map((turn) => ({ turn, kind: 'branch', branchId: branch.id }))),
+          ...branches.flatMap((branch) => {
+            if (!branch.collapsed) return branch.turns.map((turn) => ({ turn, kind: 'branch', branchId: branch.id }))
+            const pending = branch.turns.filter((turn) => turn.todo)
+            if (pending.length === 0) return []
+            return [{ turn: pending[0], kind: 'branch', branchId: branch.id, todoCount: pending.length, collapsed: true }]
+          }),
         ]
         const groups = new Map()
         for (const entry of entries) {
@@ -5978,7 +5987,7 @@ window.__ModuleLoader__.load({
           const top = view.y + rect.y * view.zoom
           const right = left + rect.w * view.zoom
           const bottom = top + rect.h * view.zoom
-          if (right >= 0 && left <= width && bottom >= 0 && top <= height) continue
+          if (!entry.collapsed && right >= 0 && left <= width && bottom >= 0 && top <= height) continue
           const cardX = left + (rect.w * view.zoom) / 2
           const cardY = top + (rect.h * view.zoom) / 2
           const dx = cardX - width / 2
@@ -5999,7 +6008,7 @@ window.__ModuleLoader__.load({
         const markers = []
         for (const [side, items] of groups) {
           items.sort((left, right) => left.coord - right.coord)
-          const count = items.length
+          const count = items.reduce((sum, item) => sum + (item.entry.todoCount || 1), 0)
           const average = items.reduce((sum, item) => sum + item.coord, 0) / count
           let markerX = width / 2
           let markerY = height / 2
