@@ -85,4 +85,4 @@ node --test tests/context.test.mjs tests/library.test.mjs tests/embedding.test.m
 
 ## 版本
 
-`0.2.0` — 预览版，零配置本地记忆。
+`0.2.1` — 预览版，零配置本地记忆 + 父子级轻量检索。

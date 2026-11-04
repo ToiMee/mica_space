@@ -535,6 +535,9 @@ window.__ModuleLoader__.load({
 .cs-detail-full > .cs-card { opacity: 1; transform: scale(1); pointer-events: auto; }
 .cs-dot-wrap { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .cs-dot-ring { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 2px solid; border-radius: 50%; pointer-events: none; box-shadow: 0 0 8px color-mix(in srgb, currentColor 35%, transparent); }
+.cs-dot-badge { position: absolute; display: flex; align-items: center; justify-content: center; border-style: solid; border-radius: 50%; font-weight: 800; line-height: 1; pointer-events: none; z-index: 4; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
+.cs-dot-badge-flag { background: #e5484d; color: #fff; border-color: #ffe1e1; }
+.cs-dot-badge-pending { background: #ffd23f; color: #241d0c; border-color: #fff6c9; box-shadow: 0 0 0 3px rgba(255,210,63,.22), 0 2px 8px rgba(0,0,0,.45); }
 .cs-dot-flag { position: absolute; color: #e5484d; line-height: 1; pointer-events: none; text-shadow: 0 0 2px rgba(255,255,255,.9); }
 .cs-marquee { position: fixed; z-index: 5000; border: 1px dashed var(--cs-accent); border-radius: 2px; background: color-mix(in srgb, var(--cs-accent) 10%, transparent); pointer-events: none; }
 .cs-dot { border: none; padding: 0; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 4px rgba(51,112,255,.12); transition: transform .12s ease; }
@@ -1645,13 +1648,13 @@ window.__ModuleLoader__.load({
         ? Math.max(10, 24 / Math.max(zoom, 0.01))
         : Math.max(8, 15 / Math.max(zoom, 0.01))
       const safeZoom = Math.max(zoom, 0.01)
-      const badge = 14 / safeZoom
-      const offset = edge / 2 + 7 / safeZoom + badge / 2
+      const badge = 18 / safeZoom
+      const offset = edge / 2 + badge / 2 - 2 / safeZoom
       const badgeStyle = (side) => ({
         width: badge,
         height: badge,
-        fontSize: badge * 0.76,
-        borderWidth: 1.5 / safeZoom,
+        fontSize: badge * 0.8,
+        borderWidth: 2 / safeZoom,
         left: '50%',
         top: '50%',
         transform: side === 'flag'
