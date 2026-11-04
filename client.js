@@ -416,6 +416,8 @@ window.__ModuleLoader__.load({
       resetView: 'Reset view',
       fit: 'Fit canvas',
       focusMain: 'Back to main line',
+      dotMode: 'Dot mode',
+      cardMode: 'Card mode',
       layoutVertical: 'Vertical layout',
       layoutHorizontal: 'Horizontal layout',
       verticalShort: 'V',
@@ -3598,6 +3600,7 @@ window.__ModuleLoader__.load({
       const [hover, setHover] = useState(null)
       const [layersOpen, setLayersOpen] = useState(false)
       const [memoryOpen, setMemoryOpen] = useState(false)
+      const [dotOverview, setDotOverview] = useState(false)
       const [marquee, setMarquee] = useState(null)
       const [selectedTurn, setSelectedTurn] = useState(null)
       const [composerCollapsed, setComposerCollapsed] = useState(false)
@@ -3908,6 +3911,7 @@ window.__ModuleLoader__.load({
             view: { zoom, x: px - wx * zoom, y: py - wy * zoom },
           }))
           saveSoon(1200)
+          if (zoom <= MIN_ZOOM + 0.001) setTimeout(() => { if (fitViewRef.current) fitViewRef.current() }, 30)
         }
         root.addEventListener('wheel', onWheel, { passive: false })
         return () => root.removeEventListener('wheel', onWheel)
@@ -4051,7 +4055,7 @@ window.__ModuleLoader__.load({
           addPort(visibleTurns[index].id, 'top')
         }
       }
-      const detail = view.zoom >= 0.25 ? 'full' : 'dot'
+      const detail = dotOverview || view.zoom < 0.35 ? 'dot' : 'full'
       const bounds = layout.bounds
       const renderPorts = (turnId, rect, color, isMain) => {
         if (detail === 'dot') return null
@@ -5045,6 +5049,14 @@ window.__ModuleLoader__.load({
 
       fitViewRef.current = focusMainLine
 
+      const toggleDotOverview = () => {
+        setDotOverview((current) => {
+          const next = !current
+          if (next) setTimeout(() => { if (fitViewRef.current) fitViewRef.current() }, 40)
+          return next
+        })
+      }
+
       const zoomBy = (factor) => {
         const element = viewportRef.current
         if (!element) return
@@ -5372,7 +5384,7 @@ window.__ModuleLoader__.load({
         const top = box.top
         const bottom = box.top + box.height
         const hits = []
-        const dotMode = currentView.zoom < 0.25
+        const dotMode = dotOverview || currentView.zoom < 0.35
         const consider = (turn, isMain) => {
           const rect = turnRects.get(turn.id)
           if (!rect) return
@@ -5559,7 +5571,7 @@ window.__ModuleLoader__.load({
 
       const renderLinks = () => {
         const paths = []
-        const dotMode = view.zoom < 0.25
+        const dotMode = dotOverview || view.zoom < 0.35
         const centerOf = (rect) => ({ x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 })
         const centerPath = (left, right) => {
           const a = centerOf(left)
@@ -6283,6 +6295,7 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'cs-btn', disabled: undoCount === 0, onClick: undo, title: 'Ctrl+Z' }, t('undo')),
 
             h('button', { type: 'button', className: 'cs-btn', onClick: focusMainLine }, t('focusMain')),
+            h('button', { type: 'button', className: 'cs-btn', onClick: toggleDotOverview }, dotOverview ? t('cardMode') : t('dotMode')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setMemoryOpen(true) }, t('memory')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setLayersOpen(true) }, t('layers')),
             typeof onBackToLibrary === 'function'
