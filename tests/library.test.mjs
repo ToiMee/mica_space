@@ -110,6 +110,10 @@ test('space lifecycle, trash restore, duplicate, folder cycle, export/import', a
     const cycle = await request('POST', '/chat-space/api/folder/update', { id: parentId, parentId: childId })
     assert.equal(cycle.status, 500)
 
+    const backups = await request('GET', '/chat-space/api/maintenance/backups')
+    assert.equal(backups.status, 200)
+    assert.ok(Array.isArray(backups.body.items))
+
     const exported = await request('GET', '/chat-space/api/export')
     assert.equal(exported.status, 200)
     const imported = await request('POST', '/chat-space/api/import', { bundle: exported.body.bundle })

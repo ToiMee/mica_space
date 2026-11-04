@@ -9,7 +9,7 @@
 // the first time the library is read.
 
 import { execFile } from 'node:child_process'
-import { copyFile, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import { inflateRawSync, inflateSync } from 'node:zlib'
@@ -496,6 +496,58 @@ export function apply(ctx) {
     return currentLibrary
   }
 
+  const backupPath = (file, source) => file + (source === 'pre-schema' ? '.pre-schema-v2.bak' : '.bak')
+
+  const backupEntries = async () => {
+    const entries = []
+    const libraryBackups = [
+      { kind: 'library', id: 'library', source: 'bak', file: libraryFile() },
+      { kind: 'library', id: 'library', source: 'pre-schema', file: libraryFile() },
+    ]
+    const library = await readLibrary()
+    const spaceBackups = library.spaces.flatMap((meta) => ([
+      { kind: 'space', id: meta.id, title: meta.title, source: 'bak', file: spaceFile(meta.id) },
+      { kind: 'space', id: meta.id, title: meta.title, source: 'pre-schema', file: spaceFile(meta.id) },
+    ]))
+    for (const entry of [...libraryBackups, ...spaceBackups]) {
+      const file = backupPath(entry.file, entry.source)
+      try {
+        const info = await stat(file)
+        entries.push({
+          kind: entry.kind,
+          id: entry.id,
+          title: entry.title || (entry.kind === 'library' ? '空间库' : '空间'),
+          source: entry.source,
+          file,
+          bytes: info.size,
+          modifiedAt: info.mtimeMs,
+        })
+      } catch (_error) {
+        if (!(_error && _error.code === 'ENOENT')) throw _error
+      }
+    }
+    return entries.sort((left, right) => right.modifiedAt - left.modifiedAt)
+  }
+
+  const restoreBackup = async (body) => {
+    const kind = body.kind === 'library' ? 'library' : body.kind === 'space' ? 'space' : ''
+    const id = kind === 'library' ? 'library' : (validId(body.id) ? body.id : '')
+    const source = body.source === 'pre-schema' ? 'pre-schema' : 'bak'
+    if (!kind || !id) throw new Error('恢复目标不合法')
+    const target = kind === 'library' ? libraryFile() : spaceFile(id)
+    const backup = backupPath(target, source)
+    try {
+      await stat(backup)
+    } catch (_error) {
+      if (_error && _error.code === 'ENOENT') throw new Error('备份不存在')
+      throw _error
+    }
+    try { await copyFile(target, target + '.before-restore') } catch (_error) { if (_error && _error.code !== 'ENOENT') throw _error }
+    await copyFile(backup, target)
+    const library = await readLibrary()
+    return library
+  }
+
   const createFolder = async (body) => {
     const library = await readLibrary()
     const parentId = validId(body.parentId) && library.folders.some((folder) => folder.id === body.parentId)
@@ -694,6 +746,26 @@ export function apply(ctx) {
         if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
         try {
           sendJson(res, 200, { ok: true, result: await runGitBackup() })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/maintenance/backups', async (req, res) => {
+        if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: '只支持 GET' })
+        try {
+          sendJson(res, 200, { ok: true, items: await backupEntries() })
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: messageOf(error) })
+        }
+      }),
+
+      route(API_ROOT + '/maintenance/restore', async (req, res) => {
+        if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
+        try {
+          const body = await readJsonBody(req)
+          const library = await restoreBackup(body || {})
+          sendJson(res, 200, { ok: true, library })
         } catch (error) {
           sendJson(res, 500, { ok: false, error: messageOf(error) })
         }
@@ -902,17 +974,19 @@ async function handleChat(ctx, req, res) {
       // A bad file should not block the chat.
     }
   }
+  let modelInfo = null
+  try { modelInfo = await ctx.llm.resolveModelInfo(provider, model) } catch (_error) {}
   if (attachments.some((item) => item && item.kind === 'image')) {
     try {
-      const info = await ctx.llm.resolveModelInfo(provider, model)
-      if (Array.isArray(info?.inputModalities) && info.inputModalities.indexOf('image') < 0) {
+      if (Array.isArray(modelInfo?.inputModalities) && modelInfo.inputModalities.indexOf('image') < 0) {
         return sendJson(res, 400, { ok: false, error: '当前模型不支持图片输入，请先在设置里切换到支持视觉的模型。' })
       }
-    } catch (_error) {
-      // Capability lookup is advisory; let the provider decide.
-    }
+    } catch (_error) {}
   }
-  const messages = buildMessages({ history, question, provider, model, attachments, fileTexts })
+  const contextWindow = Number(modelInfo && modelInfo.context && modelInfo.context.contextWindow) || 32000
+  const promptBudgetChars = Math.max(12000, Math.floor(contextWindow * 3 * 0.65))
+  const maxHistoryChars = Math.max(4000, promptBudgetChars - system.length - question.length - 8000)
+  const messages = buildMessages({ history, question, provider, model, attachments, fileTexts, maxHistoryChars })
 
   const controller = new AbortController()
   let closed = false
@@ -1127,7 +1201,7 @@ function buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest,
   return lines.join('\n')
 }
 
-function buildMessages({ history, question, provider, model, attachments, fileTexts }) {
+function buildMessages({ history, question, provider, model, attachments, fileTexts, maxHistoryChars }) {
   const messages = []
   for (const item of history) {
     if (!item || typeof item !== 'object') continue
@@ -1145,7 +1219,13 @@ function buildMessages({ history, question, provider, model, attachments, fileTe
     }
   }
   // Keep the request bounded even if an older client sends a long transcript.
-  const trimmed = messages.slice(-24)
+  let trimmed = messages.slice(-24)
+  const historyLimit = Number.isFinite(maxHistoryChars) ? maxHistoryChars : 200000
+  let historyChars = trimmed.reduce((sum, item) => sum + stringOf(item.content && item.content[0] && item.content[0].text).length, 0)
+  while (trimmed.length > 1 && historyChars > historyLimit) {
+    const removed = trimmed.shift()
+    historyChars -= stringOf(removed.content && removed.content[0] && removed.content[0].text).length
+  }
   const content = [{ type: 'text', text: question }]
   for (const item of Array.isArray(attachments) ? attachments : []) {
     if (!item || typeof item !== 'object' || !item.attachment || typeof item.attachment !== 'object') continue

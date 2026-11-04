@@ -47,6 +47,13 @@ window.__ModuleLoader__.load({
       export: '导出',
       trash: '回收站',
       privacy: '隐私',
+      recovery: '数据恢复',
+      recoveryFailed: '恢复失败',
+      noBackups: '没有找到备份',
+      libraryBackup: '空间库备份',
+      confirmRestore: '用这个备份覆盖当前数据？当前数据会先复制为 .before-restore。',
+      restoreDone: '恢复完成',
+      restore: '恢复',
       privacyBody: 'Mica Space 的数据默认保存在当前工作区的 .chat-space 目录。\n\n轻量记忆和本地语义模式不会访问网络。你正常提问时，问题、上下文、附件和抽取出的文件文本会发送给 DSH 当前配置的模型提供商。\n\n附件由 DSH attachment 服务保存；Git 备份只有在你填写 remote 并点击备份时才会 push。插件本身不包含遥测，也不包含作者的 API key。',
       backup: 'Git 备份',
       backupHint: '备份库数据到本地 git；填私有仓库地址后同时 push。附件文件不包含在 git 里。',
@@ -231,6 +238,13 @@ window.__ModuleLoader__.load({
       export: 'Export',
       trash: 'Trash',
       privacy: 'Privacy',
+      recovery: 'Recovery',
+      recoveryFailed: 'Recovery failed',
+      noBackups: 'No backups found',
+      libraryBackup: 'Library backup',
+      confirmRestore: 'Overwrite current data with this backup? Current data will be copied to .before-restore first.',
+      restoreDone: 'Restore complete',
+      restore: 'Restore',
       privacyBody: 'Mica Space stores data in .chat-space under the current workspace.\n\nLightweight and local semantic memory do not use the network. When you ask, the question, context, attachments, and extracted file text are sent to the model provider configured in DSH.\n\nAttachments are stored by the DSH attachment service. Git backup pushes only when you configure a remote and click backup. The plugin contains no telemetry and no author API key.',
       backup: 'Git backup',
       backupHint: 'Commit library data to a local git repo; set a private remote to push. Attachments are not included.',
@@ -651,6 +665,12 @@ window.__ModuleLoader__.load({
 .cs-lib-trash-modal { width: min(620px, calc(100vw - 48px)); }
 .cs-backup-modal { width: min(520px, calc(100vw - 48px)); }
 .cs-privacy-modal { width: min(620px, calc(100vw - 48px)); }
+.cs-recovery-modal { width: min(640px, calc(100vw - 48px)); }
+.cs-recovery-list { display: flex; flex-direction: column; gap: 6px; max-height: min(420px, calc(100vh - 260px)); overflow: auto; }
+.cs-recovery-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); }
+.cs-recovery-info { flex: 1; min-width: 0; }
+.cs-recovery-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.cs-recovery-meta { margin-top: 2px; color: var(--cs-muted); font-size: 10px; }
 .cs-privacy-body { max-height: min(420px, calc(100vh - 260px)); overflow: auto; color: var(--cs-muted); font-size: 12px; line-height: 1.7; }
 .cs-privacy-body p { margin: 0 0 10px; }
 .cs-backup-note { margin-top: 4px; color: var(--cs-muted); font-size: 11px; line-height: 1.6; }
@@ -2178,6 +2198,9 @@ window.__ModuleLoader__.load({
       const [search, setSearch] = useState('')
       const [trashOpen, setTrashOpen] = useState(false)
       const [privacyOpen, setPrivacyOpen] = useState(false)
+      const [recoveryOpen, setRecoveryOpen] = useState(false)
+      const [recoveryItems, setRecoveryItems] = useState([])
+      const [recoveryLoading, setRecoveryLoading] = useState(false)
       const [trashItems, setTrashItems] = useState([])
       const [trashLoading, setTrashLoading] = useState(false)
       const libraryImportRef = useRef(null)
@@ -2434,6 +2457,34 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const openRecovery = async () => {
+        setRecoveryOpen(true)
+        setRecoveryLoading(true)
+        setNotice('')
+        try {
+          const response = await fetch(API + '/maintenance/backups', { headers: { Accept: 'application/json' } })
+          const body = await response.json()
+          if (!response.ok || !body || body.ok === false) throw new Error(body && body.error ? body.error : t('recoveryFailed'))
+          setRecoveryItems(Array.isArray(body.items) ? body.items : [])
+        } catch (error) {
+          setNotice(error && error.message ? error.message : t('recoveryFailed'))
+        } finally {
+          setRecoveryLoading(false)
+        }
+      }
+
+      const restoreRecovery = async (item) => {
+        if (!window.confirm(t('confirmRestore'))) return
+        try {
+          const data = await post('/maintenance/restore', { kind: item.kind, id: item.id, source: item.source })
+          if (data.library) setLibrary(data.library)
+          setRecoveryOpen(false)
+          setNotice(t('restoreDone'))
+        } catch (error) {
+          setNotice(error && error.message ? error.message : t('recoveryFailed'))
+        }
+      }
+
       const exportLibrary = async () => {
         setNotice('')
         try {
@@ -2687,6 +2738,7 @@ window.__ModuleLoader__.load({
             h('input', { ref: libraryImportRef, type: 'file', accept: '.json,application/json', style: { display: 'none' }, onChange: importLibraryFile }),
             h('button', { type: 'button', className: 'cs-btn', onClick: openTrash }, t('trash')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setPrivacyOpen(true) }, t('privacy')),
+            h('button', { type: 'button', className: 'cs-btn', onClick: openRecovery }, t('recovery')),
             h('input', {
               className: 'cs-lib-search',
               type: 'search',
@@ -2785,6 +2837,25 @@ window.__ModuleLoader__.load({
               : null
           )
         ),
+        recoveryOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setRecoveryOpen(false) },
+          h('div', { className: 'cs-lib-modal cs-recovery-modal', onClick: (event) => event.stopPropagation() },
+            h('div', { className: 'cs-lib-modal-title' }, t('recovery')),
+            recoveryLoading
+              ? h('div', { className: 'cs-lib-empty-text' }, t('loading'))
+              : recoveryItems.length === 0
+                ? h('div', { className: 'cs-lib-empty-text' }, t('noBackups'))
+                : h('div', { className: 'cs-recovery-list' }, recoveryItems.map((item) => h('div', { key: item.kind + item.id + item.source, className: 'cs-recovery-row' },
+                    h('div', { className: 'cs-recovery-info' },
+                      h('div', { className: 'cs-recovery-title' }, item.kind === 'library' ? t('libraryBackup') : item.title),
+                      h('div', { className: 'cs-recovery-meta' }, item.source + ' · ' + formatDate(item.modifiedAt) + ' · ' + formatBytes(item.bytes))
+                    ),
+                    h('button', { type: 'button', className: 'cs-lib-mini', onClick: () => restoreRecovery(item) }, t('restore'))
+                  ))),
+            h('div', { className: 'cs-lib-modal-actions' },
+              h('button', { type: 'button', className: 'cs-btn', onClick: () => setRecoveryOpen(false) }, t('close'))
+            )
+          )
+        ) : null,
         privacyOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setPrivacyOpen(false) },
           h('div', { className: 'cs-lib-modal cs-privacy-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-lib-modal-title' }, t('privacy')),

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0
+
+- 主线可基于支线记忆做有来源的 callback；
+- 自动摘要频率：每轮 / 每 3 轮 / 关闭；
+- 旧 schema 首次读取备份为 `.pre-schema-v2.bak`；
+- 数据恢复面板：列出 `.bak` / `.pre-schema-v2.bak`，恢复前生成 `.before-restore`；
+- 按模型 context window 做近似字符预算；
+- RAG fixture 评测和 14 条测试。
+
 ## 0.3.0
 
 - 主线可基于支线索引/检索片段做有来源的 callback；

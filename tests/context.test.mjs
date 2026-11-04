@@ -84,3 +84,9 @@ test('main-line prompt allows a grounded callback to a related branch', () => {
   })
   assert.match(prompt, /就像你之前在支线里问到的/)
 })
+test('trims oldest history when maxHistoryChars is exceeded', () => {
+  const history = Array.from({ length: 10 }, (_, index) => ({ role: 'user', content: 'x'.repeat(100) + index }))
+  const messages = buildMessages({ provider: 'p', model: 'm', history, question: 'current', attachments: [], maxHistoryChars: 120 })
+  assert.ok(messages.length < history.length + 1)
+  assert.equal(messages[messages.length - 1].content[0].text, 'current')
+})
