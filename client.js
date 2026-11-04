@@ -728,7 +728,9 @@ window.__ModuleLoader__.load({
 .cs-main-guide-h { left: 0; right: 0; height: 3px; background-image: repeating-linear-gradient(to right, var(--cs-accent) 0 14px, transparent 14px 30px); }
 .cs-dot-tip { position: fixed; z-index: 1200; max-width: 300px; padding: 8px 10px; border-radius: 8px; background: #1f2329; color: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,.25); font-size: 12px; line-height: 1.55; pointer-events: none; }
 .cs-bottom-composer { position: absolute; left: 50%; bottom: 18px; z-index: 950; display: flex; flex-direction: column; gap: 6px; width: min(640px, calc(100% - 220px)); transform: translateX(-50%); }
-.cs-bottom-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cs-bottom-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.cs-bottom-head .cs-bottom-label { justify-self: start; }
+.cs-bottom-head .cs-bottom-collapse { grid-column: 2; justify-self: center; }
 .cs-bottom-label { align-self: flex-start; padding: 2px 8px; border: 1px solid var(--cs-border); border-radius: 999px; background: var(--cs-panel); color: var(--cs-muted); font-size: 11px; line-height: 1.4; }
 .cs-bottom-collapse { width: 24px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--cs-border); border-radius: 6px; background: var(--cs-panel); color: var(--cs-muted); font: inherit; font-size: 13px; line-height: 1; cursor: pointer; }
 .cs-bottom-collapse:hover { color: var(--cs-text); background: var(--cs-hover); }
@@ -2262,7 +2264,9 @@ window.__ModuleLoader__.load({
         h('div', { className: 'cs-card-body' },
           kind === 'branch' && isFirst
             ? h('div', { className: 'cs-branch-meta' },
-                h('div', { className: 'cs-branch-anchor-label' }, t('branchBriefLabel')),
+                branch.brief || briefEditor
+                  ? h('div', { className: 'cs-branch-anchor-label' }, t('branchBriefLabel'))
+                  : null,
                 h('div', { className: 'cs-branch-anchor-text' }, branch.anchorText),
                 branch.brief || briefEditor
                   ? h('textarea', {
@@ -3517,10 +3521,10 @@ window.__ModuleLoader__.load({
           if (!event.altKey && target && target.closest) {
             const briefField = target.closest('.cs-brief-input')
             const briefBox = target.closest('.cs-branch-meta')
-            const field = briefField || (briefBox ? briefBox.querySelector('.cs-brief-input') : null)
-            if (field) {
+            if (briefBox) {
+              const field = briefField || briefBox.querySelector('.cs-brief-input') || briefBox.querySelector('.cs-branch-anchor-text')
+              if (field) field.scrollTop += event.deltaY
               event.preventDefault()
-              field.scrollTop += event.deltaY
               return
             }
           }
