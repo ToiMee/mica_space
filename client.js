@@ -146,6 +146,7 @@ window.__ModuleLoader__.load({
       mainLineColor: '主线颜色',
       color: '颜色',
       customColor: '自定义',
+      changeColor: '更改颜色',
       colorWheel: '色盘',
       presetColors: '预设颜色',
       hexColor: '十六进制',
@@ -350,6 +351,7 @@ window.__ModuleLoader__.load({
       mainLineColor: 'Main line color',
       color: 'Color',
       customColor: 'Custom',
+      changeColor: 'Change color',
       colorWheel: 'Color wheel',
       presetColors: 'Presets',
       hexColor: 'Hex',
@@ -737,8 +739,6 @@ window.__ModuleLoader__.load({
 .cs-branch-lane.cs-branch-expand { opacity: 1; }
 @starting-style { .cs-branch-lane.cs-branch-expand { opacity: 0; } }
 .cs-link-collapse { animation: cs-link-collapse .18s ease forwards; }
-.cs-link-branch.cs-link-expand, .cs-link-branch-spine.cs-link-expand { opacity: 1; transition: opacity .24s ease; }
-@starting-style { .cs-link-branch.cs-link-expand, .cs-link-branch-spine.cs-link-expand { opacity: 0; } }
 @keyframes cs-branch-collapse { to { opacity: 0; transform: scale(.96); } }
 @keyframes cs-link-collapse { to { opacity: 0; } }
 .cs-card.cs-selected { border-color: var(--cs-card-accent, var(--cs-accent)); }
@@ -774,11 +774,8 @@ window.__ModuleLoader__.load({
 .cs-context-swatches { display: flex; gap: 6px; padding: 3px 8px 6px; }
 .cs-context-swatch { width: 18px; height: 18px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
 .cs-color-picker { padding: 3px 0; }
-.cs-color-row { display: flex; align-items: stretch; gap: 3px; }
-.cs-color-ramp { position: relative; flex: 1; height: 24px; padding: 0; border: 1px solid rgba(0,0,0,.22); border-radius: 5px; cursor: crosshair; overflow: hidden; }
-.cs-color-marker { position: absolute; top: 2px; width: 9px; height: 18px; border: 2px solid #fff; border-radius: 3px; box-shadow: 0 0 0 1px rgba(0,0,0,.45); transform: translateX(-50%); pointer-events: none; }
-.cs-color-arrow { width: 22px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--cs-border); border-radius: 5px; background: var(--cs-bg); color: var(--cs-muted); font: inherit; font-size: 10px; cursor: pointer; }
-.cs-color-arrow:hover { color: var(--cs-text); border-color: var(--cs-accent); }
+.cs-color-change { padding: 3px 7px; border: 0; border-radius: 5px; background: transparent; color: var(--cs-accent); font: inherit; font-size: 11px; cursor: pointer; text-align: left; }
+.cs-color-change:hover { background: var(--cs-hover); text-decoration: underline; }
 .cs-color-popover { margin-top: 6px; padding: 8px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); box-shadow: 0 8px 22px rgba(0,0,0,.16); display: flex; flex-direction: column; gap: 8px; }
 .cs-color-section { display: flex; flex-direction: column; gap: 4px; }
 .cs-color-label { color: var(--cs-muted); font-size: 9px; letter-spacing: .03em; }
@@ -1125,30 +1122,13 @@ window.__ModuleLoader__.load({
           setText(safe)
         }
       }
-      const gradient = 'linear-gradient(90deg, ' + MINERAL_COLORS.join(', ') + ')'
-      const markerIndex = MINERAL_COLORS.indexOf(safe)
-      const markerLeft = markerIndex >= 0 ? (markerIndex / (MINERAL_COLORS.length - 1)) * 100 : 50
-      const chooseFromBar = (event) => {
-        const rect = event.currentTarget.getBoundingClientRect()
-        const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width)))
-        apply(MINERAL_COLORS[Math.round(ratio * (MINERAL_COLORS.length - 1))])
-      }
+      const chooseColor = (color) => apply(color)
       return h('div', { className: 'cs-color-picker' },
-        h('div', { className: 'cs-color-row' },
-          h('button', {
-            type: 'button',
-            className: 'cs-color-ramp',
-            style: { background: gradient },
-            title: t('color'),
-            onClick: chooseFromBar,
-          }, h('span', { className: 'cs-color-marker', style: { left: markerLeft + '%', background: safe } })),
-          h('button', {
-            type: 'button',
-            className: 'cs-color-arrow',
-            title: t('color'),
-            onClick: () => setOpen((current) => !current),
-          }, open ? '▴' : '▾')
-        ),
+        h('button', {
+          type: 'button',
+          className: 'cs-color-change',
+          onClick: () => setOpen((current) => !current),
+        }, t('changeColor')),
         open
           ? h('div', { className: 'cs-color-popover' },
               h('div', { className: 'cs-color-section' },
@@ -1157,7 +1137,7 @@ window.__ModuleLoader__.load({
                   type: 'color',
                   className: 'cs-color-wheel',
                   value: safe,
-                  onChange: (event) => apply(event.target.value),
+                  onChange: (event) => chooseColor(event.target.value),
                 })
               ),
               h('div', { className: 'cs-color-section' },
@@ -1169,7 +1149,7 @@ window.__ModuleLoader__.load({
                     className: cx('cs-color-swatch', color === safe ? 'cs-color-swatch-active' : ''),
                     style: { background: color },
                     title: color,
-                    onClick: () => apply(color),
+                    onClick: () => chooseColor(color),
                   }))
                 )
               ),
@@ -5233,7 +5213,7 @@ window.__ModuleLoader__.load({
             const d = dotMode ? centerPath(anchor, first) : curvePorts(anchor, anchorSide, first, side)
             paths.push(h('path', {
               key: 'edge-' + branch.id,
-              className: cx('cs-link-branch', branchTransition && branchTransition.id === branch.id ? 'cs-link-' + branchTransition.mode : ''),
+              className: cx('cs-link-branch', branchTransition && branchTransition.id === branch.id && branchTransition.mode === 'collapse' ? 'cs-link-collapse' : ''),
               style: { stroke: position.color, strokeWidth: branchLineWidth },
               d,
             }))
@@ -5244,7 +5224,7 @@ window.__ModuleLoader__.load({
             if (!a || !b) continue
             paths.push(h('path', {
               key: 'spine-' + branch.id + '-' + index,
-              className: cx('cs-link-branch-spine', branchTransition && branchTransition.id === branch.id ? 'cs-link-' + branchTransition.mode : ''),
+              className: cx('cs-link-branch-spine', branchTransition && branchTransition.id === branch.id && branchTransition.mode === 'collapse' ? 'cs-link-collapse' : ''),
               style: { stroke: position.color, strokeWidth: branchLineWidth },
               d: dotMode ? centerPath(a, b) : curvePorts(a, 'bottom', b, 'top'),
             }))
@@ -5669,19 +5649,13 @@ window.__ModuleLoader__.load({
               ? h('button', { type: 'button', onClick: contextToggleCollapse }, (branches.find((branch) => branch.id === contextMenu.branchId) || {}).collapsed ? t('expandBranch') : t('collapseBranch'))
               : null,
             contextMenu.kind === 'main'
-              ? h('div', null,
-                  h('div', { className: 'cs-context-label' }, t('mainLineColor')),
-                  h(ColorPicker, { value: mainColor, onChange: setMainColor, t })
-                )
+              ? h(ColorPicker, { value: mainColor, onChange: setMainColor, t })
               : contextMenu.branchId
-                ? h('div', null,
-                    h('div', { className: 'cs-context-label' }, t('branchColor')),
-                    h(ColorPicker, {
+                ? h(ColorPicker, {
                       value: branchColorOf(branches.find((branch) => branch.id === contextMenu.branchId) || {}, branches.findIndex((branch) => branch.id === contextMenu.branchId)),
                       onChange: contextSetColor,
                       t,
                     })
-                  )
                 : null,
             contextMenu.branchId
               ? h('button', { type: 'button', onClick: contextSetTag }, t('branchTag'))

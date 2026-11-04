@@ -132,7 +132,7 @@ test('root renders library, canvas, settings, privacy, and recovery without cras
   })
   assert.match(textOf(renderer.root), /copyQuestion/)
   assert.match(textOf(renderer.root), /delete/)
-  assert.match(textOf(renderer.root), /mainLineColor/)
+  assert.match(textOf(renderer.root), /changeColor/)
 
   const back = findAll(renderer, (node) => node.type === 'button' && textOf(node).includes('backToLibrary'))[0]
   assert.ok(back, 'back-to-library button missing')
