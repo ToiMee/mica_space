@@ -2555,6 +2555,7 @@ window.__ModuleLoader__.load({
       const [trashOpen, setTrashOpen] = useState(false)
       const [welcomeOpen, setWelcomeOpen] = useState(() => !readWelcomeSeen())
       const [welcomeCopy, setWelcomeCopy] = useState(null)
+      const [welcomeCopyEn, setWelcomeCopyEn] = useState(null)
       const [privacyOpen, setPrivacyOpen] = useState(false)
       const [settingsOpen, setSettingsOpen] = useState(false)
       const [recoveryOpen, setRecoveryOpen] = useState(false)
@@ -2617,7 +2618,7 @@ window.__ModuleLoader__.load({
       const loadWelcomeCopy = useCallback(() => {
         fetch(API + '/welcome-copy', { headers: { Accept: 'application/json' }, cache: 'no-store' })
           .then((response) => response.json())
-          .then((body) => { if (body && body.copy) setWelcomeCopy(body.copy) })
+          .then((body) => { if (body && body.copy) setWelcomeCopy(body.copy); if (body && body.copyEn) setWelcomeCopyEn(body.copyEn) })
           .catch(() => {})
       }, [])
 
@@ -2737,7 +2738,8 @@ window.__ModuleLoader__.load({
       const welcomeText = (key) => {
         const localized = t(key)
         const useChineseCopy = /[\u4e00-\u9fa5]/.test(String(localized))
-        return useChineseCopy && welcomeCopy && typeof welcomeCopy[key] === 'string' ? welcomeCopy[key] : localized
+        const source = useChineseCopy ? welcomeCopy : welcomeCopyEn
+        return source && typeof source[key] === 'string' ? source[key] : localized
       }
       const breadcrumbs = selectedFolder === 'folders'
         ? [{ label: t('allFolders'), value: 'folders' }]
@@ -5688,6 +5690,21 @@ window.__ModuleLoader__.load({
         }, paths)
       }
 
+      const cullMargin = 260 / Math.max(view.zoom, 0.01)
+      const cullViewport = viewportRef.current
+      const cullWidth = cullViewport ? cullViewport.clientWidth : 0
+      const cullHeight = cullViewport ? cullViewport.clientHeight : 0
+      const cullBounds = {
+        left: -view.x / Math.max(view.zoom, 0.01) - cullMargin,
+        top: -view.y / Math.max(view.zoom, 0.01) - cullMargin,
+        right: (-view.x + cullWidth) / Math.max(view.zoom, 0.01) + cullMargin,
+        bottom: (-view.y + cullHeight) / Math.max(view.zoom, 0.01) + cullMargin,
+      }
+      const rectVisible = (rect) => {
+        if (detail === 'dot' || cullWidth <= 0 || cullHeight <= 0) return true
+        return rect.x + rect.w >= cullBounds.left && rect.x <= cullBounds.right && rect.y + rect.h >= cullBounds.top && rect.y <= cullBounds.bottom
+      }
+
       const renderMain = () => {
         const nodes = []
         if (mainTurns.length === 0) {
@@ -5701,7 +5718,7 @@ window.__ModuleLoader__.load({
         }
         mainTurns.forEach((turn, index) => {
           const rect = turnRects.get(turn.id)
-          if (!rect) return
+          if (!rect || !rectVisible(rect)) return
           const baseX = layoutMode === 'horizontal' ? TOP_PAD + index * MAIN_STEP_H : 0
           const baseY = layoutMode === 'horizontal' ? TOP_PAD : TOP_PAD + index * MAIN_STEP_V
           nodes.push(h('div', {
@@ -5784,7 +5801,7 @@ window.__ModuleLoader__.load({
         const hiddenCount = branch.turns.length - visibleTurns.length
         const nodes = visibleTurns.map((turn, index) => {
           const rect = turnRects.get(turn.id)
-          if (!rect) return null
+          if (!rect || !rectVisible(rect)) return null
           return h('div', {
             key: turn.id,
             className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : '', branchTransition && branchTransition.id === branch.id && branchTransition.mode === 'collapse' && index > 0 ? 'cs-branch-anim cs-branch-collapse' : ''),
@@ -5866,6 +5883,7 @@ window.__ModuleLoader__.load({
             ...(renderPorts(turn.id, rect, position.color, false) || []),
           ])
         }).filter(Boolean)
+        if (nodes.filter(Boolean).length === 0) return null
         return h('div', {
           key: branch.id,
           className: cx('cs-branch-lane', branchTransition && branchTransition.id === branch.id && branchTransition.mode === 'expand' ? 'cs-branch-expand' : ''),

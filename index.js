@@ -20,6 +20,7 @@ const execFileAsync = promisify(execFile)
 const API_ROOT = '/chat-space/api'
 const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url))
 const WELCOME_COPY_FILE = path.join(PLUGIN_DIR, 'copy', 'welcome.json')
+const WELCOME_COPY_EN_FILE = path.join(PLUGIN_DIR, 'copy', 'welcome.en.json')
 const DATA_DIR_NAME = '.chat-space'
 const LIBRARY_FILE_NAME = 'library.json'
 const LEGACY_FILE_NAME = 'space.json'

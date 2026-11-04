@@ -1,0 +1,19 @@
+{
+  "welcomeVersion": "v0.9.9 preview",
+  "welcomeTitle": "Welcome to Mica Space",
+  "welcomeIntro": "Mica Space 0.9.9 preview.\n\nIn a long conversation, follow-ups quickly become a tangle. To continue from an earlier answer, you have to scroll up and hunt for it.\n\nMica is built for exactly this: each follow-up becomes a branch on a map, while the main line stays intact.",
+  "welcomeNotesTitle": "A few things to know:",
+  "welcomeNote1": "Data is stored in .chat-space on your machine. Export the library or set up Git backup before you rely on it.",
+  "welcomeNote2": "When you ask, the question, context, attachments, and extracted text are sent to the model provider configured in DSH.",
+  "welcomeNote3": "This is a preview. Features and data formats may change; do not treat it as your only copy.",
+  "welcomeNote4": "Attachments are managed by DSH. Moving a space to trash does not release them immediately. Permanent deletion tries to clean unreferenced attachments, but DSH has no public delete API and cleanup may be incomplete. Keep important files elsewhere.",
+  "welcomeNote5": "Deleted spaces and folders go to trash first; permanent deletion actually removes them. Deleting a folder moves its child folders and contained spaces to trash together.",
+  "welcomeNote6": "The model provider may process request data under its own privacy policy.",
+  "welcomePrivacyTitle": "Privacy:",
+  "welcomePrivacy1": "No telemetry, no author API key, and no silent upload of your spaces.",
+  "welcomePrivacy2": "Data is pushed only when you configure a Git remote and click backup.",
+  "welcomePrivacy3": ".bak, .before-restore, exported JSON, and Git backups may contain conversation content. Check before sharing.",
+  "welcomeFeedback": "If something feels awkward or breaks, find me on GitHub. Please don't yell at me /(T o T)/ — just tell me how it broke and I'll take a look.",
+  "welcomeFeedbackLink": "Open a GitHub issue",
+  "welcomeStart": "Let me try"
+}
