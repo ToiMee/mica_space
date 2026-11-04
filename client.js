@@ -5524,12 +5524,15 @@ window.__ModuleLoader__.load({
         )
       }
 
-      const revealMarker = (turnId) => {
+      const revealMarker = (entry) => {
+        const { turn, kind, branchId } = entry
+        bringToFront(turn, kind, branchId)
+        clearUnread(turn, kind, branchId)
         setSelectedTurn(null)
-        setSelectedIds(new Set())
+        setSelectedIds(new Set([turn.id]))
         setSelection(null)
         setContextMenu(null)
-        focusTurn(turnId)
+        focusTurn(turn.id)
       }
 
       const renderPendingMarkers = () => {
@@ -5594,7 +5597,7 @@ window.__ModuleLoader__.load({
             style: { left: markerX, top: markerY },
             title: (count > 1 ? t('pendingCount').replace('{n}', String(count)) + '：' : t('todo') + '：') + titles,
             onPointerDown: (event) => event.stopPropagation(),
-            onClick: (event) => { event.stopPropagation(); revealMarker(items[0].entry.turn.id) },
+            onClick: (event) => { event.stopPropagation(); revealMarker(items[0].entry) },
           },
             h('span', null, '!'),
             count > 1 ? h('span', { className: 'cs-pending-count' }, String(count)) : null
@@ -5650,8 +5653,7 @@ window.__ModuleLoader__.load({
             onPointerDown: (event) => event.stopPropagation(),
             onClick: (event) => {
               event.stopPropagation()
-              clearUnread(items[0].entry.turn, items[0].entry.kind, items[0].entry.branchId)
-              revealMarker(items[0].entry.turn.id)
+              revealMarker(items[0].entry)
             },
           },
             h('span', null, '●'),
