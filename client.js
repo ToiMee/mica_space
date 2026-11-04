@@ -642,6 +642,9 @@ window.__ModuleLoader__.load({
 .cs-lib-folder:hover { background: var(--cs-hover); }
 .cs-lib-folder.cs-drop-over { background: color-mix(in srgb, var(--cs-accent) 14%, transparent); outline: 1px dashed var(--cs-accent); outline-offset: -1px; }
 .cs-lib-folder-active { background: color-mix(in srgb, var(--cs-accent) 12%, transparent); color: var(--cs-accent); }
+.cs-lib-folder-toggle { flex-shrink: 0; width: 14px; height: 20px; padding: 0; border: 0; background: transparent; color: var(--cs-muted); font: inherit; font-size: 9px; line-height: 1; cursor: pointer; }
+.cs-lib-folder-toggle:hover { color: var(--cs-text); }
+.cs-lib-folder-toggle-empty { display: inline-block; }
 .cs-lib-folder-icon { flex-shrink: 0; width: 14px; height: 14px; color: var(--cs-muted); display: inline-flex; align-items: center; justify-content: center; }
 .cs-lib-back { display: inline-flex; align-items: center; align-self: flex-start; margin-bottom: 5px; padding: 2px 6px; border: 1px solid var(--cs-border); border-radius: 6px; background: var(--cs-bg); color: var(--cs-muted); cursor: pointer; font: inherit; font-size: 11px; }
 .cs-lib-back:hover { color: var(--cs-text); border-color: var(--cs-border-strong); }
@@ -2850,6 +2853,13 @@ window.__ModuleLoader__.load({
             if (target) moveSpace(target, folder.id)
           },
         },
+          (() => {
+            const children = childrenOf(folder.id).length > 0
+            const collapsed = collapsedFolders.has(folder.id)
+            return children
+              ? h('button', { type: 'button', className: 'cs-lib-folder-toggle', onClick: (event) => { event.stopPropagation(); setCollapsedFolders((previous) => { const next = new Set(previous); if (next.has(folder.id)) next.delete(folder.id); else next.add(folder.id); return next }) } }, collapsed ? '▸' : '▾')
+              : h('span', { className: 'cs-lib-folder-toggle cs-lib-folder-toggle-empty' })
+          })(),
           h('span', { className: 'cs-lib-folder-icon' }, h(FolderIcon, { size: 13 })),
           h('span', { className: 'cs-lib-folder-name' }, folder.name),
           h('span', { className: 'cs-lib-folder-count' }, folderSpaceCount(folder.id) || ''),
@@ -2862,7 +2872,7 @@ window.__ModuleLoader__.load({
 
       const renderFolderTree = (parentId, depth) => childrenOf(parentId).flatMap((folder) => [
         renderFolderRow(folder, depth),
-        ...renderFolderTree(folder.id, depth + 1),
+        ...(collapsedFolders.has(folder.id) ? [] : renderFolderTree(folder.id, depth + 1)),
       ])
 
       const renderSpaceCard = (space) => {
@@ -3011,7 +3021,9 @@ window.__ModuleLoader__.load({
                 h('span', { className: 'cs-lib-folder-count' }, spaces.filter((space) => !space.folderId).length)
               ),
               renderFolderTree(null, 0),
-              h('button', { type: 'button', className: 'cs-lib-newfolder', onClick: openNewFolder }, '+ ' + t('newFolder'))
+              selectedFolder !== 'all'
+                ? h('button', { type: 'button', className: 'cs-lib-newfolder', onClick: openNewFolder }, '+ ' + t('newFolder'))
+                : null
             ) : null,
           ),
           h('section', { className: 'cs-lib-main' },
