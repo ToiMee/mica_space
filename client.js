@@ -2155,6 +2155,7 @@ window.__ModuleLoader__.load({
         const content = question || t('attachmentQuestion')
         setValue('')
         setAttachments([])
+        writeTextStorage(storageKey, '')
         onSend(content, attachments)
       }
 
