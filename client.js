@@ -2444,7 +2444,8 @@ window.__ModuleLoader__.load({
       const [loadState, setLoadState] = useState('loading')
       const [loadError, setLoadError] = useState('')
       const [activeId, setActiveId] = useState(() => readTextStorage(LAST_SPACE_KEY) || null)
-      const [selectedFolder, setSelectedFolder] = useState('all')
+      const [selectedFolder, setSelectedFolder] = useState(() => readTextStorage(LAST_FOLDER_KEY) || 'all')
+      const [folderHistory, setFolderHistory] = useState([])
       const [folderTreeOpen, setFolderTreeOpen] = useState(true)
       const [collapsedFolders, setCollapsedFolders] = useState(() => new Set())
       const [folderViewMode, setFolderViewMode] = useState('list')
@@ -2490,6 +2491,12 @@ window.__ModuleLoader__.load({
               return null
             }
             return current
+          })
+          setSelectedFolder((current) => {
+            if (current === 'all' || current === 'none' || current === 'folders') return current
+            if ((nextLibrary.folders || []).some((folder) => folder.id === current)) return current
+            writeTextStorage(LAST_FOLDER_KEY, 'all')
+            return 'all'
           })
           setLoadError('')
           setLoadState('ready')
@@ -2633,6 +2640,13 @@ window.__ModuleLoader__.load({
         h('option', { key: 'none', value: '' }, rootLabel || t('uncategorized')),
         ...flatFolders.map(({ folder, depth }) => h('option', { key: folder.id, value: folder.id }, '　'.repeat(depth) + '📁 ' + folder.name)),
       ]
+      const navigateFolder = (next) => {
+        if (!next || next === selectedFolder) return
+        setFolderHistory((previous) => [...previous, selectedFolder].slice(-30))
+        setSelectedFolder(next)
+        writeTextStorage(LAST_FOLDER_KEY, next)
+      }
+
       const openSpace = (id) => {
         writeTextStorage(LAST_SPACE_KEY, id)
         setActiveId(id)
@@ -2686,7 +2700,7 @@ window.__ModuleLoader__.load({
         if (!window.confirm(t('confirmDeleteFolder'))) return
         const data = await post('/folder/delete', { id: folder.id })
         if (data.library) setLibrary(data.library)
-        if (data.library && selectedFolder !== 'all' && selectedFolder !== 'none' && selectedFolder !== 'folders' && !data.library.folders.some((item) => item.id === selectedFolder)) setSelectedFolder('all')
+        if (data.library && selectedFolder !== 'all' && selectedFolder !== 'none' && selectedFolder !== 'folders' && !data.library.folders.some((item) => item.id === selectedFolder)) { setSelectedFolder('all'); setFolderHistory([]); writeTextStorage(LAST_FOLDER_KEY, 'all') }
       })
 
       const saveRename = () => run(async () => {
@@ -2875,9 +2889,18 @@ window.__ModuleLoader__.load({
       }
 
       const goUpFolder = () => {
+        if (folderHistory.length > 0) {
+          const previous = folderHistory[folderHistory.length - 1]
+          setFolderHistory((history) => history.slice(0, -1))
+          setSelectedFolder(previous)
+          writeTextStorage(LAST_FOLDER_KEY, previous)
+          return
+        }
         if (selectedFolder === 'all' || selectedFolder === 'none') return
         const folder = folderById.get(selectedFolder)
-        setSelectedFolder(folder && folder.parentId ? folder.parentId : 'all')
+        const next = folder && folder.parentId ? folder.parentId : 'all'
+        setSelectedFolder(next)
+        writeTextStorage(LAST_FOLDER_KEY, next)
       }
 
       const openNewFolder = (parentId) => {
@@ -2903,7 +2926,7 @@ window.__ModuleLoader__.load({
             event.dataTransfer.setData('application/x-mica-folder', folder.id)
             event.dataTransfer.effectAllowed = 'move'
           },
-          onClick: () => setSelectedFolder(folder.id),
+          onClick: () => navigateFolder(folder.id),
           onDragOver: (event) => {
             if (!event.dataTransfer || (!Array.from(event.dataTransfer.types || []).includes('application/x-mica-space') && !Array.from(event.dataTransfer.types || []).includes('application/x-mica-folder'))) return
             event.preventDefault()
@@ -2952,7 +2975,7 @@ window.__ModuleLoader__.load({
         type: 'button',
         className: cx('cs-lib-folder-tile', dragOverFolder === folder.id ? 'cs-drop-over' : ''),
         ...folderDragProps(folder),
-        onClick: () => setSelectedFolder(folder.id),
+        onClick: () => navigateFolder(folder.id),
       },
         h('span', { className: 'cs-lib-folder-tile-icon' }, h(FolderIcon, { size: 44 })),
         h('span', { className: 'cs-lib-folder-tile-name' }, folder.name),
@@ -3062,7 +3085,7 @@ window.__ModuleLoader__.load({
           h('aside', { className: 'cs-lib-side' },
             h('div', {
               className: cx('cs-lib-folder', selectedFolder === 'all' ? 'cs-lib-folder-active' : '', dragOverFolder === 'all' ? 'cs-drop-over' : ''),
-              onClick: () => setSelectedFolder('all'),
+              onClick: () => navigateFolder('all'),
               onDragOver: (event) => { event.preventDefault(); setDragOverFolder('all') },
               onDragLeave: () => setDragOverFolder(null),
               onDrop: (event) => {
@@ -3080,7 +3103,7 @@ window.__ModuleLoader__.load({
             ),
             h('div', {
               className: cx('cs-lib-folder', selectedFolder === 'none' ? 'cs-lib-folder-active' : '', dragOverFolder === 'none' ? 'cs-drop-over' : ''),
-              onClick: () => setSelectedFolder('none'),
+              onClick: () => navigateFolder('none'),
               onDragOver: (event) => { event.preventDefault(); setDragOverFolder('none') },
               onDragLeave: () => setDragOverFolder(null),
               onDrop: (event) => {
@@ -3100,7 +3123,7 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', className: 'cs-lib-side-toggle cs-lib-allfolders-toggle', onClick: () => setFolderTreeOpen((open) => !open), title: t('folders') }, h('span', { className: 'cs-lib-side-caret' }, folderTreeOpen ? '▾' : '▸')),
               h('div', {
                 className: cx('cs-lib-folder', selectedFolder === 'folders' ? 'cs-lib-folder-active' : '', dragOverFolder === 'folders' ? 'cs-drop-over' : ''),
-                onClick: () => setSelectedFolder('folders'),
+                onClick: () => navigateFolder('folders'),
                 onDragOver: (event) => { event.preventDefault(); setDragOverFolder('folders') },
                 onDragLeave: () => setDragOverFolder(null),
                 onDrop: (event) => {
@@ -3154,11 +3177,11 @@ window.__ModuleLoader__.load({
                         key: folder.id,
                         className: cx('cs-lib-manager-row', dragOverFolder === folder.id ? 'cs-drop-over' : ''),
                         style: { paddingLeft: 12 },
-                        onClick: () => setSelectedFolder(folder.id),
+                        onClick: () => navigateFolder(folder.id),
                         ...folderDragProps(folder),
                       },
                         h('span', { className: 'cs-lib-manager-icon' }, h(FolderIcon, { size: 14 })),
-                        h('button', { type: 'button', className: 'cs-lib-manager-name', onClick: () => setSelectedFolder(folder.id) }, folder.name),
+                        h('button', { type: 'button', className: 'cs-lib-manager-name', onClick: () => navigateFolder(folder.id) }, folder.name),
                         h('span', { className: 'cs-lib-manager-path' }, folderPath(folder)),
                         h('span', { className: 'cs-lib-manager-count' }, folderSpaceCount(folder.id) + ' ' + t('spaces')),
                         h('span', { className: 'cs-lib-folder-actions' },
@@ -3183,7 +3206,7 @@ window.__ModuleLoader__.load({
                             type: 'button',
                             className: cx('cs-lib-subfolder', dragOverFolder === folder.id ? 'cs-drop-over' : ''),
                             ...folderDragProps(folder),
-                            onClick: () => setSelectedFolder(folder.id),
+                            onClick: () => navigateFolder(folder.id),
                           },
                             h('span', { className: 'cs-lib-subfolder-icon' }, h(FolderIcon, { size: 14 })),
                             h('span', { className: 'cs-lib-subfolder-name' }, folder.name),
@@ -6223,6 +6246,7 @@ window.__ModuleLoader__.load({
 
     const ACTIVE_KEY = 'chat-space:active'
     const LAST_SPACE_KEY = 'chat-space:last-space'
+    const LAST_FOLDER_KEY = 'chat-space:last-folder'
 
     function apply(ctx) {
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'chat-space: dictionaries')
