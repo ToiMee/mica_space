@@ -3021,11 +3021,9 @@ window.__ModuleLoader__.load({
                 h('span', { className: 'cs-lib-folder-name' }, t('uncategorized')),
                 h('span', { className: 'cs-lib-folder-count' }, spaces.filter((space) => !space.folderId).length)
               ),
-              renderFolderTree(null, 0),
-              selectedFolder !== 'all'
-                ? h('button', { type: 'button', className: 'cs-lib-newfolder', onClick: openNewFolder }, '+ ' + t('newFolder'))
-                : null
+              renderFolderTree(null, 0)
             ) : null,
+            h('button', { type: 'button', className: 'cs-lib-newfolder', onClick: openNewFolder }, '+ ' + t('newFolder'))
           ),
           h('section', { className: 'cs-lib-main' },
             h('div', { className: 'cs-lib-main-head' },
@@ -3041,7 +3039,6 @@ window.__ModuleLoader__.load({
                 )
               ),
               h('div', { className: 'cs-lib-main-actions' },
-                h('button', { type: 'button', className: 'cs-btn', onClick: openNewFolder }, '+ ' + t('newFolder')),
                 h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, '+ ' + t('newSpace'))
               )
             ),
