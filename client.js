@@ -636,6 +636,10 @@ window.__ModuleLoader__.load({
 .cs-lib-search:focus { border-color: var(--cs-accent); }
 .cs-lib-body { flex: 1; min-height: 0; display: flex; }
 .cs-lib-side { width: 230px; flex-shrink: 0; padding: 12px 8px; border-right: 1px solid var(--cs-border); overflow: auto; }
+.cs-lib-allfolders-row { display: flex; align-items: stretch; gap: 2px; }
+.cs-lib-allfolders-row .cs-lib-folder { flex: 1; min-width: 0; }
+.cs-lib-allfolders-toggle { width: 22px; flex-shrink: 0; border: 0; background: transparent; color: var(--cs-muted); cursor: pointer; padding: 0; }
+.cs-lib-allfolders-toggle:hover { color: var(--cs-text); }
 .cs-lib-side-root { display: flex; align-items: stretch; gap: 2px; margin-bottom: 4px; }
 .cs-lib-root-main { flex: 1; min-width: 0; }
 .cs-lib-root-toggle { width: 22px; flex-shrink: 0; border: 0; background: transparent; color: var(--cs-muted); cursor: pointer; }
@@ -643,6 +647,7 @@ window.__ModuleLoader__.load({
 .cs-lib-folder-manager { display: flex; flex-direction: column; gap: 2px; }
 .cs-lib-manager-row { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 5px 8px; border-bottom: 1px solid var(--cs-border); }
 .cs-lib-manager-row:hover { background: var(--cs-hover); }
+.cs-lib-manager-row.cs-drop-over, .cs-lib-subfolder.cs-drop-over { background: color-mix(in srgb, var(--cs-accent) 14%, transparent); outline: 1px dashed var(--cs-accent); outline-offset: -1px; }
 .cs-lib-manager-icon { flex-shrink: 0; color: var(--cs-muted); display: inline-flex; }
 .cs-lib-manager-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 0; background: transparent; color: var(--cs-text); font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
 .cs-lib-manager-name:hover { color: var(--cs-accent); }
@@ -2540,6 +2545,34 @@ window.__ModuleLoader__.load({
         }
         return false
       }
+      const folderDragProps = (folder) => ({
+        draggable: true,
+        onDragStart: (event) => {
+          event.stopPropagation()
+          event.dataTransfer.setData('application/x-mica-folder', folder.id)
+          event.dataTransfer.effectAllowed = 'move'
+        },
+        onDragOver: (event) => {
+          if (!event.dataTransfer || (!Array.from(event.dataTransfer.types || []).includes('application/x-mica-space') && !Array.from(event.dataTransfer.types || []).includes('application/x-mica-folder'))) return
+          event.preventDefault()
+          event.dataTransfer.dropEffect = 'move'
+          setDragOverFolder(folder.id)
+        },
+        onDragLeave: () => setDragOverFolder((current) => (current === folder.id ? null : current)),
+        onDrop: (event) => {
+          event.preventDefault()
+          setDragOverFolder(null)
+          const folderId = event.dataTransfer.getData('application/x-mica-folder')
+          if (folderId) {
+            const child = folderById.get(folderId)
+            if (child && child.id !== folder.id && !isDescendantFolder(child, folder.id)) moveFolder(child, folder.id)
+            return
+          }
+          const id = event.dataTransfer.getData('application/x-mica-space')
+          const target = spaces.find((space) => space.id === id)
+          if (target) moveSpace(target, folder.id)
+        },
+      })
       const folderSpaceCount = (folderId) => spaces.filter((space) => (
         space.folderId === folderId || isDescendantFolder(folderById.get(space.folderId), folderId)
       )).length
@@ -2872,7 +2905,7 @@ window.__ModuleLoader__.load({
             const folderId = event.dataTransfer.getData('application/x-mica-folder')
             if (folderId && folderId !== folder.id) {
               const child = folderById.get(folderId)
-              if (child) moveFolder(child, folder.id)
+              if (child && child.id !== folder.id && !isDescendantFolder(child, folder.id)) moveFolder(child, folder.id)
               return
             }
             const id = event.dataTransfer.getData('application/x-mica-space')
@@ -3003,64 +3036,64 @@ window.__ModuleLoader__.load({
         notice ? h('div', { className: 'cs-lib-notice' }, notice) : null,
         h('div', { className: 'cs-lib-body' },
           h('aside', { className: 'cs-lib-side' },
-            h('div', { className: 'cs-lib-side-root' },
-              h('button', {
-                type: 'button',
-                className: cx('cs-lib-folder cs-lib-root-main', selectedFolder === 'folders' ? 'cs-lib-folder-active' : ''),
+            h('div', {
+              className: cx('cs-lib-folder', selectedFolder === 'all' ? 'cs-lib-folder-active' : '', dragOverFolder === 'all' ? 'cs-drop-over' : ''),
+              onClick: () => setSelectedFolder('all'),
+              onDragOver: (event) => { event.preventDefault(); setDragOverFolder('all') },
+              onDragLeave: () => setDragOverFolder(null),
+              onDrop: (event) => {
+                event.preventDefault(); setDragOverFolder(null)
+                const folderId = event.dataTransfer.getData('application/x-mica-folder')
+                if (folderId) { const child = folderById.get(folderId); if (child) moveFolder(child, null); return }
+                const id = event.dataTransfer.getData('application/x-mica-space')
+                const target = spaces.find((space) => space.id === id)
+                if (target) moveSpace(target, null)
+              },
+            },
+              h('span', { className: 'cs-lib-folder-icon' }, '◆'),
+              h('span', { className: 'cs-lib-folder-name' }, t('allSpaces')),
+              h('span', { className: 'cs-lib-folder-count' }, spaces.length)
+            ),
+            h('div', {
+              className: cx('cs-lib-folder', selectedFolder === 'none' ? 'cs-lib-folder-active' : '', dragOverFolder === 'none' ? 'cs-drop-over' : ''),
+              onClick: () => setSelectedFolder('none'),
+              onDragOver: (event) => { event.preventDefault(); setDragOverFolder('none') },
+              onDragLeave: () => setDragOverFolder(null),
+              onDrop: (event) => {
+                event.preventDefault(); setDragOverFolder(null)
+                const folderId = event.dataTransfer.getData('application/x-mica-folder')
+                if (folderId) { const child = folderById.get(folderId); if (child) moveFolder(child, null); return }
+                const id = event.dataTransfer.getData('application/x-mica-space')
+                const target = spaces.find((space) => space.id === id)
+                if (target) moveSpace(target, null)
+              },
+            },
+              h('span', { className: 'cs-lib-folder-icon' }, '·'),
+              h('span', { className: 'cs-lib-folder-name' }, t('uncategorized')),
+              h('span', { className: 'cs-lib-folder-count' }, spaces.filter((space) => !space.folderId).length)
+            ),
+            h('div', { className: 'cs-lib-allfolders-row' },
+              h('div', {
+                className: cx('cs-lib-folder', selectedFolder === 'folders' ? 'cs-lib-folder-active' : '', dragOverFolder === 'folders' ? 'cs-drop-over' : ''),
                 onClick: () => setSelectedFolder('folders'),
+                onDragOver: (event) => { event.preventDefault(); setDragOverFolder('folders') },
+                onDragLeave: () => setDragOverFolder(null),
+                onDrop: (event) => {
+                  event.preventDefault(); setDragOverFolder(null)
+                  const folderId = event.dataTransfer.getData('application/x-mica-folder')
+                  if (folderId) { const child = folderById.get(folderId); if (child) moveFolder(child, null); return }
+                  const id = event.dataTransfer.getData('application/x-mica-space')
+                  const target = spaces.find((space) => space.id === id)
+                  if (target) moveSpace(target, null)
+                },
               },
                 h('span', { className: 'cs-lib-folder-icon' }, h(FolderIcon, { size: 13 })),
                 h('span', { className: 'cs-lib-folder-name' }, t('allFolders')),
                 h('span', { className: 'cs-lib-folder-count' }, folders.length)
               ),
-              h('button', {
-                type: 'button',
-                className: 'cs-lib-side-toggle cs-lib-root-toggle',
-                onClick: () => setFolderTreeOpen((open) => !open),
-                title: t('folders'),
-              }, h('span', { className: 'cs-lib-side-caret' }, folderTreeOpen ? '▾' : '▸'))
+              h('button', { type: 'button', className: 'cs-lib-side-toggle cs-lib-allfolders-toggle', onClick: () => setFolderTreeOpen((open) => !open), title: t('folders') }, h('span', { className: 'cs-lib-side-caret' }, folderTreeOpen ? '▾' : '▸'))
             ),
-            folderTreeOpen ? h(React.Fragment, null,
-              h('div', {
-                className: cx('cs-lib-folder', selectedFolder === 'all' ? 'cs-lib-folder-active' : '', dragOverFolder === 'all' ? 'cs-drop-over' : ''),
-                onClick: () => setSelectedFolder('all'),
-                onDragOver: (event) => { event.preventDefault(); setDragOverFolder('all') },
-                onDragLeave: () => setDragOverFolder(null),
-                onDrop: (event) => {
-                  event.preventDefault()
-                  setDragOverFolder(null)
-                  const folderId = event.dataTransfer.getData('application/x-mica-folder')
-                  if (folderId) { const child = folderById.get(folderId); if (child) moveFolder(child, null); return }
-                  const id = event.dataTransfer.getData('application/x-mica-space')
-                  const target = spaces.find((space) => space.id === id)
-                  if (target) moveSpace(target, null)
-                },
-              },
-                h('span', { className: 'cs-lib-folder-icon' }, '◆'),
-                h('span', { className: 'cs-lib-folder-name' }, t('allSpaces')),
-                h('span', { className: 'cs-lib-folder-count' }, spaces.length)
-              ),
-              h('div', {
-                className: cx('cs-lib-folder', selectedFolder === 'none' ? 'cs-lib-folder-active' : '', dragOverFolder === 'none' ? 'cs-drop-over' : ''),
-                onClick: () => setSelectedFolder('none'),
-                onDragOver: (event) => { event.preventDefault(); setDragOverFolder('none') },
-                onDragLeave: () => setDragOverFolder(null),
-                onDrop: (event) => {
-                  event.preventDefault()
-                  setDragOverFolder(null)
-                  const folderId = event.dataTransfer.getData('application/x-mica-folder')
-                  if (folderId) { const child = folderById.get(folderId); if (child) moveFolder(child, null); return }
-                  const id = event.dataTransfer.getData('application/x-mica-space')
-                  const target = spaces.find((space) => space.id === id)
-                  if (target) moveSpace(target, null)
-                },
-              },
-                h('span', { className: 'cs-lib-folder-icon' }, '·'),
-                h('span', { className: 'cs-lib-folder-name' }, t('uncategorized')),
-                h('span', { className: 'cs-lib-folder-count' }, spaces.filter((space) => !space.folderId).length)
-              ),
-              renderFolderTree(null, 0)
-            ) : null,
+            folderTreeOpen ? renderFolderTree(null, 1) : null,
             h('button', { type: 'button', className: 'cs-lib-newfolder', onClick: () => openNewFolder() }, '+ ' + t('newFolder'))
           ),
           h('section', { className: 'cs-lib-main' },
@@ -3079,6 +3112,9 @@ window.__ModuleLoader__.load({
                 )
               ),
               h('div', { className: 'cs-lib-main-actions' },
+                selectedFolder !== 'all' && selectedFolder !== 'none'
+                  ? h('button', { type: 'button', className: 'cs-btn', onClick: () => openNewFolder() }, '+ ' + t('newFolder'))
+                  : null,
                 h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, '+ ' + t('newSpace'))
               )
             ),
@@ -3087,8 +3123,9 @@ window.__ModuleLoader__.load({
                   flatFolders.length > 0
                     ? flatFolders.map(({ folder, depth }) => h('div', {
                         key: folder.id,
-                        className: 'cs-lib-manager-row',
+                        className: cx('cs-lib-manager-row', dragOverFolder === folder.id ? 'cs-drop-over' : ''),
                         style: { paddingLeft: 12 + depth * 18 },
+                        ...folderDragProps(folder),
                       },
                         h('span', { className: 'cs-lib-manager-icon' }, h(FolderIcon, { size: 14 })),
                         h('button', { type: 'button', className: 'cs-lib-manager-name', onClick: () => setSelectedFolder(folder.id) }, folder.name),
@@ -3112,7 +3149,8 @@ window.__ModuleLoader__.load({
                         visibleFolders.map((folder) => h('button', {
                           key: folder.id,
                           type: 'button',
-                          className: 'cs-lib-subfolder',
+                          className: cx('cs-lib-subfolder', dragOverFolder === folder.id ? 'cs-drop-over' : ''),
+                          ...folderDragProps(folder),
                           onClick: () => setSelectedFolder(folder.id),
                         },
                           h('span', { className: 'cs-lib-subfolder-icon' }, h(FolderIcon, { size: 14 })),
