@@ -2565,7 +2565,7 @@ window.__ModuleLoader__.load({
           const folderId = event.dataTransfer.getData('application/x-mica-folder')
           if (folderId) {
             const child = folderById.get(folderId)
-            if (child && child.id !== folder.id && !isDescendantFolder(child, folder.id)) moveFolder(child, folder.id)
+            if (child && child.id !== folder.id && child.parentId !== folder.id && !isDescendantFolder(child, folder.id)) moveFolder(child, folder.id)
             return
           }
           const id = event.dataTransfer.getData('application/x-mica-space')
@@ -2905,7 +2905,7 @@ window.__ModuleLoader__.load({
             const folderId = event.dataTransfer.getData('application/x-mica-folder')
             if (folderId && folderId !== folder.id) {
               const child = folderById.get(folderId)
-              if (child && child.id !== folder.id && !isDescendantFolder(child, folder.id)) moveFolder(child, folder.id)
+              if (child && child.id !== folder.id && child.parentId !== folder.id && !isDescendantFolder(child, folder.id)) moveFolder(child, folder.id)
               return
             }
             const id = event.dataTransfer.getData('application/x-mica-space')
@@ -3120,11 +3120,11 @@ window.__ModuleLoader__.load({
             ),
             selectedFolder === 'folders'
               ? h('div', { className: 'cs-lib-folder-manager' },
-                  flatFolders.length > 0
-                    ? flatFolders.map(({ folder, depth }) => h('div', {
+                  childrenOf(null).length > 0
+                    ? childrenOf(null).map((folder) => h('div', {
                         key: folder.id,
                         className: cx('cs-lib-manager-row', dragOverFolder === folder.id ? 'cs-drop-over' : ''),
-                        style: { paddingLeft: 12 + depth * 18 },
+                        style: { paddingLeft: 12 },
                         ...folderDragProps(folder),
                       },
                         h('span', { className: 'cs-lib-manager-icon' }, h(FolderIcon, { size: 14 })),
