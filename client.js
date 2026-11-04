@@ -842,6 +842,7 @@ window.__ModuleLoader__.load({
 .cs-collapse-arrow { position: absolute; right: 2px; top: 50%; z-index: 6; width: 18px; height: 24px; display: flex; align-items: center; justify-content: center; transform: translateY(-50%); border: 0; border-radius: 5px; background: transparent; color: var(--cs-muted); font: inherit; font-size: 10px; line-height: 1; cursor: pointer; opacity: .55; transition: opacity .15s ease, background .15s ease, color .15s ease; }
 .cs-collapse-arrow:hover { opacity: 1; color: var(--cs-text); background: var(--cs-hover); }
 .cs-collapse-arrow-collapsed { color: var(--cs-accent); }
+.cs-collapsed-pending { position: absolute; top: 38px; right: 12px; z-index: 3; padding: 2px 5px; border-radius: 999px; background: #ffd23f; color: #241d0c; font-size: 10px; font-weight: 800; line-height: 1.2; pointer-events: none; }
 .cs-collapse-count { position: absolute; right: 1px; top: -6px; min-width: 12px; height: 12px; display: inline-flex; align-items: center; justify-content: center; padding: 0 3px; border-radius: 6px; background: var(--cs-accent); color: #fff; font-size: 8px; font-weight: 700; line-height: 1; }
 .cs-branch-anim { pointer-events: none; }
 .cs-branch-collapse { animation: cs-branch-collapse .18s ease forwards; }
@@ -1961,11 +1962,11 @@ window.__ModuleLoader__.load({
     }
 
     function Dot({ kind, zoom, label, color, selected, flagged, flagCount, pending, pendingCount, unread, collapsed, dotCount, onClick, onHover, onLeave, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }) {
-      const edge = kind === 'main'
-        ? Math.max(10, 24 / Math.max(zoom, 0.01))
-        : Math.max(8, 15 / Math.max(zoom, 0.01))
       const safeZoom = Math.max(zoom, 0.01)
-      const badge = 13 / safeZoom
+      const edge = kind === 'main'
+        ? Math.max(10, 24 / safeZoom)
+        : Math.max(8, (collapsed ? 22 : 15) / safeZoom)
+      const badge = (kind === 'branch' ? 9 : 13) / safeZoom
       const offset = edge / 2 + badge / 2 - 2 / safeZoom
       const badgeStyle = (side) => ({
         width: badge,
@@ -2253,7 +2254,7 @@ window.__ModuleLoader__.load({
       onDragStart, onDragMove, onDragEnd, onResizeStart, onResizeMove, onResizeEnd,
       onBringToFront, selected, active, side, sequence, onToggleTodo, onToggleFlag,
       onCardPointerDown, onCardPointerMove, onCardPointerUp, onCardPointerCancel, onCardClick, onCardDoubleClick, onLocateAnchor,
-      onContextMenu, tag, collapsed, hiddenCount, onToggleCollapse,
+      onContextMenu, tag, collapsed, hiddenCount, collapsedPendingCount, onToggleCollapse,
     }) {
       const streaming = turn.status === 'streaming'
       const [briefEditor, setBriefEditor] = useState(false)
@@ -2320,6 +2321,9 @@ window.__ModuleLoader__.load({
               onPointerDown: (event) => event.stopPropagation(),
               onClick: (event) => { event.stopPropagation(); onToggleCollapse() },
             }, collapsed ? '▸' : '▾', collapsed && hiddenCount > 0 ? h('span', { className: 'cs-collapse-count' }, '+' + hiddenCount) : null)
+          : null,
+        kind === 'branch' && isFirst && collapsed && collapsedPendingCount > 0
+          ? h('span', { className: 'cs-collapsed-pending', title: t('todo') }, '!' + collapsedPendingCount)
           : null,
         h('div', { className: 'cs-card-head' },
           h('div', { className: 'cs-card-tags' },
