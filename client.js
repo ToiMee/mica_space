@@ -639,9 +639,7 @@ window.__ModuleLoader__.load({
 .cs-dot-wrap { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .cs-dot-ring { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 2px solid; border-radius: 50%; pointer-events: none; box-shadow: 0 0 8px color-mix(in srgb, currentColor 35%, transparent); }
 .cs-dot-badge { position: absolute; display: flex; align-items: center; justify-content: center; border-style: solid; border-radius: 50%; font-weight: 800; line-height: 1; pointer-events: none; z-index: 4; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
-.cs-dot-stack { position: absolute; left: 50%; top: 50%; border: 0 solid transparent; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; opacity: .35; }
-.cs-dot-stack span { position: absolute; left: 0; top: 0; display: block; border-style: solid; border-radius: 50%; }
-.cs-dot-badge-collapsed { color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+.cs-dot-count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; line-height: 1; pointer-events: none; text-shadow: 0 0 2px #000, 0 0 3px #000, 0 1px 2px #000; }
 .cs-dot-badge-flag { background: #e5484d; color: #fff; border-color: #ffe1e1; }
 .cs-dot-badge-pending { background: #ffd23f; color: #241d0c; border-color: #fff6c9; box-shadow: 0 0 0 3px rgba(255,210,63,.22), 0 2px 8px rgba(0,0,0,.45); }
 .cs-dot-badge-unread { background: #3b9dff; color: #fff; border-color: #d8ecff; box-shadow: 0 0 0 3px rgba(59,157,255,.22), 0 2px 8px rgba(0,0,0,.45); }
@@ -1985,12 +1983,6 @@ window.__ModuleLoader__.load({
               : 'translate(calc(-50% + ' + offset + 'px), calc(-50% - ' + offset + 'px))',
       })
       return h('div', { className: 'cs-dot-wrap' },
-        collapsed && dotCount > 1
-          ? h('span', { className: 'cs-dot-stack', 'aria-hidden': true, style: { width: edge, height: edge, borderColor: color, borderWidth: 2 / safeZoom } },
-              h('span', { style: { width: edge, height: edge, borderColor: color, borderWidth: 2 / safeZoom, transform: 'translate(' + (-5 / safeZoom) + 'px, ' + (5 / safeZoom) + 'px)' } }),
-              h('span', { style: { width: edge, height: edge, borderColor: color, borderWidth: 2 / safeZoom, transform: 'translate(' + (-2.5 / safeZoom) + 'px, ' + (2.5 / safeZoom) + 'px)' } })
-            )
-          : null,
         selected ? h('span', {
           className: 'cs-dot-ring',
           style: {
@@ -2014,7 +2006,9 @@ window.__ModuleLoader__.load({
           onPointerUp,
           onPointerCancel,
           onContextMenu: (event) => event.preventDefault(),
-        }),
+        }, collapsed && dotCount > 1
+          ? h('span', { className: 'cs-dot-count', style: { fontSize: Math.max(8 / safeZoom, edge * 0.5) }, 'aria-hidden': true }, String(dotCount))
+          : null),
         flagged
           ? h('span', { className: 'cs-dot-badge cs-dot-badge-flag', style: badgeStyle('flag'), title: label }, flagCount > 1 ? '⚑' + flagCount : '⚑')
           : null,
@@ -2023,9 +2017,6 @@ window.__ModuleLoader__.load({
           : null,
         unread
           ? h('span', { className: 'cs-dot-badge cs-dot-badge-unread', style: badgeStyle('unread'), title: label }, '●')
-          : null,
-        collapsed && dotCount > 1
-          ? h('span', { className: 'cs-dot-badge cs-dot-badge-collapsed', style: { ...badgeStyle('collapsed'), background: color, borderColor: 'rgba(255,255,255,.82)' }, title: label }, String(dotCount))
           : null
       )
     }
@@ -5774,6 +5765,7 @@ window.__ModuleLoader__.load({
                 pendingCount: branch.collapsed ? branch.turns.filter((item) => item.todo).length : 0,
                 unread: Boolean(turn.unread),
                 collapsed: Boolean(branch.collapsed),
+                dotCount: branch.collapsed ? branch.turns.length : 0,
                 zoom: view.zoom,
                 label: turn.summary || truncate(turn.question, 80),
                 color: position.color,
