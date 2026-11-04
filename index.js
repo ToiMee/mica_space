@@ -217,7 +217,11 @@ export function apply(ctx) {
   const readLibrary = async () => {
     const existing = await readJson(libraryFile())
     if (existing) {
+      if (!existing.schemaVersion) {
+        try { await copyFile(libraryFile(), libraryFile() + '.pre-schema-v2.bak') } catch (_error) {}
+      }
       const library = normalizeLibrary(existing)
+      if (!existing.schemaVersion) await writeJson(libraryFile(), library)
       return syncFirstSummaries(library)
     }
     const legacy = await readJson(legacyFile())
@@ -247,6 +251,11 @@ export function apply(ctx) {
     if (!validId(id)) return null
     const space = await readJson(spaceFile(id))
     if (!space || !space.main || !Array.isArray(space.main.turns) || !Array.isArray(space.branches)) return null
+    if (!space.schemaVersion) {
+      try { await copyFile(spaceFile(id), spaceFile(id) + '.pre-schema-v2.bak') } catch (_error) {}
+      space.schemaVersion = SPACE_SCHEMA_VERSION
+      await writeJson(spaceFile(id), space)
+    }
     return {
       ...space,
       id,
@@ -1106,6 +1115,9 @@ function buildSystemPrompt({ kind, anchorText, brief, mainContext, branchDigest,
   const otherBranches = branchDigest.filter((branch) => branch && branch.id !== branchId)
   if (otherBranches.length > 0) {
     lines.push('', '当前聊天空间的分支索引（不是全文，只用于知道其他分支讨论过什么）：', formatBranchDigest(otherBranches))
+  }
+  if (kind === 'main' && (otherBranches.length > 0 || retrieved.some((item) => item.kind === 'branch'))) {
+    lines.push('', '如果当前主线问题与某条支线相关，可以自然 callback，例如“就像你之前在支线里问到的……，这里正体现为……”。只能使用上面的支线索引或检索片段，不能编造支线内容。')
   }
   if (kind === 'branch' && mainDigest.length > 0) {
     lines.push('', '主线最近的问答（可能发生在分支分叉之后）：', formatMainDigest(mainDigest))

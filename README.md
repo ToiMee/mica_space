@@ -80,9 +80,9 @@ Mica Space 是 DSH 的可缩放对话地图插件：一条纵向主线，多条�
 ## 测试
 
 ```bash
-node --test tests/context.test.mjs tests/library.test.mjs tests/embedding.test.mjs tests/semantic.test.mjs tests/parent-child.test.mjs
+node --test tests/context.test.mjs tests/library.test.mjs tests/embedding.test.mjs tests/semantic.test.mjs tests/parent-child.test.mjs tests/rag-eval.test.mjs
 ```
 
 ## 版本
 
-`0.2.1` — 预览版，零配置本地记忆 + 父子级轻量检索。
+`0.3.0` — 预览版，零配置本地记忆 + 父子级轻量检索 + 主线 callback。

@@ -156,6 +156,10 @@ window.__ModuleLoader__.load({
       memoryLexicalHint: '关键词 + 字符 n-gram 哈希向量；零配置、最快。',
       memorySemantic: '本地语义增强',
       memorySemanticHint: '在当前空间的词共现上构建语义向量；零配置、无需 embedding API。',
+      summaryFrequency: '自动摘要频率',
+      summaryEvery: '每轮',
+      summaryEvery3: '每 3 轮',
+      summaryOff: '关闭',
       delete: '删除',
       undo: '撤销',
       deleted: '已删除',
@@ -336,6 +340,10 @@ window.__ModuleLoader__.load({
       memoryLexicalHint: 'Keywords plus character n-gram hashing; zero config and fastest.',
       memorySemantic: 'Local semantic',
       memorySemanticHint: 'Builds distributional vectors from term co-occurrence inside this space; no API.',
+      summaryFrequency: 'Auto summary',
+      summaryEvery: 'Every turn',
+      summaryEvery3: 'Every 3 turns',
+      summaryOff: 'Off',
       delete: 'Delete',
       undo: 'Undo',
       deleted: 'Deleted',
@@ -701,6 +709,10 @@ window.__ModuleLoader__.load({
 .cs-memory-option span { color: var(--cs-muted); font-size: 11px; line-height: 1.5; }
 .cs-memory-option:hover { border-color: var(--cs-accent); }
 .cs-memory-active { border-color: var(--cs-accent); background: color-mix(in srgb, var(--cs-accent) 10%, var(--cs-bg)); }
+.cs-memory-section { display: flex; flex-direction: column; gap: 6px; color: var(--cs-muted); font-size: 11px; }
+.cs-memory-chips { display: flex; gap: 6px; }
+.cs-memory-chip { padding: 6px 9px; border: 1px solid var(--cs-border); border-radius: 7px; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 11px; cursor: pointer; }
+.cs-memory-chip:hover { border-color: var(--cs-accent); }
 .cs-layer-tree { display: flex; flex-direction: column; gap: 2px; }
 .cs-layer-root { padding: 4px 8px 6px; color: var(--cs-muted); font-size: 10px; font-weight: 600; letter-spacing: .08em; }
 .cs-layer-children { display: flex; flex-direction: column; gap: 2px; margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--cs-border); }
@@ -950,6 +962,7 @@ window.__ModuleLoader__.load({
         branches,
         layoutMode: raw.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
         memoryMode: raw.memoryMode === 'semantic' ? 'semantic' : 'lexical',
+        summaryMode: raw.summaryMode === 'every3' ? 'every3' : raw.summaryMode === 'off' ? 'off' : 'every',
         view: rawView
           ? {
               x: finite(rawView.x, 120),
@@ -2933,6 +2946,7 @@ window.__ModuleLoader__.load({
       const layoutBranches = space ? space.branches : null
       const layoutModeForMemo = space && space.layoutMode === 'horizontal' ? 'horizontal' : 'vertical'
       const memoryMode = space && space.memoryMode === 'semantic' ? 'semantic' : 'lexical'
+      const summaryMode = space && space.summaryMode === 'every3' ? 'every3' : space && space.summaryMode === 'off' ? 'off' : 'every'
       const layoutMemo = useMemo(
         () => (layoutTurns ? buildPositions(layoutTurns, layoutBranches || [], layoutModeForMemo) : null),
         [layoutTurns, layoutBranches, layoutModeForMemo]
@@ -4115,7 +4129,15 @@ window.__ModuleLoader__.load({
                 } else if (event && event.type === 'done') {
                   finished = true
                   updateTurn(kind, branchId, turnId, { answer, status: 'completed', usage: event.usage || null, error: '' })
-                  requestSummary({ id: turnId, question: payload.question, answer, summary: '' }, kind, branchId)
+                  if (summaryMode === 'every' || (summaryMode === 'every3' && (() => {
+                    const currentTurns = [
+                      ...(spaceRef.current && spaceRef.current.main ? spaceRef.current.main.turns : []),
+                      ...(spaceRef.current && Array.isArray(spaceRef.current.branches) ? spaceRef.current.branches.flatMap((branch) => branch.turns) : []),
+                    ]
+                    return (currentTurns.filter((turn) => turn.status === 'completed' || turn.status === 'cancelled').length + 1) % 3 === 0
+                  })())) {
+                    requestSummary({ id: turnId, question: payload.question, answer, summary: '' }, kind, branchId)
+                  }
                 } else if (event && event.type === 'error') {
                   finished = true
                   updateTurn(kind, branchId, turnId, { answer, status: 'failed', error: event.message || '回答失败' })
@@ -4253,6 +4275,15 @@ window.__ModuleLoader__.load({
         saveSoon(500)
       }
 
+
+      const setSummaryMode = (mode) => {
+        pushHistory()
+        commit((previous) => ({
+          ...previous,
+          summaryMode: mode === 'every3' ? 'every3' : mode === 'off' ? 'off' : 'every',
+        }))
+        saveSoon(120)
+      }
 
       const setMemoryMode = (mode) => {
         pushHistory()
@@ -5216,6 +5247,14 @@ window.__ModuleLoader__.load({
             },
               h('strong', null, t('memorySemantic')),
               h('span', null, t('memorySemanticHint'))
+            ),
+            h('div', { className: 'cs-memory-section' },
+              h('strong', null, t('summaryFrequency')),
+              h('div', { className: 'cs-memory-chips' },
+                h('button', { type: 'button', className: cx('cs-memory-chip', summaryMode === 'every' ? 'cs-memory-active' : ''), onClick: () => setSummaryMode('every') }, t('summaryEvery')),
+                h('button', { type: 'button', className: cx('cs-memory-chip', summaryMode === 'every3' ? 'cs-memory-active' : ''), onClick: () => setSummaryMode('every3') }, t('summaryEvery3')),
+                h('button', { type: 'button', className: cx('cs-memory-chip', summaryMode === 'off' ? 'cs-memory-active' : ''), onClick: () => setSummaryMode('off') }, t('summaryOff'))
+              )
             ),
             h('div', { className: 'cs-modal-actions' },
               h('button', { type: 'button', className: 'cs-btn', onClick: () => setMemoryOpen(false) }, t('close'))

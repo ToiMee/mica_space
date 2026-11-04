@@ -70,3 +70,17 @@ test('puts main memory before branch memory and includes retrieval', () => {
   assert.match(prompt, /old answer/)
   assert.match(prompt, /turn-old/)
 })
+test('main-line prompt allows a grounded callback to a related branch', () => {
+  const prompt = buildSystemPrompt({
+    kind: 'main',
+    anchorText: '',
+    brief: '',
+    mainContext: [],
+    branchDigest: [{ id: 'b1', parentBranchId: null, anchorText: '标签', brief: '标签缩放', turns: [{ question: '标签未缩放', answer: '会出问题' }] }],
+    mainDigest: [],
+    branchId: null,
+    memory: { main: '主线记忆', branches: {} },
+    retrieved: [{ kind: 'branch', question: '标签未缩放', summary: '标签没有缩放会导致异常', chunk: '', sourceTurnIds: ['turn-b'] }],
+  })
+  assert.match(prompt, /就像你之前在支线里问到的/)
+})

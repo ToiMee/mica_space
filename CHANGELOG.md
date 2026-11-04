@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- 主线可基于支线索引/检索片段做有来源的 callback；
+- 自动摘要频率可选：每轮 / 每 3 轮 / 关闭；
+- 旧 library/space 首次读取时生成 `.pre-schema-v2.bak` 并补 schemaVersion；
+- 新增父子级检索和 RAG fixture 评测，13 条测试通过。
+
 ## 0.2.1
 
 - 修复空间库隐私状态作用域导致打不开；
