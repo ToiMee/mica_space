@@ -2724,6 +2724,14 @@ window.__ModuleLoader__.load({
         h('option', { key: 'none', value: '' }, rootLabel || t('uncategorized')),
         ...flatFolders.map(({ folder, depth }) => h('option', { key: folder.id, value: folder.id }, '　'.repeat(depth) + '📁 ' + folder.name)),
       ]
+      const toggleFolderView = () => {
+        setFolderViewMode((mode) => {
+          const next = mode === 'grid' ? 'list' : 'grid'
+          writeTextStorage(FOLDER_VIEW_KEY, next)
+          return next
+        })
+      }
+
       const navigateFolder = (next) => {
         if (!next || next === selectedFolder) return
         setFolderHistory((previous) => [...previous, selectedFolder].slice(-30))

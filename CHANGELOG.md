@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.40
+
+- 补上文件夹视图切换函数，修复 toggleFolderView is not defined；
+- 16 条测试。
+
 ## 1.0.39
 
 - 首次使用文案精简，补充回收站与模型提供商说明；
