@@ -467,7 +467,7 @@ window.__ModuleLoader__.load({
 .cs-composer-dragging { outline: 2px dashed var(--cs-accent); outline-offset: -4px; background: color-mix(in srgb, var(--cs-accent) 8%, var(--cs-panel)); }
 .cs-composer { height: auto; }
 .cs-card { width: 100%; height: 100%; container-type: inline-size; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--cs-panel); border: 1px solid var(--cs-border); border-left: 3px solid var(--cs-card-accent, var(--cs-accent)); border-radius: var(--cs-radius); box-shadow: var(--cs-shadow); transition: border-color .15s ease, box-shadow .15s ease; }
-.cs-card-main { border-left: 3px solid var(--cs-accent); }
+.cs-card-main { border-left: 3px solid var(--cs-card-accent, var(--cs-accent)); }
 .cs-card-branch { border-left: 3px solid var(--cs-accent-soft); }
 .cs-card-welcome { justify-content: center; align-items: flex-start; gap: 10px; padding: 28px; border-left: 3px solid var(--cs-accent); }
 .cs-welcome-title { font-size: 18px; font-weight: 600; }
@@ -592,13 +592,6 @@ window.__ModuleLoader__.load({
 .cs-card-main, .cs-card-branch { border-left-color: var(--cs-card-accent, var(--cs-accent)); }
 .cs-card-main { box-shadow: 0 0 0 1px color-mix(in srgb, var(--cs-card-accent) 30%, transparent), var(--cs-shadow); }
 .cs-seq { flex-shrink: 0; padding: 0 3px; border-radius: 4px; color: var(--cs-card-accent, var(--cs-accent)); font-size: 10px; font-weight: 700; line-height: 1.6; letter-spacing: .02em; }
-.cs-layout-switch { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-panel); color: var(--cs-muted); cursor: pointer; font: inherit; font-size: 12px; }
-.cs-layout-track { position: relative; width: 34px; height: 18px; border-radius: 9px; background: var(--cs-border); transition: background .18s ease; }
-.cs-layout-knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--cs-panel); box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: left .18s ease; }
-.cs-layout-switch.cs-layout-vertical .cs-layout-knob { left: 18px; }
-.cs-layout-switch.cs-layout-horizontal .cs-layout-track { background: color-mix(in srgb, var(--cs-accent) 45%, var(--cs-border)); }
-.cs-layout-switch.cs-layout-vertical .cs-layout-track { background: color-mix(in srgb, var(--cs-accent) 45%, var(--cs-border)); }
-.cs-layout-switch.cs-layout-horizontal .cs-layout-h, .cs-layout-switch.cs-layout-vertical .cs-layout-v { color: var(--cs-text); font-weight: 600; }
 .cs-card.cs-accent-left { border-left: 3px solid var(--cs-card-accent, var(--cs-accent)); }
 .cs-card.cs-accent-right { border-left: 1px solid var(--cs-border); border-right: 3px solid var(--cs-card-accent, var(--cs-accent)); }
 .cs-card.cs-accent-top { border-left: 1px solid var(--cs-border); border-top: 3px solid var(--cs-card-accent, var(--cs-accent)); }
@@ -677,6 +670,8 @@ window.__ModuleLoader__.load({
 .cs-lib-layout-choice { display: flex; gap: 8px; }
 .cs-lib-layout-option { flex: 1; padding: 8px; border: 1px solid var(--cs-border); border-radius: 7px; background: var(--cs-bg); color: var(--cs-muted); cursor: pointer; font: inherit; font-size: 12px; }
 .cs-lib-layout-active { border-color: var(--cs-accent); background: color-mix(in srgb, var(--cs-accent) 12%, var(--cs-panel)); color: var(--cs-accent); }
+.cs-lib-hint { color: var(--cs-muted); font-size: 10px; line-height: 1.4; }
+.cs-back-icon { font-size: 14px; line-height: 1; }
 .cs-lib-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 3px; }
 .cs-lib-trash-modal { width: min(620px, calc(100vw - 48px)); }
 .cs-backup-modal { width: min(520px, calc(100vw - 48px)); }
@@ -1054,6 +1049,12 @@ window.__ModuleLoader__.load({
         w: clamp(finite(layout.w, defaultW || CARD_W), MIN_CARD_W, MAX_CARD_W),
         h: clamp(finite(layout.h, defaultH || CARD_H), MIN_CARD_H, MAX_CARD_H),
       }
+    }
+
+    function cardColorOf(turn, fallback) {
+      return turn && Number.isInteger(turn.colorIndex)
+        ? MINERAL_COLORS[((turn.colorIndex % MINERAL_COLORS.length) + MINERAL_COLORS.length) % MINERAL_COLORS.length]
+        : fallback
     }
 
     function branchColorOf(branch, index) {
@@ -1734,7 +1735,7 @@ window.__ModuleLoader__.load({
         ? Math.max(10, 24 / Math.max(zoom, 0.01))
         : Math.max(8, 15 / Math.max(zoom, 0.01))
       const safeZoom = Math.max(zoom, 0.01)
-      const badge = 18 / safeZoom
+      const badge = 13 / safeZoom
       const offset = edge / 2 + badge / 2 - 2 / safeZoom
       const badgeStyle = (side) => ({
         width: badge,
@@ -3008,7 +3009,8 @@ window.__ModuleLoader__.load({
               h('div', { className: 'cs-lib-layout-choice' },
                 h('button', { type: 'button', className: cx('cs-lib-layout-option', newSpaceLayout === 'vertical' ? 'cs-lib-layout-active' : ''), onClick: () => setNewSpaceLayout('vertical') }, t('layoutVertical')),
                 h('button', { type: 'button', className: cx('cs-lib-layout-option', newSpaceLayout === 'horizontal' ? 'cs-lib-layout-active' : ''), onClick: () => setNewSpaceLayout('horizontal') }, t('layoutHorizontal'))
-              )
+              ),
+              h('div', { className: 'cs-lib-hint' }, t('layoutLockedHint'))
             ),
             h('label', { className: 'cs-lib-field' },
               h('span', null, t('folderLabel')),
@@ -3748,6 +3750,22 @@ window.__ModuleLoader__.load({
         const branchId = contextMenu.branchId
         setContextMenu(null)
         toggleBranchCollapse(branchId)
+      }
+
+      const contextSetCardColor = (colorIndex) => {
+        if (!contextMenu) return
+        const target = contextMenu.turn
+        const kind = contextMenu.kind
+        const branchId = contextMenu.branchId
+        setContextMenu(null)
+        pushHistory()
+        commit((previous) => {
+          if (kind === 'main') {
+            return { ...previous, main: { ...previous.main, turns: previous.main.turns.map((turn) => turn.id === target.id ? { ...turn, colorIndex } : turn) } }
+          }
+          return { ...previous, branches: previous.branches.map((branch) => branch.id === branchId ? { ...branch, turns: branch.turns.map((turn) => turn.id === target.id ? { ...turn, colorIndex } : turn) } : branch) }
+        })
+        saveSoon(100)
       }
 
       const contextSetColor = (colorIndex) => {
@@ -4493,21 +4511,6 @@ window.__ModuleLoader__.load({
 
       fitViewRef.current = focusMainLine
 
-      const toggleLayout = () => {
-        const next = layoutMode === 'horizontal' ? 'vertical' : 'horizontal'
-        pushHistory()
-        commit((previous) => ({
-          ...previous,
-          layoutMode: next,
-          main: { ...previous.main, turns: previous.main.turns.map((turn) => ({ ...turn, layout: null })) },
-          branches: previous.branches.map((branch) => ({ ...branch, turns: branch.turns.map((turn) => ({ ...turn, layout: null })) })),
-        }))
-        setTimeout(() => {
-          if (fitViewRef.current) fitViewRef.current()
-        }, 80)
-        saveSoon(200)
-      }
-
       const zoomBy = (factor) => {
         const element = viewportRef.current
         if (!element) return
@@ -5111,7 +5114,7 @@ window.__ModuleLoader__.load({
                 pending: Boolean(turn.todo),
                 zoom: view.zoom,
                 label: turn.summary || truncate(turn.question, 80),
-                color: MAIN_COLOR,
+                color: cardColorOf(turn, MAIN_COLOR),
                 onClick: () => {
                   if (suppressDotClickRef.current) {
                     suppressDotClickRef.current = false
@@ -5190,7 +5193,7 @@ window.__ModuleLoader__.load({
                 pending: Boolean(turn.todo),
                 zoom: view.zoom,
                 label: turn.summary || truncate(turn.question, 80),
-                color: position.color,
+                color: cardColorOf(turn, position.color),
                 onClick: () => {
                   if (suppressDotClickRef.current) {
                     suppressDotClickRef.current = false
@@ -5419,6 +5422,19 @@ window.__ModuleLoader__.load({
             contextMenu.branchId
               ? h('button', { type: 'button', onClick: contextToggleCollapse }, (branches.find((branch) => branch.id === contextMenu.branchId) || {}).collapsed ? t('expandBranch') : t('collapseBranch'))
               : null,
+            h('div', null,
+              h('div', { className: 'cs-context-label' }, t('cardColor')),
+              h('div', { className: 'cs-context-swatches' },
+                MINERAL_COLORS.map((color, index) => h('button', {
+                  key: 'card-color-' + index,
+                  type: 'button',
+                  className: 'cs-context-swatch',
+                  style: { background: color },
+                  title: t('cardColor') + ' ' + (index + 1),
+                  onClick: () => contextSetCardColor(index),
+                }))
+              )
+            ),
             contextMenu.branchId
               ? h('div', null,
                   h('div', { className: 'cs-context-label' }, t('branchColor')),
@@ -5659,16 +5675,10 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'cs-btn', disabled: undoCount === 0, onClick: undo, title: 'Ctrl+Z' }, t('undo')),
 
             h('button', { type: 'button', className: 'cs-btn', onClick: focusMainLine }, t('focusMain')),
-            h('button', {
-              type: 'button',
-              className: 'cs-btn',
-              onClick: toggleLayout,
-              title: t('toggleLayout'),
-            }, layoutMode === 'horizontal' ? t('verticalShort') : t('horizontalShort')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setMemoryOpen(true) }, t('memory')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setLayersOpen(true) }, t('layers')),
             typeof onBackToLibrary === 'function'
-              ? h('button', { type: 'button', className: 'cs-btn', onClick: onBackToLibrary }, t('backToLibrary'))
+              ? h('button', { type: 'button', className: 'cs-btn cs-back-btn', onClick: onBackToLibrary }, h('span', { className: 'cs-back-icon', 'aria-hidden': 'true' }, '←'), h('span', null, t('backToLibrary')))
               : null
           )
         ),
