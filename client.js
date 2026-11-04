@@ -3108,6 +3108,8 @@ window.__ModuleLoader__.load({
       const loadedRef = useRef(false)
       const panRef = useRef(null)
       const marqueeRef = useRef(null)
+      const touchPointersRef = useRef(new Map())
+      const pinchRef = useRef(null)
       const fitViewRef = useRef(null)
       const alignedSpaceRef = useRef('')
       const highlightTimerRef = useRef(null)
@@ -4833,6 +4835,35 @@ window.__ModuleLoader__.load({
       const onPointerDown = (event) => {
         const target = event.target
         if (target && target.closest && target.closest('.cs-card, .cs-composer, .cs-modal, .cs-modal-backdrop, .cs-toast, .cs-sel-toolbar, .cs-zoom, button, textarea, input, a')) return
+        if (event.pointerType === 'touch') {
+          event.preventDefault()
+          setSelection(null)
+          setSelectedTurn(null)
+          touchPointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+          try { event.currentTarget.setPointerCapture(event.pointerId) } catch (_error) {}
+          if (touchPointersRef.current.size === 1) {
+            const current = spaceRef.current && spaceRef.current.view ? spaceRef.current.view : view
+            panRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, x: current.x, y: current.y }
+            marqueeRef.current = null
+          } else if (touchPointersRef.current.size === 2) {
+            const points = [...touchPointersRef.current.values()]
+            const current = spaceRef.current && spaceRef.current.view ? spaceRef.current.view : view
+            const viewport = event.currentTarget.getBoundingClientRect()
+            const distance = Math.max(1, Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y))
+            const center = { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 }
+            panRef.current = null
+            marqueeRef.current = null
+            pinchRef.current = {
+              distance,
+              startZoom: current.zoom,
+              center,
+              viewport,
+              worldX: (center.x - viewport.left - current.x) / current.zoom,
+              worldY: (center.y - viewport.top - current.y) / current.zoom,
+            }
+          }
+          return
+        }
         if (event.button === 0) {
           event.preventDefault()
           setSelection(null)
@@ -4873,6 +4904,27 @@ window.__ModuleLoader__.load({
       }
 
       const onPointerMove = (event) => {
+        if (event.pointerType === 'touch' && touchPointersRef.current.has(event.pointerId)) {
+          touchPointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+          const pinch = pinchRef.current
+          if (pinch && touchPointersRef.current.size >= 2) {
+            event.preventDefault()
+            const points = [...touchPointersRef.current.values()].slice(0, 2)
+            const distance = Math.max(1, Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y))
+            const center = { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 }
+            const zoom = clamp(pinch.startZoom * (distance / pinch.distance), MIN_ZOOM, MAX_ZOOM)
+            commit((previous) => ({
+              ...previous,
+              view: {
+                ...previous.view,
+                zoom,
+                x: center.x - pinch.viewport.left - pinch.worldX * zoom,
+                y: center.y - pinch.viewport.top - pinch.worldY * zoom,
+              },
+            }))
+            return
+          }
+        }
         const marquee = marqueeRef.current
         if (marquee && marquee.pointerId === event.pointerId) {
           const dx = event.clientX - marquee.startX
@@ -4898,6 +4950,16 @@ window.__ModuleLoader__.load({
       }
 
       const endPan = (event) => {
+        if (event.pointerType === 'touch') {
+          touchPointersRef.current.delete(event.pointerId)
+          if (touchPointersRef.current.size < 2) pinchRef.current = null
+          if (touchPointersRef.current.size === 0) {
+            panRef.current = null
+            saveSoon(300)
+          }
+          try { event.currentTarget.releasePointerCapture(event.pointerId) } catch (_error) {}
+          return
+        }
         const marquee = marqueeRef.current
         if (marquee && marquee.pointerId === event.pointerId) {
           marqueeRef.current = null
