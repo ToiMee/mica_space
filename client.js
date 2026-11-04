@@ -691,6 +691,11 @@ window.__ModuleLoader__.load({
 .cs-lib-main { flex: 1; min-width: 0; overflow: auto; padding: 16px 20px 28px; }
 .cs-lib-main-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .cs-lib-main-actions { display: flex; align-items: center; gap: 8px; }
+.cs-lib-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; min-width: 0; color: var(--cs-muted); font-size: 10px; line-height: 1.4; }
+.cs-lib-breadcrumb-link { padding: 0; border: 0; background: transparent; color: var(--cs-muted); font: inherit; font-size: 10px; cursor: pointer; }
+.cs-lib-breadcrumb-link:hover { color: var(--cs-accent); text-decoration: underline; }
+.cs-lib-breadcrumb-current { color: var(--cs-text); font-size: 10px; }
+.cs-lib-breadcrumb-sep { color: var(--cs-muted); opacity: .6; }
 .cs-lib-main-title { font-size: 17px; font-weight: 600; }
 .cs-lib-main-sub { margin-top: 3px; color: var(--cs-muted); font-size: 12px; }
 .cs-lib-subfolders { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-bottom: 12px; }
@@ -2606,6 +2611,24 @@ window.__ModuleLoader__.load({
             : selectedFolder === 'folders'
               ? t('allFolders')
               : (folderById.get(selectedFolder) && folderById.get(selectedFolder).name) || t('allSpaces')
+      const folderChain = (folderId) => {
+        const chain = []
+        let current = folderById.get(folderId)
+        while (current && chain.length < 30) {
+          chain.unshift(current)
+          current = current.parentId ? folderById.get(current.parentId) : null
+        }
+        return chain
+      }
+      const breadcrumbs = selectedFolder === 'folders'
+        ? [{ label: t('allFolders'), value: 'folders' }]
+        : selectedFolder === 'all'
+          ? [{ label: t('allSpaces'), value: 'all' }]
+          : selectedFolder === 'none'
+            ? [{ label: t('uncategorized'), value: 'none' }]
+            : folderById.has(selectedFolder)
+              ? [{ label: t('allFolders'), value: 'folders' }, ...folderChain(selectedFolder).map((folder) => ({ label: folder.name, value: folder.id }))]
+              : [{ label: t('allSpaces'), value: 'all' }]
       const visibleSpaces = spaces
         .filter((space) => {
           if (searchActive) {
@@ -3146,6 +3169,14 @@ window.__ModuleLoader__.load({
           h('section', { className: 'cs-lib-main' },
             h('div', { className: 'cs-lib-main-head' },
               h('div', { className: 'cs-lib-main-title-wrap' },
+                h('div', { className: 'cs-lib-breadcrumb' },
+                  breadcrumbs.map((item, index) => h(React.Fragment, { key: item.value },
+                    index > 0 ? h('span', { className: 'cs-lib-breadcrumb-sep' }, '/') : null,
+                    index === breadcrumbs.length - 1
+                      ? h('span', { className: 'cs-lib-breadcrumb-current' }, item.label)
+                      : h('button', { type: 'button', className: 'cs-lib-breadcrumb-link', onClick: () => navigateFolder(item.value) }, item.label)
+                  ))
+                ),
                 selectedFolder !== 'all' && selectedFolder !== 'none' && selectedFolder !== 'folders'
                   ? h('button', { type: 'button', className: 'cs-lib-back', onClick: goUpFolder }, '← ' + t('upOneLevel'))
                   : null,
