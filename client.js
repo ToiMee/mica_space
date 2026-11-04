@@ -83,7 +83,6 @@ window.__ModuleLoader__.load({
       copied: '已复制',
       copyQuestion: '复制问题',
       copyAnswer: '复制回答',
-      copyBoth: '复制问答',
       contextQuote: '从这里继续追问',
       contextFront: '置于最前',
       trashEmpty: '回收站是空的',
@@ -286,7 +285,6 @@ window.__ModuleLoader__.load({
       copied: 'Copied',
       copyQuestion: 'Copy question',
       copyAnswer: 'Copy answer',
-      copyBoth: 'Copy Q&A',
       contextQuote: 'Continue from this answer',
       contextFront: 'Bring to front',
       trashEmpty: 'Trash is empty',
@@ -765,11 +763,11 @@ window.__ModuleLoader__.load({
 .cs-context-swatches { display: flex; gap: 6px; padding: 3px 8px 6px; }
 .cs-context-swatch { width: 18px; height: 18px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
 .cs-color-picker { padding: 3px 0; }
-.cs-color-current { display: flex; align-items: center; gap: 6px; width: 100%; padding: 5px 7px; border: 1px solid var(--cs-border); border-radius: 6px; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 10px; cursor: pointer; }
-.cs-color-current:hover { border-color: var(--cs-accent); }
-.cs-color-dot { width: 13px; height: 13px; flex-shrink: 0; border-radius: 50%; border: 1px solid rgba(0,0,0,.2); }
-.cs-color-value { flex: 1; text-align: left; font-family: ui-monospace, monospace; }
-.cs-color-chevron { color: var(--cs-muted); }
+.cs-color-row { display: flex; align-items: stretch; gap: 3px; }
+.cs-color-bar { flex: 1; height: 22px; padding: 0 7px; border: 1px solid rgba(0,0,0,.18); border-radius: 5px; font: inherit; font-size: 9px; font-weight: 700; letter-spacing: .03em; cursor: pointer; }
+.cs-color-bar-label { padding: 1px 4px; border-radius: 3px; background: rgba(0,0,0,.28); color: #fff; }
+.cs-color-arrow { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--cs-border); border-radius: 5px; background: var(--cs-bg); color: var(--cs-muted); font: inherit; font-size: 10px; cursor: pointer; }
+.cs-color-arrow:hover { color: var(--cs-text); border-color: var(--cs-accent); }
 .cs-color-controls { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
 .cs-color-wheel { width: 26px; height: 22px; flex-shrink: 0; padding: 0; border: 1px solid var(--cs-border); border-radius: 5px; background: transparent; cursor: pointer; }
 .cs-color-hex { width: 68px; height: 22px; box-sizing: border-box; padding: 0 5px; border: 1px solid var(--cs-border); border-radius: 5px; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 10px; outline: none; }
@@ -1113,15 +1111,20 @@ window.__ModuleLoader__.load({
         }
       }
       return h('div', { className: 'cs-color-picker' },
-        h('button', {
-          type: 'button',
-          className: 'cs-color-current',
-          title: t('color'),
-          onClick: () => setOpen((current) => !current),
-        },
-          h('span', { className: 'cs-color-dot', style: { background: safe } }),
-          h('span', { className: 'cs-color-value' }, safe.toUpperCase()),
-          h('span', { className: 'cs-color-chevron' }, open ? '▴' : '▾')
+        h('div', { className: 'cs-color-row' },
+          h('button', {
+            type: 'button',
+            className: 'cs-color-bar',
+            style: { background: safe },
+            title: safe.toUpperCase(),
+            onClick: () => setOpen((current) => !current),
+          }, h('span', { className: 'cs-color-bar-label' }, safe.toUpperCase())),
+          h('button', {
+            type: 'button',
+            className: 'cs-color-arrow',
+            title: t('color'),
+            onClick: () => setOpen((current) => !current),
+          }, open ? '▴' : '▾')
         ),
         open
           ? h('div', { className: 'cs-color-controls' },
@@ -5323,7 +5326,7 @@ window.__ModuleLoader__.load({
           if (!rect) return null
           return h('div', {
             key: turn.id,
-            className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : '', branchTransition && branchTransition.id === branch.id ? 'cs-branch-anim cs-branch-' + branchTransition.mode : ''),
+            className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : '', branchTransition && branchTransition.id === branch.id ? (branchTransition.mode === 'expand' || index > 0 ? 'cs-branch-anim cs-branch-' + branchTransition.mode : '') : ''),
             style: { left: rect.x - position.x, top: rect.y - position.y, width: rect.w, height: rect.h, zIndex: turn.z || 0 },
           }, [
             h(Dot, {
@@ -5622,7 +5625,6 @@ window.__ModuleLoader__.load({
               : null,
             h('button', { type: 'button', onClick: () => contextCopy('question') }, t('copyQuestion')),
             h('button', { type: 'button', onClick: () => contextCopy('answer') }, t('copyAnswer')),
-            h('button', { type: 'button', onClick: () => contextCopy('both') }, t('copyBoth')),
             h('button', { type: 'button', onClick: () => contextCopy('markdown') }, t('copyMarkdown')),
             h('div', { className: 'cs-context-divider' }),
             contextMenu.turn.status === 'failed'
