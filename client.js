@@ -728,8 +728,12 @@ window.__ModuleLoader__.load({
 .cs-branch-anim { pointer-events: none; }
 .cs-branch-collapse { animation: cs-branch-collapse .18s ease forwards; }
 .cs-branch-expand { animation: cs-branch-expand .24s ease; }
+.cs-link-collapse { animation: cs-link-collapse .18s ease forwards; }
+.cs-link-expand { animation: cs-link-expand .24s ease; }
 @keyframes cs-branch-collapse { to { opacity: 0; transform: scale(.96); } }
-@keyframes cs-branch-expand { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes cs-branch-expand { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cs-link-collapse { to { opacity: 0; } }
+@keyframes cs-link-expand { from { opacity: 0; } to { opacity: 1; } }
 .cs-card.cs-selected { border-color: var(--cs-card-accent, var(--cs-accent)); }
 .cs-card:not(.cs-active) { user-select: none; }
 .cs-card.cs-active { user-select: text; }
@@ -764,9 +768,9 @@ window.__ModuleLoader__.load({
 .cs-context-swatch { width: 18px; height: 18px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
 .cs-color-picker { padding: 3px 0; }
 .cs-color-row { display: flex; align-items: stretch; gap: 3px; }
-.cs-color-bar { flex: 1; height: 22px; padding: 0 7px; border: 1px solid rgba(0,0,0,.18); border-radius: 5px; font: inherit; font-size: 9px; font-weight: 700; letter-spacing: .03em; cursor: pointer; }
-.cs-color-bar-label { padding: 1px 4px; border-radius: 3px; background: rgba(0,0,0,.28); color: #fff; }
-.cs-color-arrow { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--cs-border); border-radius: 5px; background: var(--cs-bg); color: var(--cs-muted); font: inherit; font-size: 10px; cursor: pointer; }
+.cs-color-ramp { position: relative; flex: 1; height: 24px; padding: 0; border: 1px solid rgba(0,0,0,.22); border-radius: 5px; cursor: crosshair; overflow: hidden; }
+.cs-color-marker { position: absolute; top: 2px; width: 9px; height: 18px; border: 2px solid #fff; border-radius: 3px; box-shadow: 0 0 0 1px rgba(0,0,0,.45); transform: translateX(-50%); pointer-events: none; }
+.cs-color-arrow { width: 22px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--cs-border); border-radius: 5px; background: var(--cs-bg); color: var(--cs-muted); font: inherit; font-size: 10px; cursor: pointer; }
 .cs-color-arrow:hover { color: var(--cs-text); border-color: var(--cs-accent); }
 .cs-color-controls { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
 .cs-color-wheel { width: 26px; height: 22px; flex-shrink: 0; padding: 0; border: 1px solid var(--cs-border); border-radius: 5px; background: transparent; cursor: pointer; }
@@ -1110,15 +1114,23 @@ window.__ModuleLoader__.load({
           setText(safe)
         }
       }
+      const gradient = 'linear-gradient(90deg, ' + MINERAL_COLORS.join(', ') + ')'
+      const markerIndex = MINERAL_COLORS.indexOf(safe)
+      const markerLeft = markerIndex >= 0 ? (markerIndex / (MINERAL_COLORS.length - 1)) * 100 : 50
+      const chooseFromBar = (event) => {
+        const rect = event.currentTarget.getBoundingClientRect()
+        const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width)))
+        apply(MINERAL_COLORS[Math.round(ratio * (MINERAL_COLORS.length - 1))])
+      }
       return h('div', { className: 'cs-color-picker' },
         h('div', { className: 'cs-color-row' },
           h('button', {
             type: 'button',
-            className: 'cs-color-bar',
-            style: { background: safe },
-            title: safe.toUpperCase(),
-            onClick: () => setOpen((current) => !current),
-          }, h('span', { className: 'cs-color-bar-label' }, safe.toUpperCase())),
+            className: 'cs-color-ramp',
+            style: { background: gradient },
+            title: t('color'),
+            onClick: chooseFromBar,
+          }, h('span', { className: 'cs-color-marker', style: { left: markerLeft + '%', background: safe } })),
           h('button', {
             type: 'button',
             className: 'cs-color-arrow',
@@ -5200,7 +5212,7 @@ window.__ModuleLoader__.load({
             const d = dotMode ? centerPath(anchor, first) : curvePorts(anchor, anchorSide, first, side)
             paths.push(h('path', {
               key: 'edge-' + branch.id,
-              className: 'cs-link-branch',
+              className: cx('cs-link-branch', branchTransition && branchTransition.id === branch.id ? 'cs-link-' + branchTransition.mode : ''),
               style: { stroke: position.color, strokeWidth: branchLineWidth },
               d,
             }))
@@ -5211,7 +5223,7 @@ window.__ModuleLoader__.load({
             if (!a || !b) continue
             paths.push(h('path', {
               key: 'spine-' + branch.id + '-' + index,
-              className: 'cs-link-branch-spine',
+              className: cx('cs-link-branch-spine', branchTransition && branchTransition.id === branch.id ? 'cs-link-' + branchTransition.mode : ''),
               style: { stroke: position.color, strokeWidth: branchLineWidth },
               d: dotMode ? centerPath(a, b) : curvePorts(a, 'bottom', b, 'top'),
             }))
@@ -5326,7 +5338,7 @@ window.__ModuleLoader__.load({
           if (!rect) return null
           return h('div', {
             key: turn.id,
-            className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : '', branchTransition && branchTransition.id === branch.id ? (branchTransition.mode === 'expand' || index > 0 ? 'cs-branch-anim cs-branch-' + branchTransition.mode : '') : ''),
+            className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : '', branchTransition && branchTransition.id === branch.id && branchTransition.mode === 'collapse' && index > 0 ? 'cs-branch-anim cs-branch-collapse' : ''),
             style: { left: rect.x - position.x, top: rect.y - position.y, width: rect.w, height: rect.h, zIndex: turn.z || 0 },
           }, [
             h(Dot, {
@@ -5402,7 +5414,7 @@ window.__ModuleLoader__.load({
         }).filter(Boolean)
         return h('div', {
           key: branch.id,
-          className: 'cs-branch-lane',
+          className: cx('cs-branch-lane', branchTransition && branchTransition.id === branch.id && branchTransition.mode === 'expand' ? 'cs-branch-expand' : ''),
           style: { left: position.x, top: position.y },
         }, nodes)
       })
