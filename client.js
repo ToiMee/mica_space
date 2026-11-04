@@ -783,12 +783,12 @@ window.__ModuleLoader__.load({
 .cs-backup-modal { width: min(520px, calc(100vw - 48px)); }
 .cs-privacy-modal { width: min(620px, calc(100vw - 48px)); }
 .cs-settings-modal { width: min(560px, calc(100vw - 48px)); }
-.cs-welcome-modal { width: min(620px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
+.cs-welcome-modal { width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
 .cs-welcome-badge { align-self: flex-start; padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--cs-accent) 14%, var(--cs-panel)); color: var(--cs-accent); font-size: 10px; font-weight: 700; letter-spacing: .03em; }
-.cs-welcome-lead { color: var(--cs-text); font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
+.cs-welcome-lead { color: var(--cs-text); font-size: 13px; line-height: 1.7; white-space: pre-wrap; text-wrap: pretty; }
 .cs-welcome-section { display: flex; flex-direction: column; gap: 5px; }
 .cs-welcome-section-title { color: var(--cs-text); font-size: 12px; font-weight: 700; }
-.cs-welcome-list { margin: 0; padding-left: 18px; color: var(--cs-muted); font-size: 12px; line-height: 1.7; }
+.cs-welcome-list { margin: 0; padding-left: 18px; color: var(--cs-muted); font-size: 12px; line-height: 1.7; text-wrap: pretty; }
 .cs-welcome-list li { margin-bottom: 4px; }
 .cs-welcome-feedback { padding: 9px 11px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); color: var(--cs-muted); font-size: 11px; line-height: 1.7; }
 .cs-welcome-feedback a { display: inline-block; margin-top: 4px; color: var(--cs-accent); text-decoration: none; }
