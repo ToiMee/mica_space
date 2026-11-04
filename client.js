@@ -3383,7 +3383,7 @@ window.__ModuleLoader__.load({
           if (!current) return
           const target = event.target
           const card = target && target.closest ? target.closest('.cs-card') : null
-          if (selectedTurn && card && card.getAttribute('data-turn-id') === selectedTurn.turnId) {
+          if (!event.altKey && selectedTurn && card && card.getAttribute('data-turn-id') === selectedTurn.turnId) {
             const body = card.querySelector('.cs-card-body')
             if (body) {
               event.preventDefault()
