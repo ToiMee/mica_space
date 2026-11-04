@@ -5813,6 +5813,7 @@ window.__ModuleLoader__.load({
                 tag: branch.tag,
                 collapsed: Boolean(branch.collapsed),
                 hiddenCount,
+                collapsedPendingCount: branch.collapsed ? branch.turns.filter((item) => item.todo).length : 0,
                 onToggleCollapse: () => toggleBranchCollapse(branch.id),
                 onToggleTodo: (value) => toggleMark(turn, 'branch', branch.id, 'todo', value),
                 onToggleFlag: (value) => toggleMark(turn, 'branch', branch.id, 'flag', value),
