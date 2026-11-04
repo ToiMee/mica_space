@@ -3649,6 +3649,17 @@ window.__ModuleLoader__.load({
         set.add(side)
         ports.set(turnId, set)
       }
+      const branchAnchorSide = (branch, position) => {
+        let side = position.side || 'left'
+        const mainIndex = mainTurns.findIndex((turn) => turn.id === branch.anchorTurnId)
+        if (mainIndex >= 0) {
+          const allowed = layoutMode === 'vertical'
+            ? (mainIndex === 0 ? ['top', 'left', 'right'] : ['left', 'right'])
+            : (mainIndex === 0 ? ['left', 'top', 'bottom'] : ['top', 'bottom'])
+          if (allowed.indexOf(side) < 0) side = allowed[0]
+        }
+        return side
+      }
       for (let index = 1; index < mainTurns.length; index += 1) {
         if (layoutMode === 'horizontal') {
           addPort(mainTurns[index - 1].id, 'right')
@@ -3663,14 +3674,7 @@ window.__ModuleLoader__.load({
         const visibleTurns = branch.collapsed ? branch.turns.slice(0, 1) : branch.turns
         const first = visibleTurns.length > 0 ? visibleTurns[0] : null
         if (first) {
-          let side = position.side || 'left'
-          const mainIndex = mainTurns.findIndex((turn) => turn.id === branch.anchorTurnId)
-          if (mainIndex >= 0) {
-            const allowed = layoutMode === 'vertical'
-              ? (mainIndex === 0 ? ['top', 'left', 'right'] : ['left', 'right'])
-              : (mainIndex === 0 ? ['left', 'top', 'bottom'] : ['top', 'bottom'])
-            if (allowed.indexOf(side) < 0) side = allowed[0]
-          }
+          const side = branchAnchorSide(branch, position)
           const anchorSide = side === 'left' ? 'right' : side === 'right' ? 'left' : side === 'top' ? 'bottom' : 'top'
           addPort(branch.anchorTurnId, anchorSide)
           addPort(first.id, side)
