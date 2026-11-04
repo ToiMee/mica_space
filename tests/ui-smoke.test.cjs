@@ -56,6 +56,7 @@ const fetchMock = async (url) => {
   if (target.includes('/library')) return jsonResponse({ ok: true, library, model: { provider: 'test', model: 'test' } })
   if (target.includes('/space?id=')) return jsonResponse({ ok: true, space, model: { provider: 'test', model: 'test' } })
   if (target.includes('/maintenance/backups')) return jsonResponse({ ok: true, items: [{ kind: 'space', id: 'default', title: 'Test Space', source: 'bak', bytes: 128, modifiedAt: Date.now() }] })
+  if (target.includes('/maintenance/restore')) return jsonResponse({ ok: true, library })
   if (target.includes('/backup')) return jsonResponse({ ok: true, config: { remote: '', branch: 'main' } })
   if (target.includes('/trash')) return jsonResponse({ ok: true, items: [] })
   return jsonResponse({ ok: true })
@@ -159,8 +160,10 @@ test('root renders library, canvas, settings, privacy, and recovery without cras
   assert.match(textOf(renderer.root), /Test Space/)
   assert.match(textOf(renderer.root), /bak/)
   assert.match(textOf(renderer.root), /recoveryHint/)
-  const closeRecovery = buttonByText(renderer, 'close')
-  await act(async () => { closeRecovery.props.onClick(); await flush() })
+  const restore = buttonByText(renderer, 'restore')
+  assert.ok(restore, 'restore button missing')
+  await act(async () => { restore.props.onClick(); await flush(); await flush() })
+  assert.match(textOf(renderer.root), /restoreDone/)
 
   const cardAgain = findAll(renderer, (node) => node.props && node.props.className === 'cs-lib-space-card')[0]
   await act(async () => { cardAgain.props.onClick(); await flush(); await flush() })

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0
+
+- 数据恢复 UI 测试实际执行恢复；
+- 增加 `npm run e2e:live` 浏览器 E2E harness（需要认证 URL）；
+- 16 条自动化测试。
+
 ## 0.8.0
 
 - `.before-restore` 也进入数据恢复列表；
