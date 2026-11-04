@@ -1008,6 +1008,30 @@ window.__ModuleLoader__.load({
       return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 120)
     }
 
+    function splitAnswerChunks(answer) {
+      const text = String(answer || '').replace(/\r\n/g, '\n').trim()
+      if (text.length <= 700) return []
+      const parts = text.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean)
+      const chunks = []
+      let current = ''
+      for (const part of parts) {
+        if (current && current.length + part.length + 2 > 800) {
+          chunks.push(current)
+          current = part
+          if (chunks.length >= 6) break
+        } else {
+          current = current ? current + '\n\n' + part : part
+        }
+      }
+      if (current && chunks.length < 6) chunks.push(current)
+      if (chunks.length === 0) {
+        for (let start = 0; start < text.length && chunks.length < 6; start += 700) {
+          chunks.push(text.slice(start, start + 800))
+        }
+      }
+      return chunks.filter(Boolean).slice(0, 6)
+    }
+
     function memoryTurnText(turn) {
       return stringOf(turn.summary) || stringOf(turn.answer).slice(0, 240) || stringOf(turn.question)
     }
@@ -1167,7 +1191,8 @@ window.__ModuleLoader__.load({
         if (!turn || !turn.id) continue
         const prior = byTurn.get(turn.id)
         if (!prior && suppressed.has(turn.id)) continue
-        const text = memoryTurnText(turn)
+        const text = (stringOf(turn.summary) || stringOf(turn.answer).slice(0, 600) || stringOf(turn.question)).slice(0, 600)
+        const chunks = splitAnswerChunks(turn.answer)
         const pinned = Boolean(prior && prior.pinned) || (entry.kind === 'main' && entry.index < 3) || Boolean(turn.flag || turn.todo)
         const importance = Math.max(
           finite(prior && prior.importance, entry.kind === 'main' ? 1 : 0.72),
@@ -1180,7 +1205,8 @@ window.__ModuleLoader__.load({
           kind: entry.kind,
           branchId: entry.branchId,
           question: stringOf(turn.question).slice(0, 240),
-          text: text.slice(0, 360),
+          text: text.slice(0, 600),
+          chunks,
           sourceTurnIds: [turn.id],
           createdAt: finite(prior && prior.createdAt, finite(turn.createdAt, Date.now())),
           updatedAt: Date.now(),
@@ -1247,8 +1273,8 @@ window.__ModuleLoader__.load({
 
     function buildRetrieval(space, question) {
       if (!space) return []
-      const terms = (String(question || '').toLowerCase().match(/[\p{L}\p{N}_-]{2,}/gu) || []).slice(0, 12)
-      if (terms.length === 0) return []
+      const queryTerms = [...new Set(semanticTokens(question))].slice(0, 16)
+      if (queryTerms.length === 0) return []
       let items = space.memory && Array.isArray(space.memory.items) ? space.memory.items : []
       if (items.length === 0) {
         const mainTurns = Array.isArray(space.main && space.main.turns) ? space.main.turns : []
@@ -1257,6 +1283,7 @@ window.__ModuleLoader__.load({
           kind: 'main',
           question: stringOf(turn.question),
           text: memoryTurnText(turn),
+          chunks: splitAnswerChunks(turn.answer),
           sourceTurnIds: [turn.id],
           embedding: embedText(turn.question + ' ' + memoryTurnText(turn)),
           embeddingVersion: EMBEDDING_VERSION,
@@ -1273,6 +1300,7 @@ window.__ModuleLoader__.load({
               kind: 'branch',
               question: stringOf(turn.question),
               text: memoryTurnText(turn),
+              chunks: splitAnswerChunks(turn.answer),
               sourceTurnIds: [turn.id],
               embedding: embedText(turn.question + ' ' + memoryTurnText(turn)),
               embeddingVersion: EMBEDDING_VERSION,
@@ -1285,33 +1313,76 @@ window.__ModuleLoader__.load({
           }
         }
       }
-      const semantic = space && space.memoryMode === 'semantic' ? buildCooccurrenceVectors(items) : null
-      const queryVector = semantic ? semanticQueryVector(String(question || ''), semantic.termVectors) : embedText(String(question || ''))
-      return items
-        .filter((item) => item && item.status !== 'outdated' && item.status !== 'superseded')
-        .map((item) => {
-          const haystack = (stringOf(item.question) + ' ' + stringOf(item.text)).toLowerCase()
-          let overlap = 0
-          for (const term of terms) if (haystack.includes(term)) overlap += 1
-          const ageDays = Math.max(0, (Date.now() - finite(item.createdAt, Date.now())) / 86400000)
-          const recency = 1 / (1 + ageDays / 45)
-          const usedDays = item.lastUsedAt ? Math.max(0, (Date.now() - item.lastUsedAt) / 86400000) : 365
-          const usage = 1 / (1 + usedDays / 30)
-          const itemVector = semantic
-            ? (semantic.itemVectors.get(item.turnId) || embedText(stringOf(item.question) + ' ' + stringOf(item.text)))
-            : (Array.isArray(item.embedding) ? item.embedding : embedText(stringOf(item.question) + ' ' + stringOf(item.text)))
-          const vectorScore = cosineSimilarity(queryVector, itemVector)
-          const score = overlap * 1.5 + vectorScore * 2 + recency + usage * 0.5 + finite(item.importance, 0.5) + (item.kind === 'main' ? 0.25 : 0)
-          return { item, score }
+      const units = []
+      for (const item of items) {
+        if (!item || item.status === 'outdated' || item.status === 'superseded') continue
+        units.push({ item, unitId: item.turnId, parent: true, text: item.text, question: item.question })
+        const chunks = Array.isArray(item.chunks) ? item.chunks.slice(0, 6) : []
+        chunks.forEach((chunk, index) => {
+          if (!chunk) return
+          units.push({ item, unitId: item.turnId + ':chunk:' + index, parent: false, text: chunk, question: item.question })
         })
-        .filter((entry) => entry.score > 0 && entry.item.text)
+      }
+      if (units.length === 0) return []
+      const docs = units.map((unit) => semanticTokens(stringOf(unit.question) + ' ' + stringOf(unit.text)))
+      const documentFrequency = new Map()
+      let totalLength = 0
+      for (const tokens of docs) {
+        totalLength += tokens.length
+        for (const token of new Set(tokens)) documentFrequency.set(token, (documentFrequency.get(token) || 0) + 1)
+      }
+      const averageLength = totalLength / Math.max(1, docs.length)
+      const k1 = 1.2
+      const b = 0.75
+      const bm25 = units.map((_unit, index) => {
+        const tokens = docs[index]
+        const counts = new Map()
+        for (const token of tokens) counts.set(token, (counts.get(token) || 0) + 1)
+        let score = 0
+        for (const term of queryTerms) {
+          const count = counts.get(term) || 0
+          if (count === 0) continue
+          const df = documentFrequency.get(term) || 0
+          const idf = Math.log(1 + (units.length - df + 0.5) / (df + 0.5))
+          const lengthNorm = 1 - b + b * (tokens.length / Math.max(1, averageLength))
+          score += idf * ((count * (k1 + 1)) / (count + k1 * lengthNorm))
+        }
+        return score
+      })
+      const maxBm25 = Math.max(...bm25, 0.000001)
+      const semantic = space.memoryMode === 'semantic'
+        ? buildCooccurrenceVectors(units.map((unit) => ({ turnId: unit.unitId, question: unit.question, text: unit.text })))
+        : null
+      const queryVector = semantic
+        ? semanticQueryVector(String(question || ''), semantic.termVectors)
+        : embedText(String(question || ''))
+      const bestByTurn = new Map()
+      units.forEach((unit, index) => {
+        const item = unit.item
+        const vector = semantic
+          ? (semantic.itemVectors.get(unit.unitId) || embedText(stringOf(unit.question) + ' ' + stringOf(unit.text)))
+          : (unit.parent
+              ? (Array.isArray(item.embedding) ? item.embedding : embedText(stringOf(item.question) + ' ' + stringOf(item.text)))
+              : embedText(stringOf(unit.question) + ' ' + stringOf(unit.text)))
+        const vectorScore = cosineSimilarity(queryVector, vector)
+        const ageDays = Math.max(0, (Date.now() - finite(item.createdAt, Date.now())) / 86400000)
+        const recency = 1 / (1 + ageDays / 45)
+        const usedDays = item.lastUsedAt ? Math.max(0, (Date.now() - item.lastUsedAt) / 86400000) : 365
+        const usage = 1 / (1 + usedDays / 30)
+        const score = (bm25[index] / maxBm25) * 2 + vectorScore * 2 + recency + usage * 0.5 + finite(item.importance, 0.5) + (item.kind === 'main' ? 0.25 : 0)
+        const current = bestByTurn.get(item.turnId)
+        if (!current || score > current.score) bestByTurn.set(item.turnId, { unit, score })
+      })
+      return [...bestByTurn.values()]
         .sort((left, right) => right.score - left.score)
         .slice(0, 4)
-        .map((entry) => ({
-          kind: entry.item.kind,
-          question: stringOf(entry.item.question).slice(0, 220),
-          summary: stringOf(entry.item.text).slice(0, 420),
-          sourceTurnIds: Array.isArray(entry.item.sourceTurnIds) ? entry.item.sourceTurnIds.slice(0, 4) : [],
+        .map(({ unit }) => ({
+          kind: unit.item.kind,
+          question: stringOf(unit.item.question).slice(0, 220),
+          summary: stringOf(unit.item.text).slice(0, 500),
+          chunk: unit.parent ? '' : stringOf(unit.text).slice(0, 900),
+          parentTurnId: unit.item.turnId,
+          sourceTurnIds: Array.isArray(unit.item.sourceTurnIds) ? unit.item.sourceTurnIds.slice(0, 4) : [],
         }))
     }
 
@@ -4041,6 +4112,7 @@ window.__ModuleLoader__.load({
                 } else if (event && event.type === 'done') {
                   finished = true
                   updateTurn(kind, branchId, turnId, { answer, status: 'completed', usage: event.usage || null, error: '' })
+                  requestSummary({ id: turnId, question: payload.question, answer, summary: '' }, kind, branchId)
                 } else if (event && event.type === 'error') {
                   finished = true
                   updateTurn(kind, branchId, turnId, { answer, status: 'failed', error: event.message || '回答失败' })

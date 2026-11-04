@@ -12,7 +12,8 @@ Mica Space 是 DSH 的可缩放对话地图插件：一条纵向主线，多条�
 - 卡片折叠、颜色、标签、待追问和红旗；
 - 待追问卡片离开视口时的边缘 `!` 提醒；
 - 横竖布局切换；
-- 本地记忆：主线摘要 + 分支摘要 + 检索；
+- 本地记忆：主线摘要 + 分支摘要 + 父子级检索；
+- 长回答自动分 chunk，命中子片段时回带父 turn；
 - 零配置的轻量哈希向量，以及可选的本地共现语义模式；
 - Git 备份（本地提交 + 可选私有 remote push）。
 
@@ -79,7 +80,7 @@ Mica Space 是 DSH 的可缩放对话地图插件：一条纵向主线，多条�
 ## 测试
 
 ```bash
-node --test tests/context.test.mjs tests/library.test.mjs tests/embedding.test.mjs tests/semantic.test.mjs
+node --test tests/context.test.mjs tests/library.test.mjs tests/embedding.test.mjs tests/semantic.test.mjs tests/parent-child.test.mjs
 ```
 
 ## 版本
