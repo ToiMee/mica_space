@@ -639,6 +639,8 @@ window.__ModuleLoader__.load({
 .cs-dot-wrap { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .cs-dot-ring { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 2px solid; border-radius: 50%; pointer-events: none; box-shadow: 0 0 8px color-mix(in srgb, currentColor 35%, transparent); }
 .cs-dot-badge { position: absolute; display: flex; align-items: center; justify-content: center; border-style: solid; border-radius: 50%; font-weight: 800; line-height: 1; pointer-events: none; z-index: 4; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
+.cs-dot-quest { position: absolute; left: 50%; top: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #fff3c4; border-radius: 30%; background: #f0b429; color: #241d0c; font-weight: 900; line-height: 1; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px rgba(36,29,12,.3), 0 3px 10px rgba(0,0,0,.35); pointer-events: none; }
+.cs-dot-quest-count { position: absolute; left: 50%; top: 50%; display: flex; align-items: center; justify-content: center; min-width: 1.6em; min-height: 1.6em; padding: 0 2px; border-radius: 999px; background: #1f2329; color: #fff; font-weight: 800; line-height: 1; transform: translate(calc(-50% - 1.25em), calc(-50% + 1.25em)); box-shadow: 0 1px 4px rgba(0,0,0,.4); pointer-events: none; }
 .cs-dot-count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; line-height: 1; pointer-events: none; text-shadow: 0 0 2px #000, 0 0 3px #000, 0 1px 2px #000; }
 .cs-dot-badge-flag { background: #e5484d; color: #fff; border-color: #ffe1e1; }
 .cs-dot-badge-pending { background: #ffd23f; color: #241d0c; border-color: #fff6c9; box-shadow: 0 0 0 3px rgba(255,210,63,.22), 0 2px 8px rgba(0,0,0,.45); }
@@ -1017,6 +1019,31 @@ window.__ModuleLoader__.load({
       } catch (_error) {
         // Storage is best effort.
       }
+    }
+
+    function readLocalStorage(key) {
+      if (!key) return ''
+      try { return localStorage.getItem(key) || '' } catch (_error) { return '' }
+    }
+
+    function writeLocalStorage(key, value) {
+      if (!key) return
+      try {
+        if (value) localStorage.setItem(key, value)
+        else localStorage.removeItem(key)
+      } catch (_error) {}
+    }
+
+    function readWelcomeSeen() {
+      try {
+        if (String(document.cookie || '').split('; ').indexOf('mica_welcome_seen=1') >= 0) return true
+      } catch (_error) {}
+      return readLocalStorage(WELCOME_KEY) === '1'
+    }
+
+    function markWelcomeSeen() {
+      writeLocalStorage(WELCOME_KEY, '1')
+      try { document.cookie = 'mica_welcome_seen=1; Max-Age=31536000; Path=/; SameSite=Lax' } catch (_error) {}
     }
 
     function readTextStorage(key) {
@@ -2007,14 +2034,17 @@ window.__ModuleLoader__.load({
           onPointerUp,
           onPointerCancel,
           onContextMenu: (event) => event.preventDefault(),
-        }, collapsed && dotCount > 1
+        }, collapsed && dotCount > 1 && !pending
           ? h('span', { className: 'cs-dot-count', style: { fontSize: Math.max(8 / safeZoom, edge * 0.5) }, 'aria-hidden': true }, String(dotCount))
           : null),
         flagged
           ? h('span', { className: 'cs-dot-badge cs-dot-badge-flag', style: badgeStyle('flag'), title: label }, flagCount > 1 ? '⚑' + flagCount : '⚑')
           : null,
         pending
-          ? h('span', { className: 'cs-dot-badge cs-dot-badge-pending', style: badgeStyle('pending'), title: label }, pendingCount > 1 ? '!' + pendingCount : '!')
+          ? h('span', { className: 'cs-dot-quest', style: { width: edge, height: edge, fontSize: Math.max(10 / safeZoom, edge * 0.62), borderWidth: 2 / safeZoom }, title: label }, '!')
+          : null,
+        pending && collapsed && dotCount > 1
+          ? h('span', { className: 'cs-dot-quest-count', style: { fontSize: Math.max(6 / safeZoom, edge * 0.24) }, title: label }, String(dotCount))
           : null,
         unread
           ? h('span', { className: 'cs-dot-badge cs-dot-badge-unread', style: badgeStyle('unread'), title: label }, '●')
@@ -2515,7 +2545,7 @@ window.__ModuleLoader__.load({
       const [library, setLibrary] = useState(null)
       const [loadState, setLoadState] = useState('loading')
       const [loadError, setLoadError] = useState('')
-      const [activeId, setActiveId] = useState(() => readTextStorage(WELCOME_KEY) === '1' ? (readTextStorage(LAST_SPACE_KEY) || null) : null)
+      const [activeId, setActiveId] = useState(() => readWelcomeSeen() ? (readTextStorage(LAST_SPACE_KEY) || null) : null)
       const [selectedFolder, setSelectedFolder] = useState(() => readTextStorage(LAST_FOLDER_KEY) || 'all')
       const [folderHistory, setFolderHistory] = useState([])
       const [folderTreeOpen, setFolderTreeOpen] = useState(true)
@@ -2523,7 +2553,7 @@ window.__ModuleLoader__.load({
       const [folderViewMode, setFolderViewMode] = useState(() => readTextStorage(FOLDER_VIEW_KEY) === 'grid' ? 'grid' : 'list')
       const [search, setSearch] = useState('')
       const [trashOpen, setTrashOpen] = useState(false)
-      const [welcomeOpen, setWelcomeOpen] = useState(() => readTextStorage(WELCOME_KEY) !== '1')
+      const [welcomeOpen, setWelcomeOpen] = useState(() => !readWelcomeSeen())
       const [welcomeCopy, setWelcomeCopy] = useState(null)
       const [privacyOpen, setPrivacyOpen] = useState(false)
       const [settingsOpen, setSettingsOpen] = useState(false)
@@ -3369,7 +3399,7 @@ window.__ModuleLoader__.load({
                 )
           )
         ),
-        welcomeOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => { writeTextStorage(WELCOME_KEY, '1'); setWelcomeOpen(false) } },
+        welcomeOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => { markWelcomeSeen(); setWelcomeOpen(false) } },
           h('div', { className: 'cs-lib-modal cs-welcome-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-welcome-badge' }, welcomeText('welcomeVersion')),
             h('div', { className: 'cs-lib-modal-title' }, welcomeText('welcomeTitle')),
@@ -3398,7 +3428,7 @@ window.__ModuleLoader__.load({
               h('a', { href: 'https://github.com/ToiMee/mica_space/issues', target: '_blank', rel: 'noreferrer' }, welcomeText('welcomeFeedbackLink'))
             ),
             h('div', { className: 'cs-lib-modal-actions' },
-              h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: () => { writeTextStorage(WELCOME_KEY, '1'); setWelcomeOpen(false) } }, welcomeText('welcomeStart'))
+              h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: () => { markWelcomeSeen(); setWelcomeOpen(false) } }, welcomeText('welcomeStart'))
             )
           )
         ) : null,
