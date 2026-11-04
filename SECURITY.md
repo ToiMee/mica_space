@@ -16,7 +16,7 @@ Mica Space is a local plugin. It assumes the DSH host and the local workspace ar
 
 ## Known limitations
 
-- Attachment cleanup is limited by the DSH attachment API.
+- Permanent trash deletion removes unreferenced Mica attachment files through host paths; this is best-effort and may affect an object shared by another plugin.
 - Uploaded files are extracted into text before being sent to the configured model provider.
 - Git backup may push conversation data to a remote you configure.
 - Schema migration keeps `.pre-schema-v2.bak`; remove it manually if you do not want the old snapshot retained.

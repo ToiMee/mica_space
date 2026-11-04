@@ -27,4 +27,4 @@ Attachments are stored by the DSH attachment service.
 
 ## Removing data
 
-Deleting a space removes it from the library and moves its JSON to the trash. Permanent deletion removes the trash record. Attachment files are managed by DSH and may outlive a deleted space because the attachment service does not expose a delete API.
+Deleting a space removes it from the library and moves its JSON to the trash. Permanent deletion removes the trash record and attempts to delete attachments no longer referenced by any Mica space or trash record. The DSH attachment store is content-addressed; another DSH plugin using the same object may be affected.

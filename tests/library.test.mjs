@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { apply } from '../index.js'
@@ -23,6 +23,10 @@ function makeFakeCtx(root) {
     },
     agentDefaultModel: { currentSelection: () => ({ provider: 'test-provider', model: 'test-model' }) },
     llm: {},
+    attachments: {
+      fileHostPath(ref) { return ref && ref.hostPath ? ref.hostPath : null },
+      imageHostPath() { return null },
+    },
   }
   apply(ctx)
   return routes
@@ -85,6 +89,27 @@ test('space lifecycle, trash restore, duplicate, folder cycle, export/import', a
     assert.equal(loaded.status, 200)
     assert.equal(loaded.body.space.main.turns.length, 1)
     assert.equal(loaded.body.space.main.turns[0].question, '问题一')
+
+    const attachmentPath = path.join(root, 'mica-orphan-test.txt')
+    await writeFile(attachmentPath, 'orphan')
+    const attachmentSpace = await request('POST', '/chat-space/api/space/create', { title: '附件空间', layoutMode: 'vertical' })
+    const attachmentId = attachmentSpace.body.space.id
+    await request('POST', '/chat-space/api/save', {
+      space: {
+        ...attachmentSpace.body.space,
+        main: { turns: [{ id: 'turn-att', question: '附件', answer: '附件', status: 'completed', createdAt: Date.now(), attachments: [{ kind: 'file', attachment: { attachmentId: 'sha256:orphan-test', name: 'mica-orphan-test.txt', bytes: 6, hostPath: attachmentPath } }] }] },
+        branches: [],
+      },
+      spaceId: attachmentId,
+    })
+    const attachmentDeleted = await request('POST', '/chat-space/api/space/delete', { id: attachmentId })
+    assert.equal(attachmentDeleted.status, 200)
+    const attachmentTrash = await request('GET', '/chat-space/api/trash')
+    const attachmentTrashItem = attachmentTrash.body.items.find((item) => item.id === attachmentId)
+    assert.ok(attachmentTrashItem)
+    const attachmentPermanent = await request('POST', '/chat-space/api/trash/delete', { file: attachmentTrashItem.file })
+    assert.equal(attachmentPermanent.status, 200)
+    await assert.rejects(stat(attachmentPath))
 
     const duplicated = await request('POST', '/chat-space/api/space/duplicate', { id: spaceId })
     assert.equal(duplicated.status, 200)

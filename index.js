@@ -419,10 +419,62 @@ export function apply(ctx) {
     return library
   }
 
+  const collectAttachmentRefs = (space, output) => {
+    const turns = [
+      ...(space && space.main && Array.isArray(space.main.turns) ? space.main.turns : []),
+      ...(space && Array.isArray(space.branches) ? space.branches.flatMap((branch) => (Array.isArray(branch.turns) ? branch.turns : [])) : []),
+    ]
+    for (const turn of turns) {
+      for (const item of (Array.isArray(turn && turn.attachments) ? turn.attachments : [])) {
+        if (!item || !item.attachment || !item.attachment.attachmentId) continue
+        output.set(item.attachment.attachmentId, { ref: item.attachment, kind: item.kind === 'image' ? 'image' : 'file' })
+      }
+    }
+  }
+
+  const collectAllAttachmentRefs = async (excludeTrashFile) => {
+    const refs = new Map()
+    const library = await readLibrary()
+    for (const meta of library.spaces) {
+      const space = await readJson(spaceFile(meta.id))
+      if (space) collectAttachmentRefs(space, refs)
+    }
+    const directory = trashDir()
+    await mkdir(directory, { recursive: true })
+    const names = await readdir(directory)
+    for (const name of names) {
+      if (!name.endsWith('.json') || name.includes('.bak') || name === excludeTrashFile) continue
+      const record = await readJson(path.join(directory, name))
+      if (!record) continue
+      const space = record.space && typeof record.space === 'object' ? record.space : record
+      if (space) collectAttachmentRefs(space, refs)
+    }
+    return refs
+  }
+
   const deleteTrash = async (body) => {
     const file = path.basename(stringOf(body.file))
     if (!file || !file.endsWith('.json')) throw new Error('回收站记录不合法')
-    try { await unlink(path.join(trashDir(), file)) } catch (error) { if (error && error.code !== 'ENOENT') throw error }
+    const trashFile = path.join(trashDir(), file)
+    let target = null
+    try { target = await readJson(trashFile) } catch (_error) {}
+    try { await unlink(trashFile) } catch (error) { if (error && error.code !== 'ENOENT') throw error }
+    if (target) {
+      const targetRefs = new Map()
+      collectAttachmentRefs(target.space && typeof target.space === 'object' ? target.space : target, targetRefs)
+      if (targetRefs.size > 0) {
+        const remaining = await collectAllAttachmentRefs(file)
+        for (const [attachmentId, item] of targetRefs) {
+          if (remaining.has(attachmentId)) continue
+          try {
+            const hostPath = item.kind === 'image' ? ctx.attachments.imageHostPath(item.ref) : ctx.attachments.fileHostPath(item.ref)
+            if (hostPath) await unlink(hostPath)
+          } catch (_error) {
+            // Best effort: a permanent trash delete must still complete.
+          }
+        }
+      }
+    }
     return trashEntries()
   }
 
