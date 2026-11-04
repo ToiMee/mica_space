@@ -23,6 +23,7 @@ const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url))
 const WELCOME_COPY_FILE = path.join(PLUGIN_DIR, 'copy', 'welcome.json')
 const WELCOME_COPY_EN_FILE = path.join(PLUGIN_DIR, 'copy', 'welcome.en.json')
 const DATA_DIR_NAME = '.chat-space'
+const ATTACHMENTS_DIR_NAME = 'attachments'
 const LIBRARY_FILE_NAME = 'library.json'
 const LEGACY_FILE_NAME = 'space.json'
 const SPACES_DIR_NAME = 'spaces'
@@ -62,6 +63,24 @@ export function apply(ctx) {
   }
 
   const dataDir = () => path.join(resolveBaseDir(), DATA_DIR_NAME)
+  const attachmentsDir = () => path.join(dataDir(), ATTACHMENTS_DIR_NAME)
+  const localAttachmentPath = (ref) => path.join(attachmentsDir(), path.basename(String(ref && ref.file || '')))
+
+  const saveLocalAttachment = async (buffer, options) => {
+    const kind = options && options.kind === 'image' ? 'image' : 'file'
+    const name = String(options && options.name || 'file').slice(0, 200)
+    const match = name.match(/\.([A-Za-z0-9]{1,10})$/)
+    const mediaType = String(options && options.mediaType || '')
+    const imageExt = mediaType === 'image/png' ? 'png' : mediaType === 'image/jpeg' ? 'jpg' : mediaType === 'image/webp' ? 'webp' : mediaType === 'image/gif' ? 'gif' : 'png'
+    const extension = (match ? match[1].toLowerCase() : (kind === 'image' ? imageExt : 'bin'))
+    const attachmentId = 'a-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9)
+    const file = attachmentId + '.' + extension
+    await mkdir(attachmentsDir(), { recursive: true })
+    await writeFile(path.join(attachmentsDir(), file), buffer)
+    return { attachmentId, storage: 'mica', file, name, mediaType: mediaType || (kind === 'image' ? 'image/' + imageExt : 'application/octet-stream'), bytes: buffer.length }
+  }
+
+
   const legacyFile = () => path.join(dataDir(), LEGACY_FILE_NAME)
   const libraryFile = () => path.join(dataDir(), LIBRARY_FILE_NAME)
   const spacesDir = () => path.join(dataDir(), SPACES_DIR_NAME)
@@ -519,8 +538,10 @@ export function apply(ctx) {
         for (const [attachmentId, item] of targetRefs) {
           if (remaining.has(attachmentId)) continue
           try {
-            const hostPath = item.kind === 'image' ? ctx.attachments.imageHostPath(item.ref) : ctx.attachments.fileHostPath(item.ref)
-            if (hostPath) await unlink(hostPath)
+            const targetPath = item.ref && item.ref.storage === 'mica'
+              ? path.join(attachmentsDir(), path.basename(String(item.ref.file || '')))
+              : (item.kind === 'image' ? ctx.attachments.imageHostPath(item.ref) : ctx.attachments.fileHostPath(item.ref))
+            if (targetPath) await unlink(targetPath)
           } catch (_error) {
             // Best effort: a permanent trash delete must still complete.
           }
@@ -803,7 +824,6 @@ export function apply(ctx) {
       route(API_ROOT + '/upload', async (req, res) => {
         if (req.method !== 'POST') return sendJson(res, 405, { ok: false, error: '只支持 POST' })
         try {
-          if (!ctx.attachments) return sendJson(res, 503, { ok: false, error: '附件服务不可用' })
           const body = await readJsonBody(req, MAX_UPLOAD_BYTES)
           const raw = stringOf(body.data)
           if (!raw) return sendJson(res, 400, { ok: false, error: '文件内容为空' })
@@ -815,17 +835,10 @@ export function apply(ctx) {
             const mediaType = stringOf(body.mediaType)
             const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
             if (allowed.indexOf(mediaType) < 0) return sendJson(res, 415, { ok: false, error: '只支持 PNG/JPEG/WebP/GIF 图片' })
-            const attachment = await ctx.attachments.saveImage({
-              data: new Uint8Array(buffer),
-              mediaType,
-              name: name || 'image',
-            })
+            const attachment = await saveLocalAttachment(buffer, { kind, name: name || 'image', mediaType })
             return sendJson(res, 200, { ok: true, kind: 'image', attachment })
           }
-          const attachment = await ctx.attachments.saveFile({
-            data: new Uint8Array(buffer),
-            name: name || 'file',
-          })
+          const attachment = await saveLocalAttachment(buffer, { kind, name: name || 'file' })
           sendJson(res, 200, { ok: true, kind: 'file', attachment })
         } catch (error) {
           sendJson(res, 400, { ok: false, error: messageOf(error) })
@@ -835,13 +848,26 @@ export function apply(ctx) {
       route(API_ROOT + '/attachment', async (req, res) => {
         if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: '只支持 GET' })
         try {
-          if (!ctx.attachments) return sendJson(res, 503, { ok: false, error: '附件服务不可用' })
           const url = new URL(req.url, 'http://localhost')
           const kind = url.searchParams.get('kind') === 'image' ? 'image' : 'file'
           const rawRef = url.searchParams.get('ref') || ''
           let ref
           try { ref = JSON.parse(rawRef) } catch (_error) { ref = null }
           if (!ref || typeof ref !== 'object') return sendJson(res, 400, { ok: false, error: '附件引用不合法' })
+          const download = url.searchParams.get('download') === '1'
+          if (ref.storage === 'mica') {
+            const bytes = await readFile(localAttachmentPath(ref))
+            const headers = {
+              'Content-Type': ref.mediaType || 'application/octet-stream',
+              'Content-Length': bytes.length,
+              'Cache-Control': 'private, max-age=31536000, immutable',
+            }
+            if (download) headers['Content-Disposition'] = 'attachment; filename="' + String(ref.name || 'attachment').replace(/["\r\n]/g, '_') + '"'
+            res.writeHead(200, headers)
+            res.end(bytes)
+            return
+          }
+          if (!ctx.attachments) return sendJson(res, 503, { ok: false, error: '附件服务不可用' })
           if (kind === 'image') {
             const stored = await ctx.attachments.readImage(ref)
             const bytes = Buffer.from(stored.data)
@@ -853,7 +879,6 @@ export function apply(ctx) {
             res.end(bytes)
             return
           }
-          const download = url.searchParams.get('download') === '1'
           res.writeHead(200, {
             'Content-Type': 'application/octet-stream',
             'Content-Disposition': (download ? 'attachment' : 'inline') + "; filename*=UTF-8''" + encodeURIComponent(stringOf(ref.name) || 'file'),
@@ -1454,12 +1479,31 @@ async function ocrPdfBuffer(buffer) {
   return parts.join('\n').slice(0, MAX_EXTRACTED_TEXT).trim()
 }
 
+function localAttachmentPathFromCtx(ctx, ref) {
+  let base = ''
+  try {
+    const registry = ctx.get('workspaceRegistry')
+    const workspaces = registry && typeof registry.list === 'function' ? registry.list() : []
+    if (workspaces.length > 0 && typeof workspaces[0].path === 'string') base = workspaces[0].path
+  } catch (_error) {}
+  if (!base) {
+    try { base = ctx.get('workingDirectory')?.defaultDirectory || '' } catch (_error) {}
+  }
+  return path.join(base || process.cwd(), DATA_DIR_NAME, ATTACHMENTS_DIR_NAME, path.basename(String(ref && ref.file || '')))
+}
+
 async function extractAttachmentText(ctx, ref) {
   const name = String(ref && ref.name || 'file')
   const extension = (name.split('.').pop() || '').toLowerCase()
-  const chunks = []
-  for await (const chunk of ctx.attachments.readFileStream(ref)) chunks.push(Buffer.from(chunk))
-  const buffer = Buffer.concat(chunks)
+  let buffer
+  if (ref && ref.storage === 'mica') {
+    buffer = await readFile(localAttachmentPathFromCtx(ctx, ref))
+  } else {
+    if (!ctx.attachments) return null
+    const chunks = []
+    for await (const chunk of ctx.attachments.readFileStream(ref)) chunks.push(Buffer.from(chunk))
+    buffer = Buffer.concat(chunks)
+  }
   if (buffer.length === 0 || buffer.length > 20 * 1024 * 1024) return null
   if (TEXT_FILE_EXTENSIONS.has(extension)) {
     const text = buffer.toString('utf8')

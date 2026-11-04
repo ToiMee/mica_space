@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.12
+
+- 新上传附件改为 Mica 自有存储：`.chat-space/attachments`，永久删除时可靠清理；旧附件继续走 DSH attachment；
+- 16 条核心测试 + 1 条浏览器 E2E。
+
 ## 0.9.11
 
 - 增加 Playwright + Chromium 真实浏览器 E2E：首次欢迎页、cookie 持久化、横竖空间、双击选中、拖动、右键菜单、折叠待办标记；

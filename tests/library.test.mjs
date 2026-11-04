@@ -90,6 +90,33 @@ test('space lifecycle, trash restore, duplicate, folder cycle, export/import', a
     assert.equal(loaded.body.space.main.turns.length, 1)
     assert.equal(loaded.body.space.main.turns[0].question, '问题一')
 
+    const uploaded = await request('POST', '/chat-space/api/upload', {
+      kind: 'file',
+      name: 'mica-local.txt',
+      data: Buffer.from('mica local attachment').toString('base64'),
+    })
+    assert.equal(uploaded.status, 200, JSON.stringify(uploaded.body))
+    assert.equal(uploaded.body.attachment.storage, 'mica')
+    const localAttachmentPath = path.join(root, '.chat-space', 'attachments', uploaded.body.attachment.file)
+    assert.equal((await stat(localAttachmentPath)).isFile(), true)
+    const localSpace = await request('POST', '/chat-space/api/space/create', { title: '本地附件空间', layoutMode: 'vertical' })
+    const localSpaceId = localSpace.body.space.id
+    await request('POST', '/chat-space/api/save', {
+      space: {
+        ...localSpace.body.space,
+        main: { turns: [{ id: 'turn-local-att', question: '本地附件', answer: '本地附件', status: 'completed', createdAt: Date.now(), attachments: [{ kind: 'file', attachment: uploaded.body.attachment }] }] },
+        branches: [],
+      },
+      spaceId: localSpaceId,
+    })
+    await request('POST', '/chat-space/api/space/delete', { id: localSpaceId })
+    const localTrash = await request('GET', '/chat-space/api/trash')
+    const localTrashItem = localTrash.body.items.find((item) => item.id === localSpaceId)
+    assert.ok(localTrashItem)
+    const localPermanent = await request('POST', '/chat-space/api/trash/delete', { file: localTrashItem.file })
+    assert.equal(localPermanent.status, 200)
+    await assert.rejects(stat(localAttachmentPath))
+
     const attachmentPath = path.join(root, 'mica-orphan-test.txt')
     await writeFile(attachmentPath, 'orphan')
     const attachmentSpace = await request('POST', '/chat-space/api/space/create', { title: '附件空间', layoutMode: 'vertical' })
