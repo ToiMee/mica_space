@@ -259,7 +259,7 @@ window.__ModuleLoader__.load({
       reload: '刷新页面',
       stop: '停止',
       tokens: 'tokens',
-      welcome: '学习主线',
+      welcome: '主线',
       welcomeBody: '把每一次问答放在主线上；需要展开的地方，从回答里选中文字，向旁边追问。',
       emptyBranch: '这条分支还没有问答。',
     }
@@ -487,7 +487,7 @@ window.__ModuleLoader__.load({
       reload: 'Refresh page',
       stop: 'Stop',
       tokens: 'tokens',
-      welcome: 'Learning main line',
+      welcome: 'Main line',
       welcomeBody: 'Keep each exchange on the main line. When something needs room, select text in an answer and ask beside it.',
       emptyBranch: 'This branch has no exchanges yet.',
     }
