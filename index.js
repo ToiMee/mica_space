@@ -647,13 +647,34 @@ export function apply(ctx) {
   const deleteFolder = async (body) => {
     const id = validId(body.id) ? body.id : ''
     const library = await readLibrary()
-    const folder = library.folders.find((item) => item.id === id)
-    if (!folder) throw new Error('文件夹不存在')
-    const parentId = folder.parentId
-    library.folders = library.folders
-      .filter((item) => item.id !== id)
-      .map((item) => (item.parentId === id ? { ...item, parentId } : item))
-    library.spaces = library.spaces.map((item) => (item.folderId === id ? { ...item, folderId: parentId } : item))
+    if (!library.folders.some((item) => item.id === id)) throw new Error('文件夹不存在')
+    const removed = new Set([id])
+    let changed = true
+    while (changed) {
+      changed = false
+      for (const folder of library.folders) {
+        if (!removed.has(folder.id) && folder.parentId && removed.has(folder.parentId)) {
+          removed.add(folder.id)
+          changed = true
+        }
+      }
+    }
+    await mkdir(trashDir(), { recursive: true })
+    const removedSpaces = library.spaces.filter((item) => removed.has(item.folderId))
+    for (const meta of removedSpaces) {
+      try {
+        const space = await readJson(spaceFile(meta.id))
+        if (space) {
+          const record = { space, folderId: meta.folderId || null, deletedAt: Date.now() }
+          await writeJson(path.join(trashDir(), meta.id + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.json'), record)
+        }
+        await unlink(spaceFile(meta.id))
+      } catch (error) {
+        if (error && error.code !== 'ENOENT') throw error
+      }
+    }
+    library.spaces = library.spaces.filter((item) => !removed.has(item.folderId))
+    library.folders = library.folders.filter((item) => !removed.has(item.id))
     await writeJson(libraryFile(), library)
     return library
   }

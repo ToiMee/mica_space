@@ -92,6 +92,8 @@ window.__ModuleLoader__.load({
       newFolder: '新建文件夹',
       allSpaces: '全部空间',
       allFolders: '文件管理',
+      gridView: '图标视图',
+      listView: '列表视图',
       uncategorized: '未分类',
       rootFolder: '根目录',
       folders: '文件夹',
@@ -114,7 +116,7 @@ window.__ModuleLoader__.load({
       delete: '删除',
       moveTo: '移动到',
       confirmDeleteSpace: '删除这个空间？',
-      confirmDeleteFolder: '删除这个文件夹？里面的空间会移到上一级。',
+      confirmDeleteFolder: '删除这个文件夹？里面的子文件夹和空间都会一起删除（空间进入回收站）。',
       libraryLoadError: '空间库读取失败',
       loading: '加载中…',
       retry: '重试',
@@ -301,6 +303,8 @@ window.__ModuleLoader__.load({
       newFolder: 'New folder',
       allSpaces: 'All spaces',
       allFolders: 'File management',
+      gridView: 'Grid view',
+      listView: 'List view',
       uncategorized: 'Uncategorized',
       rootFolder: 'Root',
       folders: 'Folders',
@@ -323,7 +327,7 @@ window.__ModuleLoader__.load({
       delete: 'Delete',
       moveTo: 'Move to',
       confirmDeleteSpace: 'Delete this space?',
-      confirmDeleteFolder: 'Delete this folder? Its spaces will move to the parent.',
+      confirmDeleteFolder: 'Delete this folder? Its child folders and spaces will be deleted too (spaces go to trash).',
       libraryLoadError: 'Failed to load the library',
       loading: 'Loading…',
       retry: 'Retry',
@@ -645,6 +649,13 @@ window.__ModuleLoader__.load({
 .cs-lib-root-toggle { width: 22px; flex-shrink: 0; border: 0; background: transparent; color: var(--cs-muted); cursor: pointer; }
 .cs-lib-root-toggle:hover { color: var(--cs-text); }
 .cs-lib-folder-manager { display: flex; flex-direction: column; gap: 2px; }
+.cs-lib-folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.cs-lib-folder-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; min-height: 132px; padding: 12px 8px; border: 1px solid var(--cs-border); border-radius: 9px; background: var(--cs-panel); color: var(--cs-text); font: inherit; cursor: pointer; text-align: center; }
+.cs-lib-folder-tile:hover { border-color: var(--cs-accent); background: var(--cs-hover); }
+.cs-lib-folder-tile.cs-drop-over { background: color-mix(in srgb, var(--cs-accent) 14%, transparent); outline: 1px dashed var(--cs-accent); outline-offset: -1px; }
+.cs-lib-folder-tile-icon { color: #d9a441; display: inline-flex; }
+.cs-lib-folder-tile-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.cs-lib-folder-tile-meta { color: var(--cs-muted); font-size: 10px; }
 .cs-lib-manager-row { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 5px 8px; border-bottom: 1px solid var(--cs-border); }
 .cs-lib-manager-row:hover { background: var(--cs-hover); }
 .cs-lib-manager-row.cs-drop-over, .cs-lib-subfolder.cs-drop-over { background: color-mix(in srgb, var(--cs-accent) 14%, transparent); outline: 1px dashed var(--cs-accent); outline-offset: -1px; }
@@ -2935,6 +2946,18 @@ window.__ModuleLoader__.load({
         ...(collapsedFolders.has(folder.id) ? [] : renderFolderTree(folder.id, depth + 1)),
       ])
 
+      const renderFolderTile = (folder) => h('button', {
+        key: folder.id,
+        type: 'button',
+        className: cx('cs-lib-folder-tile', dragOverFolder === folder.id ? 'cs-drop-over' : ''),
+        ...folderDragProps(folder),
+        onClick: () => setSelectedFolder(folder.id),
+      },
+        h('span', { className: 'cs-lib-folder-tile-icon' }, h(FolderIcon, { size: 44 })),
+        h('span', { className: 'cs-lib-folder-tile-name' }, folder.name),
+        h('span', { className: 'cs-lib-folder-tile-meta' }, folderSpaceCount(folder.id) + ' ' + t('spaces') + ' · ' + childrenOf(folder.id).length + ' ' + t('folders'))
+      )
+
       const renderSpaceCard = (space) => {
         const layoutLabel = space.layoutMode === 'horizontal' ? t('horizontalShort') : t('verticalShort')
         return h('div', {
@@ -3113,18 +3136,24 @@ window.__ModuleLoader__.load({
               ),
               h('div', { className: 'cs-lib-main-actions' },
                 selectedFolder !== 'all' && selectedFolder !== 'none'
+                  ? h('button', { type: 'button', className: 'cs-btn', onClick: () => setFolderViewMode((mode) => mode === 'grid' ? 'list' : 'grid') }, folderViewMode === 'grid' ? t('listView') : t('gridView'))
+                  : null,
+                selectedFolder !== 'all' && selectedFolder !== 'none'
                   ? h('button', { type: 'button', className: 'cs-btn', onClick: () => openNewFolder() }, '+ ' + t('newFolder'))
                   : null,
                 h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, '+ ' + t('newSpace'))
               )
             ),
             selectedFolder === 'folders'
-              ? h('div', { className: 'cs-lib-folder-manager' },
+              ? folderViewMode === 'grid'
+                ? h('div', { className: 'cs-lib-folder-grid' }, childrenOf(null).map(renderFolderTile))
+                : h('div', { className: 'cs-lib-folder-manager' },
                   childrenOf(null).length > 0
                     ? childrenOf(null).map((folder) => h('div', {
                         key: folder.id,
                         className: cx('cs-lib-manager-row', dragOverFolder === folder.id ? 'cs-drop-over' : ''),
                         style: { paddingLeft: 12 },
+                        onClick: () => setSelectedFolder(folder.id),
                         ...folderDragProps(folder),
                       },
                         h('span', { className: 'cs-lib-manager-icon' }, h(FolderIcon, { size: 14 })),
@@ -3145,19 +3174,21 @@ window.__ModuleLoader__.load({
                 )
               : h(React.Fragment, null,
                   visibleFolders.length > 0
-                    ? h('div', { className: 'cs-lib-subfolders' },
-                        visibleFolders.map((folder) => h('button', {
-                          key: folder.id,
-                          type: 'button',
-                          className: cx('cs-lib-subfolder', dragOverFolder === folder.id ? 'cs-drop-over' : ''),
-                          ...folderDragProps(folder),
-                          onClick: () => setSelectedFolder(folder.id),
-                        },
-                          h('span', { className: 'cs-lib-subfolder-icon' }, h(FolderIcon, { size: 14 })),
-                          h('span', { className: 'cs-lib-subfolder-name' }, folder.name),
-                          h('span', { className: 'cs-lib-subfolder-count' }, folderSpaceCount(folder.id) + ' ' + t('spaces'))
-                        ))
-                      )
+                    ? folderViewMode === 'grid'
+                      ? h('div', { className: 'cs-lib-folder-grid' }, visibleFolders.map(renderFolderTile))
+                      : h('div', { className: 'cs-lib-subfolders' },
+                          visibleFolders.map((folder) => h('button', {
+                            key: folder.id,
+                            type: 'button',
+                            className: cx('cs-lib-subfolder', dragOverFolder === folder.id ? 'cs-drop-over' : ''),
+                            ...folderDragProps(folder),
+                            onClick: () => setSelectedFolder(folder.id),
+                          },
+                            h('span', { className: 'cs-lib-subfolder-icon' }, h(FolderIcon, { size: 14 })),
+                            h('span', { className: 'cs-lib-subfolder-name' }, folder.name),
+                            h('span', { className: 'cs-lib-subfolder-count' }, folderSpaceCount(folder.id) + ' ' + t('spaces'))
+                          ))
+                        )
                     : null,
                   visibleSpaces.length > 0
                     ? h('div', { className: 'cs-lib-spaces' }, visibleSpaces.map(renderSpaceCard))

@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-chat-space",
-  "version": "1.0.29",
+  "version": "1.0.30",
   "private": true,
   "type": "module",
   "description": "Mica Space: ask multiple follow-ups from one answer without scrolling through a long chat. A zoomable branching conversation canvas for DSH with local zero-config memory.",
