@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.41
+
+- 欢迎页开头加分段并点明 Mica 解决的问题；
+- 精简文案，减少一两个字单独换行；
+- 16 条测试。
+
 ## 1.0.40
 
 - 补上文件夹视图切换函数，修复 toggleFolderView is not defined；

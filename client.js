@@ -52,13 +52,13 @@ window.__ModuleLoader__.load({
       welcome: '使用说明',
       welcomeVersion: '0.99 体验版',
       welcomeTitle: '欢迎上船，先别急着踩油门',
-      welcomeIntro: '这是 Mica 空间 0.99 体验版。长对话里追问一多，上下文就容易变成一团线，想回到某个回答继续问，得上下翻找。Mica 把这些追问摊成分支地图：主线还在，支线各自展开。第一次用，先耽误你点时间看看说明。',
-      welcomeNotesTitle: '先唠几句实在的',
-      welcomeNote1: '数据默认只保存在你电脑的 .chat-space 里。第一次用建议先“导出空间库”或配好 Git 备份，稳一手。',
-      welcomeNote2: '正常提问时，问题、上下文、附件和抽取出的文字会发送给 DSH 里配置的模型提供商；这是模型回答所必需的。',
-      welcomeNote3: '这是体验版，功能和数据格式还会变。分支、颜色、未读、文件夹这些都可以大胆试，但别拿它当唯一存档。',
-      welcomeNote4: '附件由 DSH attachment 服务保存，清理能力有限；删空间不一定马上释放底层附件，重要文件请自己留底。',
-      welcomeNote5: '删除的空间或文件夹先进入回收站；永久删除后才会真正移除。',
+      welcomeIntro: '这是 Mica 空间 0.99 体验版。\n\n长对话里追问一多，上下文容易变成一团线，想回到某个回答继续问，得上下翻找。\n\nMica 就是为解决这个问题：把追问摊成分支地图，主线保留，支线各自展开。',
+      welcomeNotesTitle: '先说几句：',
+      welcomeNote1: '数据只保存在你电脑的 .chat-space。第一次用建议先导出，或配好 Git 备份。',
+      welcomeNote2: '提问时，问题、上下文、附件和抽取文字会发送给 DSH 配置的模型提供商。',
+      welcomeNote3: '体验版，功能和数据格式可能变化；可以大胆试，但别把它当唯一存档。',
+      welcomeNote4: '附件由 DSH 管理。删到回收站不会立即释放；永久删除时才尝试清理未引用附件，可能不彻底。重要文件请自己留底。',
+      welcomeNote5: '空间或文件夹先进入回收站；永久删除后才真正移除。删除文件夹会连同子文件夹和内部空间一起进入回收站。',
       welcomeNote6: '模型提供商可能按自己的隐私政策处理请求数据。',
       welcomePrivacyTitle: '隐私这件事',
       welcomePrivacy1: '没有遥测，没有作者 API key，不会偷偷把空间打包上传。',
@@ -785,7 +785,7 @@ window.__ModuleLoader__.load({
 .cs-settings-modal { width: min(560px, calc(100vw - 48px)); }
 .cs-welcome-modal { width: min(620px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
 .cs-welcome-badge { align-self: flex-start; padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--cs-accent) 14%, var(--cs-panel)); color: var(--cs-accent); font-size: 10px; font-weight: 700; letter-spacing: .03em; }
-.cs-welcome-lead { color: var(--cs-text); font-size: 13px; line-height: 1.7; }
+.cs-welcome-lead { color: var(--cs-text); font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
 .cs-welcome-section { display: flex; flex-direction: column; gap: 5px; }
 .cs-welcome-section-title { color: var(--cs-text); font-size: 12px; font-weight: 700; }
 .cs-welcome-list { margin: 0; padding-left: 18px; color: var(--cs-muted); font-size: 12px; line-height: 1.7; }
