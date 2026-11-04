@@ -2566,14 +2566,20 @@ window.__ModuleLoader__.load({
         loadLibrary()
       }, [loadLibrary])
 
-      useEffect(() => {
-        let alive = true
-        fetch(API + '/welcome-copy', { headers: { Accept: 'application/json' } })
+      const loadWelcomeCopy = useCallback(() => {
+        fetch(API + '/welcome-copy', { headers: { Accept: 'application/json' }, cache: 'no-store' })
           .then((response) => response.json())
-          .then((body) => { if (alive && body && body.copy) setWelcomeCopy(body.copy) })
+          .then((body) => { if (body && body.copy) setWelcomeCopy(body.copy) })
           .catch(() => {})
-        return () => { alive = false }
       }, [])
+
+      useEffect(() => {
+        loadWelcomeCopy()
+      }, [loadWelcomeCopy])
+
+      useEffect(() => {
+        if (welcomeOpen) loadWelcomeCopy()
+      }, [welcomeOpen, loadWelcomeCopy])
 
       const post = async (pathName, body) => {
         const response = await fetch(API + pathName, {
