@@ -496,19 +496,21 @@ export function apply(ctx) {
     return currentLibrary
   }
 
-  const backupPath = (file, source) => file + (source === 'pre-schema' ? '.pre-schema-v2.bak' : '.bak')
+  const backupPath = (file, source) => file + (source === 'pre-schema' ? '.pre-schema-v2.bak' : source === 'before-restore' ? '.before-restore' : '.bak')
 
   const backupEntries = async () => {
     const entries = []
     const libraryBackups = [
       { kind: 'library', id: 'library', source: 'bak', file: libraryFile() },
       { kind: 'library', id: 'library', source: 'pre-schema', file: libraryFile() },
+      { kind: 'library', id: 'library', source: 'before-restore', file: libraryFile() },
     ]
     let library = null
     try { library = await readLibrary() } catch (_error) {}
     const spaceBackups = (library ? library.spaces : []).flatMap((meta) => ([
       { kind: 'space', id: meta.id, title: meta.title, source: 'bak', file: spaceFile(meta.id) },
       { kind: 'space', id: meta.id, title: meta.title, source: 'pre-schema', file: spaceFile(meta.id) },
+      { kind: 'space', id: meta.id, title: meta.title, source: 'before-restore', file: spaceFile(meta.id) },
     ]))
     for (const entry of [...libraryBackups, ...spaceBackups]) {
       const file = backupPath(entry.file, entry.source)
@@ -533,7 +535,7 @@ export function apply(ctx) {
   const restoreBackup = async (body) => {
     const kind = body.kind === 'library' ? 'library' : body.kind === 'space' ? 'space' : ''
     const id = kind === 'library' ? 'library' : (validId(body.id) ? body.id : '')
-    const source = body.source === 'pre-schema' ? 'pre-schema' : 'bak'
+    const source = body.source === 'pre-schema' ? 'pre-schema' : body.source === 'before-restore' ? 'before-restore' : 'bak'
     if (!kind || !id) throw new Error('恢复目标不合法')
     const target = kind === 'library' ? libraryFile() : spaceFile(id)
     const backup = backupPath(target, source)

@@ -123,6 +123,15 @@ test('root renders library, canvas, settings, privacy, and recovery without cras
   })
   assert.ok(findAll(renderer, (node) => node.props && typeof node.props.className === 'string' && node.props.className.includes('cs-card-main')).length > 0)
 
+  const mainCard = findAll(renderer, (node) => node.props && typeof node.props.className === 'string' && node.props.className.includes('cs-card-main'))[0]
+  assert.ok(mainCard, 'main card missing')
+  await act(async () => {
+    mainCard.props.onContextMenu({ preventDefault: () => {}, stopPropagation: () => {}, clientX: 100, clientY: 100, target: { closest: () => null } })
+    await flush()
+  })
+  assert.match(textOf(renderer.root), /copyQuestion/)
+  assert.match(textOf(renderer.root), /delete/)
+
   const back = buttonByText(renderer, 'backToLibrary')
   assert.ok(back, 'back-to-library button missing')
   await act(async () => { back.props.onClick(); await flush(); await flush() })

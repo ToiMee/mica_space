@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0
+
+- `.before-restore` 也进入数据恢复列表；
+- UI smoke 覆盖右键菜单；
+- 增加 PRIVACY/SECURITY/CONTRIBUTING 文档；
+- 16 条测试。
+
 ## 0.7.1
 
 - 数据恢复移入设置菜单；

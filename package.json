@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-chat-space",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "description": "Mica Space: a zoomable, branching conversation canvas for DSH, with local zero-config memory.",
@@ -18,6 +18,9 @@
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
+    "PRIVACY.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
     "locale/*.json",
     "icon.svg"
   ],
