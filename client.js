@@ -637,6 +637,9 @@ window.__ModuleLoader__.load({
 .cs-dot-wrap { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .cs-dot-ring { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 2px solid; border-radius: 50%; pointer-events: none; box-shadow: 0 0 8px color-mix(in srgb, currentColor 35%, transparent); }
 .cs-dot-badge { position: absolute; display: flex; align-items: center; justify-content: center; border-style: solid; border-radius: 50%; font-weight: 800; line-height: 1; pointer-events: none; z-index: 4; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
+.cs-dot-stack { position: absolute; left: 50%; top: 50%; border: 0 solid transparent; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; opacity: .35; }
+.cs-dot-stack span { position: absolute; left: 0; top: 0; display: block; border-style: solid; border-radius: 50%; }
+.cs-dot-badge-collapsed { color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
 .cs-dot-badge-flag { background: #e5484d; color: #fff; border-color: #ffe1e1; }
 .cs-dot-badge-pending { background: #ffd23f; color: #241d0c; border-color: #fff6c9; box-shadow: 0 0 0 3px rgba(255,210,63,.22), 0 2px 8px rgba(0,0,0,.45); }
 .cs-dot-badge-unread { background: #3b9dff; color: #fff; border-color: #d8ecff; box-shadow: 0 0 0 3px rgba(59,157,255,.22), 0 2px 8px rgba(0,0,0,.45); }
@@ -1957,7 +1960,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function Dot({ kind, zoom, label, color, selected, flagged, flagCount, pending, pendingCount, unread, collapsed, onClick, onHover, onLeave, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }) {
+    function Dot({ kind, zoom, label, color, selected, flagged, flagCount, pending, pendingCount, unread, collapsed, dotCount, onClick, onHover, onLeave, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }) {
       const edge = kind === 'main'
         ? Math.max(10, 24 / Math.max(zoom, 0.01))
         : Math.max(8, 15 / Math.max(zoom, 0.01))
@@ -1975,9 +1978,17 @@ window.__ModuleLoader__.load({
           ? 'translate(calc(-50% - ' + offset + 'px), calc(-50% - ' + offset + 'px))'
           : side === 'unread'
             ? 'translate(calc(-50% + ' + offset + 'px), calc(-50% + ' + offset + 'px))'
-            : 'translate(calc(-50% + ' + offset + 'px), calc(-50% - ' + offset + 'px))',
+            : side === 'collapsed'
+              ? 'translate(calc(-50% - ' + offset + 'px), calc(-50% + ' + offset + 'px))'
+              : 'translate(calc(-50% + ' + offset + 'px), calc(-50% - ' + offset + 'px))',
       })
       return h('div', { className: 'cs-dot-wrap' },
+        collapsed && dotCount > 1
+          ? h('span', { className: 'cs-dot-stack', 'aria-hidden': true, style: { width: edge, height: edge, borderColor: color, borderWidth: 2 / safeZoom } },
+              h('span', { style: { width: edge, height: edge, borderColor: color, borderWidth: 2 / safeZoom, transform: 'translate(' + (-5 / safeZoom) + 'px, ' + (5 / safeZoom) + 'px)' } }),
+              h('span', { style: { width: edge, height: edge, borderColor: color, borderWidth: 2 / safeZoom, transform: 'translate(' + (-2.5 / safeZoom) + 'px, ' + (2.5 / safeZoom) + 'px)' } })
+            )
+          : null,
         selected ? h('span', {
           className: 'cs-dot-ring',
           style: {
@@ -2010,6 +2021,9 @@ window.__ModuleLoader__.load({
           : null,
         unread
           ? h('span', { className: 'cs-dot-badge cs-dot-badge-unread', style: badgeStyle('unread'), title: label }, '●')
+          : null,
+        collapsed && dotCount > 1
+          ? h('span', { className: 'cs-dot-badge cs-dot-badge-collapsed', style: { ...badgeStyle('collapsed'), background: color, borderColor: 'rgba(255,255,255,.82)' }, title: label }, String(dotCount))
           : null
       )
     }
