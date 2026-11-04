@@ -775,7 +775,7 @@ window.__ModuleLoader__.load({
 .cs-flag-on { color: #e5484d; }
 .cs-layer-list { display: flex; flex-direction: column; gap: 4px; max-height: min(520px, calc(100vh - 220px)); overflow: auto; }
 .cs-context-layer { position: fixed; inset: 0; z-index: 4200; }
-.cs-context-menu { position: fixed; min-width: 190px; max-height: calc(100vh - 16px); overflow: auto; padding: 4px; border: 1px solid var(--cs-border); border-radius: 9px; background: var(--cs-panel); box-shadow: 0 12px 36px rgba(0,0,0,.35); }
+.cs-context-menu { position: fixed; min-width: 190px; max-height: calc(100vh - 16px); overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 4px; border: 1px solid var(--cs-border); border-radius: 9px; background: var(--cs-panel); box-shadow: 0 12px 36px rgba(0,0,0,.35); }
 .cs-context-menu button { display: block; width: 100%; padding: 7px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--cs-text); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
 .cs-context-menu button:hover { background: var(--cs-hover); }
 .cs-context-danger { color: var(--cs-danger) !important; }
@@ -3521,6 +3521,12 @@ window.__ModuleLoader__.load({
           if (!current) return
           const target = event.target
           if (!event.altKey && target && target.closest) {
+            const menu = target.closest('.cs-context-menu')
+            if (menu) {
+              event.preventDefault()
+              menu.scrollTop += event.deltaY
+              return
+            }
             const briefField = target.closest('.cs-brief-input')
             const briefBox = target.closest('.cs-branch-meta')
             if (briefBox) {
@@ -5676,7 +5682,7 @@ window.__ModuleLoader__.load({
         },
           h('div', {
             className: 'cs-context-menu',
-            style: { left: contextMenu.x, top: contextMenu.y },
+            style: { left: contextMenu.x, top: contextMenu.y, maxHeight: Math.max(160, window.innerHeight - contextMenu.y - 8) },
             onMouseDown: (event) => event.stopPropagation(),
           },
             contextMenu.ids.length > 1
