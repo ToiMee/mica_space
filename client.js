@@ -5224,7 +5224,7 @@ window.__ModuleLoader__.load({
           const anchor = turnRects.get(branch.anchorTurnId)
           const first = visibleTurns.length > 0 ? turnRects.get(visibleTurns[0].id) : null
           if (anchor && first) {
-            const side = position.side || 'left'
+            const side = branchAnchorSide(branch, position)
             const anchorSide = side === 'left' ? 'right' : side === 'right' ? 'left' : side === 'top' ? 'bottom' : 'top'
             const a = sidePoint(anchor, anchorSide)
             const b = sidePoint(first, side)
