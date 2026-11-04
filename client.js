@@ -777,9 +777,9 @@ window.__ModuleLoader__.load({
 .cs-context-swatches { display: flex; gap: 6px; padding: 3px 8px 6px; }
 .cs-context-swatch { width: 18px; height: 18px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
 .cs-color-picker { padding: 3px 0; }
-.cs-color-change { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border: 0; border-radius: 5px; background: transparent; color: var(--cs-accent); font: inherit; font-size: 11px; cursor: pointer; text-align: left; text-decoration: none; }
+.cs-color-change { display: inline-flex; align-items: center; gap: 8px; padding: 3px 7px; border: 0; border-radius: 5px; background: transparent; color: var(--cs-accent); font: inherit; font-size: 11px; cursor: pointer; text-align: left; text-decoration: none; }
 .cs-color-change:hover { background: var(--cs-hover); text-decoration: none; }
-.cs-color-change-arrow { color: var(--cs-muted); font-size: 8px; line-height: 1; }
+.cs-color-change-arrow { color: var(--cs-muted); font-size: 11px; line-height: 1; }
 .cs-color-popover { margin-top: 6px; padding: 8px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); box-shadow: 0 8px 22px rgba(0,0,0,.16); display: flex; flex-direction: column; gap: 8px; }
 .cs-color-section { display: flex; flex-direction: column; gap: 4px; }
 .cs-color-label { color: var(--cs-muted); font-size: 9px; letter-spacing: .03em; }
@@ -3651,16 +3651,26 @@ window.__ModuleLoader__.load({
         set.add(side)
         ports.set(turnId, set)
       }
-      const branchAnchorSide = (branch, position) => {
-        let side = position.side || 'left'
+      const branchMainSide = (branch, position) => {
         const mainIndex = mainTurns.findIndex((turn) => turn.id === branch.anchorTurnId)
-        if (mainIndex >= 0) {
-          const allowed = layoutMode === 'vertical'
-            ? (mainIndex === 0 ? ['top', 'left', 'right'] : ['left', 'right'])
-            : (mainIndex === 0 ? ['left', 'top', 'bottom'] : ['top', 'bottom'])
-          if (allowed.indexOf(side) < 0) side = allowed[0]
+        if (mainIndex < 0) return null
+        const allowed = layoutMode === 'vertical'
+          ? (mainIndex === 0 ? ['top', 'left', 'right'] : ['left', 'right'])
+          : (mainIndex === 0 ? ['left', 'top', 'bottom'] : ['top', 'bottom'])
+        const desired = position.side || 'left'
+        if (allowed.indexOf(desired) >= 0) return desired
+        const anchorRect = turnRects.get(branch.anchorTurnId)
+        const firstRect = branch.turns.length > 0 ? turnRects.get(branch.turns[0].id) : null
+        const dx = anchorRect && firstRect ? (firstRect.x + firstRect.w / 2) - (anchorRect.x + anchorRect.w / 2) : 0
+        const dy = anchorRect && firstRect ? (firstRect.y + firstRect.h / 2) - (anchorRect.y + anchorRect.h / 2) : 0
+        if (layoutMode === 'vertical') {
+          if (allowed.indexOf('left') >= 0 && allowed.indexOf('right') >= 0) return dx < 0 ? 'left' : 'right'
+          if (allowed.indexOf('top') >= 0) return 'top'
+        } else {
+          if (allowed.indexOf('top') >= 0 && allowed.indexOf('bottom') >= 0) return dy < 0 ? 'top' : 'bottom'
+          if (allowed.indexOf('left') >= 0) return 'left'
         }
-        return side
+        return allowed[0]
       }
       for (let index = 1; index < mainTurns.length; index += 1) {
         if (layoutMode === 'horizontal') {
@@ -3676,10 +3686,12 @@ window.__ModuleLoader__.load({
         const visibleTurns = branch.collapsed ? branch.turns.slice(0, 1) : branch.turns
         const first = visibleTurns.length > 0 ? visibleTurns[0] : null
         if (first) {
-          const side = branchAnchorSide(branch, position)
-          const anchorSide = side === 'left' ? 'right' : side === 'right' ? 'left' : side === 'top' ? 'bottom' : 'top'
-          addPort(branch.anchorTurnId, anchorSide)
-          addPort(first.id, side)
+          const mainSide = branchMainSide(branch, position)
+          const firstSide = mainSide
+            ? (mainSide === 'left' ? 'right' : mainSide === 'right' ? 'left' : mainSide === 'top' ? 'bottom' : 'top')
+            : (position.side || 'left')
+          addPort(branch.anchorTurnId, mainSide || (firstSide === 'left' ? 'right' : firstSide === 'right' ? 'left' : firstSide === 'top' ? 'bottom' : 'top'))
+          addPort(first.id, firstSide)
         }
         for (let index = 1; index < visibleTurns.length; index += 1) {
           addPort(visibleTurns[index - 1].id, 'bottom')
@@ -5224,11 +5236,14 @@ window.__ModuleLoader__.load({
           const anchor = turnRects.get(branch.anchorTurnId)
           const first = visibleTurns.length > 0 ? turnRects.get(visibleTurns[0].id) : null
           if (anchor && first) {
-            const side = branchAnchorSide(branch, position)
-            const anchorSide = side === 'left' ? 'right' : side === 'right' ? 'left' : side === 'top' ? 'bottom' : 'top'
+            const mainSide = branchMainSide(branch, position)
+            const firstSide = mainSide
+              ? (mainSide === 'left' ? 'right' : mainSide === 'right' ? 'left' : mainSide === 'top' ? 'bottom' : 'top')
+              : (position.side || 'left')
+            const anchorSide = mainSide || (firstSide === 'left' ? 'right' : firstSide === 'right' ? 'left' : firstSide === 'top' ? 'bottom' : 'top')
             const a = sidePoint(anchor, anchorSide)
-            const b = sidePoint(first, side)
-            const d = dotMode ? centerPath(anchor, first) : curvePorts(anchor, anchorSide, first, side)
+            const b = sidePoint(first, firstSide)
+            const d = dotMode ? centerPath(anchor, first) : curvePorts(anchor, anchorSide, first, firstSide)
             paths.push(h('path', {
               key: 'edge-' + branch.id,
               className: 'cs-link-branch',
