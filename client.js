@@ -148,6 +148,7 @@ window.__ModuleLoader__.load({
       quotePlaceholder: '针对这段引用继续问…',
       removeQuote: '移除引用',
       continueFollowUp: '继续追问',
+      continueBranchAsk: '从分支追问',
       collapseComposer: '收起追问框',
       continueMain: '继续主线',
       continueBranch: '继续这条分支',
@@ -377,6 +378,7 @@ window.__ModuleLoader__.load({
       quotePlaceholder: 'Continue with this quote…',
       removeQuote: 'Remove quote',
       continueFollowUp: 'Continue asking',
+      continueBranchAsk: 'Ask from branch',
       continueMain: 'Continue main line',
       continueBranch: 'Continue this branch',
       locateOriginal: '📌 Locate original',
@@ -2362,10 +2364,10 @@ window.__ModuleLoader__.load({
           h('div', { className: 'cs-card-actions' },
 
             detail === 'full' && kind === 'main' && active && !streaming && turn.answer.trim()
-              ? h('button', { type: 'button', className: 'cs-mini', onClick: () => onAskWhole(turn) }, t('continueFollowUp'))
+              ? h('button', { type: 'button', className: 'cs-mini', onClick: () => onAskWhole(turn) }, t('continueBranchAsk'))
               : null,
             detail === 'full' && kind === 'branch' && active && !streaming && turn.answer.trim()
-              ? h('button', { type: 'button', className: 'cs-mini', onClick: () => onAskWhole(turn) }, t('continueFollowUp'))
+              ? h('button', { type: 'button', className: 'cs-mini', onClick: () => onAskWhole(turn) }, t('continueBranchAsk'))
               : null,
             detail === 'full' && kind === 'branch' && branch.anchorText && branch.anchorSource !== 'answer'
               ? h('button', { type: 'button', className: 'cs-mini cs-locate', onClick: (event) => { event.stopPropagation(); onLocateAnchor() } }, t('locateOriginal'))
