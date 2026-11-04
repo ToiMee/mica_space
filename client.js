@@ -767,7 +767,7 @@ window.__ModuleLoader__.load({
 .cs-lib-empty-text { max-width: 360px; color: var(--cs-muted); font-size: 12px; line-height: 1.6; }
 .cs-lib-notice { padding: 7px 20px; border-bottom: 1px solid var(--cs-border); background: color-mix(in srgb, #d9534f 8%, var(--cs-bg)); color: #b8453f; font-size: 12px; }
 .cs-lib-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--cs-muted); }
-.cs-lib-modal-backdrop { position: fixed; inset: 0; z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(14, 20, 28, .34); backdrop-filter: blur(2px); }
+.cs-lib-modal-backdrop { position: absolute; inset: 0; z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(14, 20, 28, .34); backdrop-filter: blur(2px); }
 .cs-lib-modal { width: min(440px, 100%); display: flex; flex-direction: column; gap: 13px; padding: 18px; border: 1px solid var(--cs-border); border-radius: 12px; background: var(--cs-panel); box-shadow: 0 18px 48px rgba(0,0,0,.22); }
 .cs-lib-modal-title { font-size: 16px; font-weight: 600; }
 .cs-lib-field { display: flex; flex-direction: column; gap: 5px; color: var(--cs-muted); font-size: 12px; }
