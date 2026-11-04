@@ -226,6 +226,7 @@ window.__ModuleLoader__.load({
       noSummary: '暂无摘要',
       close: '关闭',
       branchBriefLabel: '分支说明',
+      addBranchBrief: '添加说明',
       noAnswer: '（还没有回答）',
       loadErrorHint: '请刷新页面，或检查 DSH 是否仍在运行。',
       renderError: 'Mica空间出错了',
@@ -431,6 +432,7 @@ window.__ModuleLoader__.load({
       noSummary: 'No summary',
       close: 'Close',
       branchBriefLabel: 'Branch note',
+      addBranchBrief: 'Add note',
       noAnswer: '(no answer yet)',
       loadErrorHint: 'Refresh the page, or check that DSH is still running.',
       renderError: 'Mica Space hit an error',
@@ -525,6 +527,8 @@ window.__ModuleLoader__.load({
 .cs-branch-meta { flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); }
 .cs-branch-anchor-label { font-size: 10px; letter-spacing: .02em; text-transform: uppercase; color: var(--cs-muted); }
 .cs-branch-anchor-text { max-height: 58px; overflow: auto; white-space: pre-wrap; color: var(--cs-muted); font-size: 11px; line-height: 1.55; }
+.cs-add-brief { align-self: flex-start; padding: 2px 0; border: 0; background: transparent; color: var(--cs-accent); font: inherit; font-size: 10px; cursor: pointer; }
+.cs-add-brief:hover { text-decoration: underline; }
 .cs-brief-input { width: 100%; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--cs-text); padding: 4px 6px; font: inherit; font-size: 11px; line-height: 1.5; outline: none; }
 .cs-brief-input:hover, .cs-brief-input:focus { border-color: var(--cs-border-strong); background: var(--cs-panel); }
 .cs-composer-quote { display: flex; align-items: flex-start; gap: 8px; padding: 7px 9px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); color: var(--cs-muted); font-size: 12px; line-height: 1.55; }
@@ -2143,6 +2147,7 @@ window.__ModuleLoader__.load({
       onContextMenu, tag, collapsed, hiddenCount, onToggleCollapse,
     }) {
       const streaming = turn.status === 'streaming'
+      const [briefEditor, setBriefEditor] = useState(false)
       const failed = turn.status === 'failed'
       const cancelled = turn.status === 'cancelled'
 
@@ -2259,12 +2264,20 @@ window.__ModuleLoader__.load({
             ? h('div', { className: 'cs-branch-meta' },
                 h('div', { className: 'cs-branch-anchor-label' }, t('branchBriefLabel')),
                 h('div', { className: 'cs-branch-anchor-text' }, branch.anchorText),
-                h('input', {
-                  className: 'cs-brief-input',
-                  value: branch.brief,
-                  placeholder: t('branchBriefPlaceholder'),
-                  onChange: (event) => onBriefChange(event.target.value),
-                })
+                branch.brief || briefEditor
+                  ? h('input', {
+                      className: 'cs-brief-input',
+                      value: branch.brief,
+                      autoFocus: briefEditor && !branch.brief,
+                      placeholder: t('branchBriefPlaceholder'),
+                      onChange: (event) => onBriefChange(event.target.value),
+                      onBlur: () => { if (!branch.brief) setBriefEditor(false) },
+                    })
+                  : h('button', {
+                      type: 'button',
+                      className: 'cs-add-brief',
+                      onClick: () => setBriefEditor(true),
+                    }, '+ ' + t('addBranchBrief'))
               )
             : null,
           h('div', { className: 'cs-q' },
@@ -3384,38 +3397,6 @@ window.__ModuleLoader__.load({
           alive = false
         }
       }, [spaceId])
-
-      useEffect(() => {
-        if (loadState !== 'ready' || !spaceRef.current) return
-        if (alignedSpaceRef.current === spaceId) return
-        const element = viewportRef.current
-        if (!element) return
-        const width = element.clientWidth
-        const height = element.clientHeight
-        if (!width || !height) return
-        const current = spaceRef.current
-        const currentView = current.view || { x: 120, y: 120, zoom: 1 }
-        const zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentView.zoom || 1))
-        let x = currentView.x
-        let y = currentView.y
-        if (current.layoutMode === 'horizontal') {
-          const axisY = TOP_PAD + MAIN_H / 2
-          y = height / 2 - axisY * zoom
-          const guideY = y + axisY * zoom
-          const dotY = 12 + Math.round((guideY - 12) / 24) * 24
-          y += dotY - guideY
-        } else {
-          const axisX = MAIN_W / 2
-          x = width / 2 - axisX * zoom
-          const guideX = x + axisX * zoom
-          const dotX = 12 + Math.round((guideX - 12) / 24) * 24
-          x += dotX - guideX
-        }
-        alignedSpaceRef.current = spaceId
-        if (Math.abs(x - currentView.x) < 0.1 && Math.abs(y - currentView.y) < 0.1) return
-        commit((previous) => ({ ...previous, view: { ...currentView, x, y } }))
-        saveSoon(500)
-      }, [loadState, spaceId, commit, saveSoon])
 
       useEffect(() => {
         writeJsonStorage(DRAFT_KEY, draft)
