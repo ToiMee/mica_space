@@ -728,11 +728,10 @@ window.__ModuleLoader__.load({
 .cs-main-guide-h { left: 0; right: 0; height: 3px; background-image: repeating-linear-gradient(to right, var(--cs-accent) 0 14px, transparent 14px 30px); }
 .cs-dot-tip { position: fixed; z-index: 1200; max-width: 300px; padding: 8px 10px; border-radius: 8px; background: #1f2329; color: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,.25); font-size: 12px; line-height: 1.55; pointer-events: none; }
 .cs-bottom-composer { position: absolute; left: 50%; bottom: 18px; z-index: 950; display: flex; flex-direction: column; gap: 6px; width: min(640px, calc(100% - 220px)); transform: translateX(-50%); }
-.cs-bottom-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
-.cs-bottom-head .cs-bottom-label { justify-self: start; }
-.cs-bottom-head .cs-bottom-collapse { grid-column: 2; justify-self: center; }
+.cs-bottom-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cs-bottom-head .cs-bottom-label { align-self: center; }
 .cs-bottom-label { align-self: flex-start; padding: 2px 8px; border: 1px solid var(--cs-border); border-radius: 999px; background: var(--cs-panel); color: var(--cs-muted); font-size: 11px; line-height: 1.4; }
-.cs-bottom-collapse { width: 24px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--cs-border); border-radius: 6px; background: var(--cs-panel); color: var(--cs-muted); font: inherit; font-size: 13px; line-height: 1; cursor: pointer; }
+.cs-bottom-collapse { width: 24px; height: 22px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--cs-border); border-radius: 6px; background: var(--cs-panel); color: var(--cs-muted); font: inherit; line-height: 1; cursor: pointer; }
 .cs-bottom-collapse:hover { color: var(--cs-text); background: var(--cs-hover); }
 .cs-composer-collapsed { position: absolute; left: 50%; bottom: 18px; z-index: 950; transform: translateX(-50%); padding: 7px 12px; border: 1px solid var(--cs-border); border-radius: 999px; background: var(--cs-panel); color: var(--cs-accent); box-shadow: var(--cs-shadow); font: inherit; font-size: 12px; cursor: pointer; }
 .cs-composer-collapsed:hover { border-color: var(--cs-accent); }
@@ -5468,7 +5467,7 @@ window.__ModuleLoader__.load({
         return h('div', { className: 'cs-bottom-composer' },
           h('div', { className: 'cs-bottom-head' },
             h('div', { className: 'cs-bottom-label' }, quote ? t('quoteFollowUp') : branch ? t('continueBranch') : t('continueMain')),
-            h('button', { type: 'button', className: 'cs-bottom-collapse', onClick: () => setComposerCollapsed(true), title: t('collapseComposer') }, '⌄')
+            h('button', { type: 'button', className: 'cs-bottom-collapse', onClick: () => setComposerCollapsed(true), title: t('collapseComposer') }, h('svg', { width: 10, height: 6, viewBox: '0 0 10 6', 'aria-hidden': true }, h('path', { d: 'M1 1l4 4 4-4', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' })))
           ),
           quote
             ? h('div', { className: 'cs-composer-quote' },
@@ -5523,6 +5522,14 @@ window.__ModuleLoader__.load({
         },
           h('button', { type: 'button', className: 'cs-sel-btn', onClick: openBranchDraft }, t('followUp'))
         )
+      }
+
+      const revealMarker = (turnId) => {
+        setSelectedTurn(null)
+        setSelectedIds(new Set())
+        setSelection(null)
+        setContextMenu(null)
+        focusTurn(turnId)
       }
 
       const renderPendingMarkers = () => {
@@ -5587,7 +5594,7 @@ window.__ModuleLoader__.load({
             style: { left: markerX, top: markerY },
             title: (count > 1 ? t('pendingCount').replace('{n}', String(count)) + '：' : t('todo') + '：') + titles,
             onPointerDown: (event) => event.stopPropagation(),
-            onClick: (event) => { event.stopPropagation(); focusTurn(items[0].entry.turn.id) },
+            onClick: (event) => { event.stopPropagation(); revealMarker(items[0].entry.turn.id) },
           },
             h('span', null, '!'),
             count > 1 ? h('span', { className: 'cs-pending-count' }, String(count)) : null
@@ -5644,7 +5651,7 @@ window.__ModuleLoader__.load({
             onClick: (event) => {
               event.stopPropagation()
               clearUnread(items[0].entry.turn, items[0].entry.kind, items[0].entry.branchId)
-              focusTurn(items[0].entry.turn.id)
+              revealMarker(items[0].entry.turn.id)
             },
           },
             h('span', null, '●'),
