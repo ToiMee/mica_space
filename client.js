@@ -685,7 +685,13 @@ window.__ModuleLoader__.load({
 .cs-lib-root-toggle { width: 22px; flex-shrink: 0; border: 0; background: transparent; color: var(--cs-muted); cursor: pointer; }
 .cs-lib-root-toggle:hover { color: var(--cs-text); }
 .cs-lib-folder-manager { display: flex; flex-direction: column; gap: 2px; }
-.cs-lib-folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.cs-lib-folder-grid, .cs-lib-space-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.cs-lib-space-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; min-height: 142px; padding: 13px 8px; border: 1px solid var(--cs-border); border-radius: 9px; background: var(--cs-panel); color: var(--cs-text); font: inherit; cursor: pointer; text-align: center; }
+.cs-lib-space-tile:hover { border-color: var(--cs-accent); background: var(--cs-hover); }
+.cs-lib-space-tile-icon { color: var(--cs-accent); display: inline-flex; }
+.cs-lib-space-tile-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.cs-lib-space-tile-meta { color: var(--cs-muted); font-size: 10px; }
+.cs-lib-space-tile-date { color: var(--cs-muted); font-size: 9px; }
 .cs-lib-folder-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; min-height: 132px; padding: 12px 8px; border: 1px solid var(--cs-border); border-radius: 9px; background: var(--cs-panel); color: var(--cs-text); font: inherit; cursor: pointer; text-align: center; }
 .cs-lib-folder-tile:hover { border-color: var(--cs-accent); background: var(--cs-hover); }
 .cs-lib-folder-tile.cs-drop-over { background: color-mix(in srgb, var(--cs-accent) 14%, transparent); outline: 1px dashed var(--cs-accent); outline-offset: -1px; }
@@ -3080,6 +3086,18 @@ window.__ModuleLoader__.load({
         h('span', { className: 'cs-lib-folder-tile-meta' }, folderSpaceCount(folder.id) + ' ' + t('spaces') + ' · ' + childrenOf(folder.id).length + ' ' + t('folders'))
       )
 
+      const renderSpaceTile = (space) => h('button', {
+        key: space.id,
+        type: 'button',
+        className: 'cs-lib-space-tile',
+        onClick: () => openSpace(space.id),
+      },
+        h('span', { className: 'cs-lib-space-tile-icon' }, h(SpaceIcon, { size: 44 })),
+        h('span', { className: 'cs-lib-space-tile-name', title: space.title }, space.title),
+        h('span', { className: 'cs-lib-space-tile-meta' }, (space.turnCount || 0) + ' ' + t('turns') + ' · ' + (space.layoutMode === 'horizontal' ? t('horizontalShort') : t('verticalShort'))),
+        h('span', { className: 'cs-lib-space-tile-date' }, formatDate(space.updatedAt))
+      )
+
       const renderSpaceCard = (space) => {
         const layoutLabel = space.layoutMode === 'horizontal' ? t('horizontalShort') : t('verticalShort')
         return h('div', {
@@ -3267,9 +3285,7 @@ window.__ModuleLoader__.load({
                 )
               ),
               h('div', { className: 'cs-lib-main-actions' },
-                selectedFolder !== 'all' && selectedFolder !== 'none'
-                  ? h('button', { type: 'button', className: 'cs-btn', onClick: toggleFolderView }, folderViewMode === 'grid' ? t('listView') : t('gridView'))
-                  : null,
+                h('button', { type: 'button', className: 'cs-btn', onClick: toggleFolderView }, folderViewMode === 'grid' ? t('listView') : t('gridView')),
                 selectedFolder !== 'all' && selectedFolder !== 'none'
                   ? h('button', { type: 'button', className: 'cs-btn', onClick: () => openNewFolder() }, '+ ' + t('newFolder'))
                   : null,
@@ -3323,7 +3339,9 @@ window.__ModuleLoader__.load({
                         )
                     : null,
                   visibleSpaces.length > 0
-                    ? h('div', { className: 'cs-lib-spaces' }, visibleSpaces.map(renderSpaceCard))
+                    ? folderViewMode === 'grid'
+                      ? h('div', { className: 'cs-lib-space-grid' }, visibleSpaces.map(renderSpaceTile))
+                      : h('div', { className: 'cs-lib-spaces' }, visibleSpaces.map(renderSpaceCard))
                     : null,
                   visibleSpaces.length === 0 && visibleFolders.length === 0
                     ? h('div', { className: 'cs-lib-empty' },
