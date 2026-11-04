@@ -91,7 +91,7 @@ window.__ModuleLoader__.load({
       confirmDeleteForever: '永久删除这个空间？此操作不可撤销。',
       newFolder: '新建文件夹',
       allSpaces: '全部空间',
-      allFolders: '所有文件夹',
+      allFolders: '文件管理',
       uncategorized: '未分类',
       rootFolder: '根目录',
       folders: '文件夹',
@@ -300,7 +300,7 @@ window.__ModuleLoader__.load({
       confirmDeleteForever: 'Delete this space forever? This cannot be undone.',
       newFolder: 'New folder',
       allSpaces: 'All spaces',
-      allFolders: 'All folders',
+      allFolders: 'File management',
       uncategorized: 'Uncategorized',
       rootFolder: 'Root',
       folders: 'Folders',
@@ -636,9 +636,9 @@ window.__ModuleLoader__.load({
 .cs-lib-search:focus { border-color: var(--cs-accent); }
 .cs-lib-body { flex: 1; min-height: 0; display: flex; }
 .cs-lib-side { width: 230px; flex-shrink: 0; padding: 12px 8px; border-right: 1px solid var(--cs-border); overflow: auto; }
-.cs-lib-allfolders-row { display: flex; align-items: stretch; gap: 2px; }
-.cs-lib-allfolders-row .cs-lib-folder { flex: 1; min-width: 0; }
-.cs-lib-allfolders-toggle { width: 22px; flex-shrink: 0; border: 0; background: transparent; color: var(--cs-muted); cursor: pointer; padding: 0; }
+.cs-lib-allfolders-row { display: flex; align-items: stretch; gap: 6px; }
+.cs-lib-allfolders-row .cs-lib-folder { flex: 1; min-width: 0; gap: 8px; }
+.cs-lib-allfolders-toggle { width: 14px; flex-shrink: 0; border: 0; background: transparent; color: var(--cs-muted); cursor: pointer; padding: 0; }
 .cs-lib-allfolders-toggle:hover { color: var(--cs-text); }
 .cs-lib-side-root { display: flex; align-items: stretch; gap: 2px; margin-bottom: 4px; }
 .cs-lib-root-main { flex: 1; min-width: 0; }
@@ -662,7 +662,7 @@ window.__ModuleLoader__.load({
 .cs-lib-folder:hover { background: var(--cs-hover); }
 .cs-lib-folder.cs-drop-over { background: color-mix(in srgb, var(--cs-accent) 14%, transparent); outline: 1px dashed var(--cs-accent); outline-offset: -1px; }
 .cs-lib-folder-active { background: color-mix(in srgb, var(--cs-accent) 12%, transparent); color: var(--cs-accent); }
-.cs-lib-folder-toggle { flex-shrink: 0; width: 14px; height: 20px; padding: 0; border: 0; background: transparent; color: var(--cs-muted); font: inherit; font-size: 9px; line-height: 1; cursor: pointer; }
+.cs-lib-folder-toggle { flex-shrink: 0; width: 16px; height: 20px; margin-right: 2px; padding: 0; border: 0; background: transparent; color: var(--cs-muted); font: inherit; font-size: 9px; line-height: 1; cursor: pointer; }
 .cs-lib-folder-toggle:hover { color: var(--cs-text); }
 .cs-lib-folder-toggle-empty { display: inline-block; }
 .cs-lib-folder-icon { flex-shrink: 0; width: 14px; height: 14px; color: var(--cs-muted); display: inline-flex; align-items: center; justify-content: center; }
@@ -3073,6 +3073,7 @@ window.__ModuleLoader__.load({
               h('span', { className: 'cs-lib-folder-count' }, spaces.filter((space) => !space.folderId).length)
             ),
             h('div', { className: 'cs-lib-allfolders-row' },
+              h('button', { type: 'button', className: 'cs-lib-side-toggle cs-lib-allfolders-toggle', onClick: () => setFolderTreeOpen((open) => !open), title: t('folders') }, h('span', { className: 'cs-lib-side-caret' }, folderTreeOpen ? '▾' : '▸')),
               h('div', {
                 className: cx('cs-lib-folder', selectedFolder === 'folders' ? 'cs-lib-folder-active' : '', dragOverFolder === 'folders' ? 'cs-drop-over' : ''),
                 onClick: () => setSelectedFolder('folders'),
@@ -3090,8 +3091,7 @@ window.__ModuleLoader__.load({
                 h('span', { className: 'cs-lib-folder-icon' }, h(FolderIcon, { size: 13 })),
                 h('span', { className: 'cs-lib-folder-name' }, t('allFolders')),
                 h('span', { className: 'cs-lib-folder-count' }, folders.length)
-              ),
-              h('button', { type: 'button', className: 'cs-lib-side-toggle cs-lib-allfolders-toggle', onClick: () => setFolderTreeOpen((open) => !open), title: t('folders') }, h('span', { className: 'cs-lib-side-caret' }, folderTreeOpen ? '▾' : '▸'))
+              )
             ),
             folderTreeOpen ? renderFolderTree(null, 1) : null,
             h('button', { type: 'button', className: 'cs-lib-newfolder', onClick: () => openNewFolder() }, '+ ' + t('newFolder'))
