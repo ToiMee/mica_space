@@ -58,6 +58,8 @@ window.__ModuleLoader__.load({
       welcomeNote2: '正常提问时，问题、上下文、附件和抽取出的文字会发送给 DSH 里配置的模型提供商；这是模型回答所必需的。',
       welcomeNote3: '这是体验版，功能和数据格式还会变。分支、颜色、未读、文件夹这些都可以大胆试，但别拿它当唯一存档。',
       welcomeNote4: '附件由 DSH attachment 服务保存，清理能力有限；删空间不一定马上释放底层附件，重要文件请自己留底。',
+      welcomeNote5: '删除的空间或文件夹先进入回收站；永久删除后才会真正移除。',
+      welcomeNote6: '模型提供商可能按自己的隐私政策处理请求数据。',
       welcomePrivacyTitle: '隐私这件事',
       welcomePrivacy1: '没有遥测，没有作者 API key，不会偷偷把空间打包上传。',
       welcomePrivacy2: '只有你主动配置 Git remote 并点备份时，数据才会 push 到那个 remote。',
@@ -285,6 +287,8 @@ window.__ModuleLoader__.load({
       welcomeNote2: 'When you ask, the question, context, attachments, and extracted text go to the model provider configured in DSH.',
       welcomeNote3: 'This is a preview: features and data formats can change. Try branches, colors, unread markers, folders — but do not make this your only copy.',
       welcomeNote4: 'Attachments are owned by the DSH attachment service. Cleanup is limited; keep important files elsewhere.',
+      welcomeNote5: 'Deleted spaces and folders go to trash first; permanent deletion actually removes them.',
+      welcomeNote6: 'The model provider may process request data under its own privacy policy.',
       welcomePrivacyTitle: 'Privacy, briefly',
       welcomePrivacy1: 'No telemetry, no author API key, no silent upload of your spaces.',
       welcomePrivacy2: 'Data is pushed only when you configure a Git remote and click backup.',
@@ -3328,7 +3332,9 @@ window.__ModuleLoader__.load({
                 h('li', null, welcomeText('welcomeNote1')),
                 h('li', null, welcomeText('welcomeNote2')),
                 h('li', null, welcomeText('welcomeNote3')),
-                h('li', null, welcomeText('welcomeNote4'))
+                h('li', null, welcomeText('welcomeNote4')),
+                h('li', null, welcomeText('welcomeNote5')),
+                h('li', null, welcomeText('welcomeNote6'))
               )
             ),
             h('div', { className: 'cs-welcome-section' },
