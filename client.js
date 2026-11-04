@@ -735,6 +735,7 @@ window.__ModuleLoader__.load({
 .cs-collapse-arrow { position: absolute; right: 2px; top: 50%; z-index: 6; width: 18px; height: 24px; display: flex; align-items: center; justify-content: center; transform: translateY(-50%); border: 0; border-radius: 5px; background: transparent; color: var(--cs-muted); font: inherit; font-size: 10px; line-height: 1; cursor: pointer; opacity: .55; transition: opacity .15s ease, background .15s ease, color .15s ease; }
 .cs-collapse-arrow:hover { opacity: 1; color: var(--cs-text); background: var(--cs-hover); }
 .cs-collapse-arrow-collapsed { color: var(--cs-accent); }
+.cs-collapse-count { position: absolute; right: 1px; top: -6px; min-width: 12px; height: 12px; display: inline-flex; align-items: center; justify-content: center; padding: 0 3px; border-radius: 6px; background: var(--cs-accent); color: #fff; font-size: 8px; font-weight: 700; line-height: 1; }
 .cs-branch-anim { pointer-events: none; }
 .cs-branch-collapse { animation: cs-branch-collapse .18s ease forwards; }
 .cs-branch-lane { transition: opacity .24s ease; }
@@ -2202,7 +2203,7 @@ window.__ModuleLoader__.load({
               title: collapsed ? t('expandBranch') : t('collapseBranch'),
               onPointerDown: (event) => event.stopPropagation(),
               onClick: (event) => { event.stopPropagation(); onToggleCollapse() },
-            }, collapsed ? '▸' : '▾')
+            }, collapsed ? '▸' : '▾', collapsed && hiddenCount > 0 ? h('span', { className: 'cs-collapse-count' }, '+' + hiddenCount) : null)
           : null,
         h('div', { className: 'cs-card-head' },
           h('div', { className: 'cs-card-tags' },
@@ -3662,18 +3663,21 @@ window.__ModuleLoader__.load({
         const visibleTurns = branch.collapsed ? branch.turns.slice(0, 1) : branch.turns
         const first = visibleTurns.length > 0 ? visibleTurns[0] : null
         if (first) {
-          const side = position.side || 'left'
+          let side = position.side || 'left'
+          const mainIndex = mainTurns.findIndex((turn) => turn.id === branch.anchorTurnId)
+          if (mainIndex >= 0) {
+            const allowed = layoutMode === 'vertical'
+              ? (mainIndex === 0 ? ['top', 'left', 'right'] : ['left', 'right'])
+              : (mainIndex === 0 ? ['left', 'top', 'bottom'] : ['top', 'bottom'])
+            if (allowed.indexOf(side) < 0) side = allowed[0]
+          }
           const anchorSide = side === 'left' ? 'right' : side === 'right' ? 'left' : side === 'top' ? 'bottom' : 'top'
           addPort(branch.anchorTurnId, anchorSide)
           addPort(first.id, side)
         }
-        for (let index = 0; index < visibleTurns.length; index += 1) {
-          const turn = visibleTurns[index]
-          addPort(turn.id, 'left')
-          addPort(turn.id, 'right')
-          addPort(turn.id, 'top')
-          addPort(turn.id, 'bottom')
-          if (index > 0) addPort(visibleTurns[index - 1].id, 'bottom')
+        for (let index = 1; index < visibleTurns.length; index += 1) {
+          addPort(visibleTurns[index - 1].id, 'bottom')
+          addPort(visibleTurns[index].id, 'top')
         }
       }
       const detail = view.zoom >= 0.25 ? 'full' : 'dot'
@@ -3972,6 +3976,7 @@ window.__ModuleLoader__.load({
             ...previous,
             branches: previous.branches.map((item) => item.id === branchId ? { ...item, collapsed: false } : item),
           }))
+          setSelectedIds(new Set(branch.turns.map((turn) => turn.id)))
           setBranchTransition({ id: branchId, mode: 'expand' })
           branchTransitionTimerRef.current = setTimeout(() => setBranchTransition(null), 260)
           saveSoon(100)
@@ -5220,7 +5225,7 @@ window.__ModuleLoader__.load({
             const d = dotMode ? centerPath(anchor, first) : curvePorts(anchor, anchorSide, first, side)
             paths.push(h('path', {
               key: 'edge-' + branch.id,
-              className: cx('cs-link-branch', branchTransition && branchTransition.id === branch.id && branchTransition.mode === 'collapse' ? 'cs-link-collapse' : ''),
+              className: 'cs-link-branch',
               style: { stroke: position.color, strokeWidth: branchLineWidth },
               d,
             }))
