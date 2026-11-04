@@ -844,7 +844,7 @@ window.__ModuleLoader__.load({
 .cs-collapse-arrow { position: absolute; right: 2px; top: 50%; z-index: 6; width: 18px; height: 24px; display: flex; align-items: center; justify-content: center; transform: translateY(-50%); border: 0; border-radius: 5px; background: transparent; color: var(--cs-muted); font: inherit; font-size: 10px; line-height: 1; cursor: pointer; opacity: .55; transition: opacity .15s ease, background .15s ease, color .15s ease; }
 .cs-collapse-arrow:hover { opacity: 1; color: var(--cs-text); background: var(--cs-hover); }
 .cs-collapse-arrow-collapsed { color: var(--cs-accent); }
-.cs-collapsed-pending { position: absolute; top: 38px; right: 12px; z-index: 3; padding: 2px 5px; border-radius: 999px; background: #ffd23f; color: #241d0c; font-size: 10px; font-weight: 800; line-height: 1.2; pointer-events: none; }
+.cs-collapsed-pending { display: inline-flex; align-items: center; height: 15px; padding: 0 4px; border-radius: 6px; background: #ffd23f; color: #241d0c; font-size: 9px; font-weight: 800; line-height: 1; pointer-events: none; }
 .cs-collapse-count { position: absolute; right: 1px; top: -6px; min-width: 12px; height: 12px; display: inline-flex; align-items: center; justify-content: center; padding: 0 3px; border-radius: 6px; background: var(--cs-accent); color: #fff; font-size: 8px; font-weight: 700; line-height: 1; }
 .cs-branch-anim { pointer-events: none; }
 .cs-branch-collapse { animation: cs-branch-collapse .18s ease forwards; }
@@ -2352,9 +2352,6 @@ window.__ModuleLoader__.load({
               onClick: (event) => { event.stopPropagation(); onToggleCollapse() },
             }, collapsed ? '▸' : '▾', collapsed && hiddenCount > 0 ? h('span', { className: 'cs-collapse-count' }, '+' + hiddenCount) : null)
           : null,
-        kind === 'branch' && isFirst && collapsed && collapsedPendingCount > 0
-          ? h('span', { className: 'cs-collapsed-pending', title: t('todo') }, '!' + collapsedPendingCount)
-          : null,
         h('div', { className: 'cs-card-head' },
           h('div', { className: 'cs-card-tags' },
             sequence ? h('span', { className: 'cs-seq' }, sequence) : null,
@@ -2382,6 +2379,9 @@ window.__ModuleLoader__.load({
               onClick: () => onToggleFlag(!turn.flag),
             }, '⚑'),
             tag ? h('span', { className: 'cs-card-tag' }, tag) : null,
+            kind === 'branch' && isFirst && collapsed && collapsedPendingCount > 0
+              ? h('span', { className: 'cs-collapsed-pending', title: t('todo') }, '!' + collapsedPendingCount)
+              : null,
             kind === 'branch' && isFirst && branch.anchorText
               ? h('span', { className: 'cs-anchor', title: branch.anchorText }, t('branchFrom') + ' · ' + (branch.anchorSource === 'answer' ? t('wholeAnswer') : truncate(branch.anchorText, 26)))
               : null
