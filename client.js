@@ -426,7 +426,8 @@ window.__ModuleLoader__.load({
 .cs-node { position: absolute; width: var(--cs-card-w); height: var(--cs-card-h); }
 .cs-composer-node { height: auto; }
 .cs-welcome-node { height: var(--cs-card-h); }
-.cs-composer-node .cs-composer { height: auto; }
+.cs-composer-dragging { outline: 2px dashed var(--cs-accent); outline-offset: -4px; background: color-mix(in srgb, var(--cs-accent) 8%, var(--cs-panel)); }
+.cs-composer { height: auto; }
 .cs-card { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--cs-panel); border: 1px solid var(--cs-border); border-left: 3px solid var(--cs-card-accent, var(--cs-accent)); border-radius: var(--cs-radius); box-shadow: var(--cs-shadow); transition: border-color .15s ease, box-shadow .15s ease; }
 .cs-card-main { border-left: 3px solid var(--cs-accent); }
 .cs-card-branch { border-left: 3px solid var(--cs-accent-soft); }
@@ -1701,14 +1702,15 @@ window.__ModuleLoader__.load({
       const [attachments, setAttachments] = useState([])
       const [uploading, setUploading] = useState(false)
       const [error, setError] = useState('')
+      const [dragging, setDragging] = useState(false)
       const fileInputRef = useRef(null)
 
       useEffect(() => {
         writeTextStorage(storageKey, value)
       }, [storageKey, value])
 
-      const addFiles = async (event) => {
-        const files = Array.from((event.target && event.target.files) || [])
+      const uploadFiles = async (fileList) => {
+        const files = Array.from(fileList || [])
         if (!files.length) return
         const room = Math.max(0, 6 - attachments.length)
         if (room === 0) {
@@ -1745,6 +1747,11 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const addFiles = (event) => {
+        const files = Array.from((event.target && event.target.files) || [])
+        uploadFiles(files)
+      }
+
       const removeAttachment = (index) => {
         setAttachments((previous) => previous.filter((_item, itemIndex) => itemIndex !== index))
       }
@@ -1765,7 +1772,27 @@ window.__ModuleLoader__.load({
         }
       }
 
-      return h('div', { className: 'cs-composer' },
+      return h('div', {
+        className: cx('cs-composer', dragging ? 'cs-composer-dragging' : ''),
+        onDragOver: (event) => {
+          if (!event.dataTransfer || !Array.from(event.dataTransfer.types || []).includes('Files')) return
+          event.preventDefault()
+          event.stopPropagation()
+          event.dataTransfer.dropEffect = 'copy'
+          setDragging(true)
+        },
+        onDragLeave: (event) => {
+          if (event.currentTarget && event.currentTarget.contains(event.relatedTarget)) return
+          setDragging(false)
+        },
+        onDrop: (event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          setDragging(false)
+          const files = Array.from((event.dataTransfer && event.dataTransfer.files) || [])
+          if (files.length) uploadFiles(files)
+        },
+      },
         h('input', {
           ref: fileInputRef,
           type: 'file',
@@ -2063,6 +2090,7 @@ window.__ModuleLoader__.load({
       const [selectedFolder, setSelectedFolder] = useState('all')
       const [search, setSearch] = useState('')
       const [trashOpen, setTrashOpen] = useState(false)
+      const [privacyOpen, setPrivacyOpen] = useState(false)
       const [trashItems, setTrashItems] = useState([])
       const [trashLoading, setTrashLoading] = useState(false)
       const libraryImportRef = useRef(null)
@@ -2820,7 +2848,6 @@ window.__ModuleLoader__.load({
       const [hover, setHover] = useState(null)
       const [layersOpen, setLayersOpen] = useState(false)
       const [memoryOpen, setMemoryOpen] = useState(false)
-      const [privacyOpen, setPrivacyOpen] = useState(false)
       const [marquee, setMarquee] = useState(null)
       const [selectedTurn, setSelectedTurn] = useState(null)
       const [contextMenu, setContextMenu] = useState(null)
