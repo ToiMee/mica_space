@@ -4051,7 +4051,8 @@ window.__ModuleLoader__.load({
           addPort(visibleTurns[index].id, 'top')
         }
       }
-      const detail = view.zoom > 0.3 ? 'full' : 'dot'
+      const dotThreshold = layoutMode === 'horizontal' ? 0.3 : 0.25
+      const detail = view.zoom > dotThreshold ? 'full' : 'dot'
       const bounds = layout.bounds
       const renderPorts = (turnId, rect, color, isMain) => {
         if (detail === 'dot') return null
@@ -5372,7 +5373,7 @@ window.__ModuleLoader__.load({
         const top = box.top
         const bottom = box.top + box.height
         const hits = []
-        const dotMode = currentView.zoom <= 0.3
+        const dotMode = currentView.zoom <= (layoutMode === 'horizontal' ? 0.3 : 0.25)
         const consider = (turn, isMain) => {
           const rect = turnRects.get(turn.id)
           if (!rect) return
@@ -5559,7 +5560,7 @@ window.__ModuleLoader__.load({
 
       const renderLinks = () => {
         const paths = []
-        const dotMode = view.zoom <= 0.3
+        const dotMode = view.zoom <= (layoutMode === 'horizontal' ? 0.3 : 0.25)
         const centerOf = (rect) => ({ x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 })
         const centerPath = (left, right) => {
           const a = centerOf(left)
@@ -5645,7 +5646,7 @@ window.__ModuleLoader__.load({
           nodes.push(h('div', {
             key: turn.id,
             className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : ''),
-            style: { left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: turn.z || 0 },
+            style: { left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: layoutMode === 'horizontal' ? 10 + (turn.z || 0) : (turn.z || 0) },
           }, [
             h(Dot, {
                 key: 'dot',
@@ -5726,7 +5727,7 @@ window.__ModuleLoader__.load({
           return h('div', {
             key: turn.id,
             className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : '', branchTransition && branchTransition.id === branch.id && branchTransition.mode === 'collapse' && index > 0 ? 'cs-branch-anim cs-branch-collapse' : ''),
-            style: { left: rect.x - position.x, top: rect.y - position.y, width: rect.w, height: rect.h, zIndex: turn.z || 0 },
+            style: { left: rect.x - position.x, top: rect.y - position.y, width: rect.w, height: rect.h, zIndex: layoutMode === 'horizontal' ? 10 + (turn.z || 0) : (turn.z || 0) },
           }, [
             h(Dot, {
                 key: 'dot',
