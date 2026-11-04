@@ -11,6 +11,7 @@
 import { execFile } from 'node:child_process'
 import { copyFile, mkdir, readFile, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import os from 'node:os'
 import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import { inflateRawSync, inflateSync } from 'node:zlib'
@@ -1391,6 +1392,68 @@ function buildMessages({ history, question, provider, model, attachments, fileTe
 const TEXT_FILE_EXTENSIONS = new Set(['txt', 'md', 'markdown', 'csv', 'tsv', 'json', 'jsonl', 'xml', 'html', 'htm', 'css', 'js', 'jsx', 'ts', 'tsx', 'py', 'java', 'c', 'h', 'cpp', 'cs', 'go', 'rs', 'rb', 'php', 'sh', 'yaml', 'yml', 'toml', 'ini', 'log', 'sql'])
 const MAX_EXTRACTED_TEXT = 12000
 
+const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'webp', 'bmp', 'tif', 'tiff'])
+const OCR_MAX_PAGES = 8
+
+async function ensureOcrLanguageData() {
+  const directory = path.join(os.tmpdir(), 'mica-ocr-lang')
+  await mkdir(directory, { recursive: true })
+  for (const code of ['chi_sim', 'eng']) {
+    const data = await import('@tesseract.js-data/' + code)
+    const langPath = (data && data.default && data.default.langPath) || (data && data.langPath)
+    if (!langPath) throw new Error('OCR 语言包路径不存在')
+    const source = path.join(langPath, code + '.traineddata.gz')
+    const target = path.join(directory, code + '.traineddata.gz')
+    try { await copyFile(source, target) } catch (error) {
+      if (!error || error.code !== 'EEXIST') throw error
+    }
+  }
+  return directory
+}
+
+async function ocrImageBuffer(buffer) {
+  const { createWorker } = await import('tesseract.js')
+  const langPath = await ensureOcrLanguageData()
+  const worker = await createWorker('chi_sim+eng', 1, {
+    langPath,
+    cachePath: path.join(os.tmpdir(), 'mica-ocr-cache'),
+    gzip: true,
+  })
+  try {
+    const result = await worker.recognize(buffer)
+    return String(result && result.data && result.data.text || '').trim()
+  } finally {
+    await worker.terminate()
+  }
+}
+
+async function ocrPdfBuffer(buffer) {
+  const { pdf } = await import('pdf-to-img')
+  const document = await pdf(buffer, { scale: 2 })
+  const pages = []
+  try {
+    for await (const page of document) {
+      if (pages.length >= OCR_MAX_PAGES) break
+      pages.push(Buffer.from(page))
+    }
+  } finally {
+    if (document && typeof document.destroy === 'function') {
+      try { document.destroy() } catch (_error) {}
+    }
+  }
+  const parts = []
+  for (const page of pages) {
+    try {
+      const text = await ocrImageBuffer(page)
+      if (text) parts.push(text)
+    } catch (_error) {
+      // A single bad page should not discard the rest.
+    }
+    if (parts.join('\n').length >= MAX_EXTRACTED_TEXT) break
+  }
+  return parts.join('\n').slice(0, MAX_EXTRACTED_TEXT).trim()
+}
+
 async function extractAttachmentText(ctx, ref) {
   const name = String(ref && ref.name || 'file')
   const extension = (name.split('.').pop() || '').toLowerCase()
@@ -1450,9 +1513,24 @@ async function extractAttachmentText(ctx, ref) {
     const text = lines.join('\n').slice(0, MAX_EXTRACTED_TEXT)
     return text ? { name, text } : null
   }
+  if (IMAGE_EXTENSIONS.has(extension)) {
+    try {
+      const text = await ocrImageBuffer(buffer)
+      return text ? { name, text: text.slice(0, MAX_EXTRACTED_TEXT) } : null
+    } catch (_error) {
+      return null
+    }
+  }
   if (extension === 'pdf') {
-    const text = extractPdfText(buffer).slice(0, MAX_EXTRACTED_TEXT)
-    return text ? { name, text } : null
+    const text = extractPdfText(buffer).slice(0, MAX_EXTRACTED_TEXT).trim()
+    if (text.length >= 80) return { name, text }
+    try {
+      const ocr = await ocrPdfBuffer(buffer)
+      const combined = [text, ocr].filter(Boolean).join('\n').trim().slice(0, MAX_EXTRACTED_TEXT)
+      return combined ? { name, text: combined } : null
+    } catch (_error) {
+      return text ? { name, text } : null
+    }
   }
   return null
 }

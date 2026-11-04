@@ -10,6 +10,7 @@ Mica Space 是 DSH 的可缩放对话地图插件：一条纵向主线，多条�
 - 主线 / 支线 / 子支线树；
 - 引用选中文字后继续追问；
 - 图片和文件附件；
+- 图片附件与扫描版 PDF 的本地 OCR（Tesseract，离线）；
 - 回收站、撤销、搜索、整库导入导出；
 - 卡片折叠、颜色、标签、待追问和红旗；
 - 待追问卡片离开视口时的边缘 `!` 提醒；
@@ -66,7 +67,7 @@ Mica Space 是 DSH 的可缩放对话地图插件：一条纵向主线，多条�
 
 ## Agent 模式（v1.0 计划）
 
-**当前的 0.9.10 demo 没有 Agent 模式。**
+**当前的 0.9.11 demo 没有 Agent 模式。**
 
 现在 Mica 里的每条对话都是一次普通模型调用：
 
@@ -83,7 +84,7 @@ v1.0 会尝试把 Agent 模式接进来，但不会简单默认开启，也不�
 - 先做只读工具，再考虑写文件和执行命令；
 - 明确分支复制、回到主线、中断后继续时 Agent 状态怎么处理。
 
-Agent 模式涉及工具权限、会话持久化和分支语义，属于 v1.0 的探索项，不是 0.9.10 demo 的现有能力。
+Agent 模式涉及工具权限、会话持久化和分支语义，属于 v1.0 的探索项，不是 0.9.11 demo 的现有能力。
 
 ## 数据位置
 
@@ -101,21 +102,32 @@ Agent 模式涉及工具权限、会话持久化和分支语义，属于 v1.0 �
 
 - 轻量/本地语义模式不访问网络；
 - 正常聊天时，问题、上下文和附件会发送给用户配置的 DSH 模型提供商；
-- 文件抽取后的文本也会进入聊天上下文；
+- 文件抽取后的文本、图片 OCR 和 PDF OCR 结果也会进入聊天上下文；
+- OCR 在本地完成，不上传图片或 PDF 到 OCR 服务；
 - Git 备份只有用户主动配置 remote 并点击备份时才 push；
 - 插件本身不包含遥测，不包含作者 API key。
 
 ## 已知限制
 
 - 当前不是神经语义 RAG；
-- PDF 仅抽取文本流，扫描版需要 OCR；
+- PDF 文本层不足时自动本地 OCR，最多处理 8 页；OCR 质量受扫描清晰度影响；
 - 永久删除回收站空间时，会尝试删除不再被任何 Mica 空间/回收站引用的附件；共享同一附件的其他插件可能受影响；
 - 大空间已做视口裁剪，但未做完整的节点虚拟化；
-- 自动化测试覆盖上下文、空间库、embedding 和语义排序，尚未覆盖全部 UI/E2E；
+- 核心测试覆盖上下文、空间库、embedding 和语义排序；另有 Playwright 真实浏览器 E2E；
 - 当前版本为预览版，升级前请保留 `.chat-space` 备份；
-- 0.9.10 demo 不包含 Agent 模式；Agent 计划在 v1.0 尝试。
+- 0.9.11 demo 不包含 Agent 模式；Agent 计划在 v1.0 尝试。
 
 ## 测试
+
+真实浏览器 E2E（Playwright + Chromium，加载插件 UI，mock Host API）：
+
+```bash
+npm run test:e2e
+```
+
+如果 Chromium 不在默认路径，设置 `MICA_CHROMIUM` 指向 `chrome.exe`。
+
+核心与 UI smoke：
 
 ```bash
 node --test tests/context.test.mjs tests/library.test.mjs tests/embedding.test.mjs tests/semantic.test.mjs tests/parent-child.test.mjs tests/rag-eval.test.mjs tests/performance.test.mjs tests/ui-smoke.test.cjs
@@ -127,4 +139,4 @@ https://github.com/ToiMee/mica_space
 
 ## 版本
 
-`0.9.10 demo`（包版本 `0.9.10`）— 零配置本地记忆 + 父子级轻量检索 + 主线 callback + 设置/备份恢复 + 附件清理 + 交互修复 + 横向布局修复；Agent 模式计划在 v1.0 尝试。
+`0.9.11 demo`（包版本 `0.9.11`）— 零配置本地记忆 + 父子级轻量检索 + 主线 callback + 设置/备份恢复 + 附件清理 + 交互修复 + 横向布局修复；Agent 模式计划在 v1.0 尝试。

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.11
+
+- 增加 Playwright + Chromium 真实浏览器 E2E：首次欢迎页、cookie 持久化、横竖空间、双击选中、拖动、右键菜单、折叠待办标记；
+- 图片附件和扫描版 PDF 增加本地 OCR：Tesseract 中文/英文数据、PDF 最多 8 页、文本层不足时触发；
+- 16 条核心测试 + 1 条浏览器 E2E。
+
 ## 0.9.10
 
 - 英文欢迎文案支持独立的 copy/welcome.en.json；
