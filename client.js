@@ -3687,6 +3687,26 @@ window.__ModuleLoader__.load({
         })
       }, [])
 
+      useEffect(() => {
+        const current = spaceRef.current
+        if (!current || current.layoutMode !== 'horizontal') return
+        const mainEmpty = !(Array.isArray(current.main && current.main.turns) && current.main.turns.length > 0)
+        const branchEmpty = !(Array.isArray(current.branches) && current.branches.some((branch) => Array.isArray(branch.turns) && branch.turns.length > 0))
+        if (!mainEmpty || !branchEmpty) return
+        const currentZoom = current.view && Number.isFinite(current.view.zoom) ? current.view.zoom : 1
+        if (currentZoom >= 0.6) return
+        const viewport = viewportRef.current
+        const rect = viewport ? viewport.getBoundingClientRect() : null
+        commit((previous) => ({
+          ...previous,
+          view: {
+            zoom: 1,
+            x: rect ? Math.max(24, (rect.width - MAIN_W) / 2) : 120,
+            y: rect ? Math.max(24, (rect.height - MAIN_H) / 2) : 120,
+          },
+        }))
+      }, [spaceId, commit])
+
       const saveNow = useCallback(async () => {
         if (!loadedRef.current || !spaceRef.current) return
         setSaveState('saving')
@@ -4051,8 +4071,7 @@ window.__ModuleLoader__.load({
           addPort(visibleTurns[index].id, 'top')
         }
       }
-      const dotThreshold = layoutMode === 'horizontal' ? 0.3 : 0.25
-      const detail = view.zoom > dotThreshold ? 'full' : 'dot'
+      const detail = view.zoom >= 0.25 ? 'full' : 'dot'
       const bounds = layout.bounds
       const renderPorts = (turnId, rect, color, isMain) => {
         if (detail === 'dot') return null
@@ -5373,7 +5392,7 @@ window.__ModuleLoader__.load({
         const top = box.top
         const bottom = box.top + box.height
         const hits = []
-        const dotMode = currentView.zoom <= (layoutMode === 'horizontal' ? 0.3 : 0.25)
+        const dotMode = currentView.zoom < 0.25
         const consider = (turn, isMain) => {
           const rect = turnRects.get(turn.id)
           if (!rect) return
@@ -5560,7 +5579,7 @@ window.__ModuleLoader__.load({
 
       const renderLinks = () => {
         const paths = []
-        const dotMode = view.zoom <= (layoutMode === 'horizontal' ? 0.3 : 0.25)
+        const dotMode = view.zoom < 0.25
         const centerOf = (rect) => ({ x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 })
         const centerPath = (left, right) => {
           const a = centerOf(left)
@@ -5630,7 +5649,7 @@ window.__ModuleLoader__.load({
       const renderMain = () => {
         const nodes = []
         if (mainTurns.length === 0) {
-          nodes.push(h('div', { key: 'welcome', className: 'cs-node cs-welcome-node', style: { left: layoutMode === 'horizontal' ? TOP_PAD : 0, top: TOP_PAD } },
+          nodes.push(h('div', { key: 'welcome', className: 'cs-node cs-welcome-node', style: { left: 0, top: TOP_PAD } },
             h('div', { className: 'cs-card cs-card-welcome' },
               h('div', { className: 'cs-welcome-tag' }, t('welcome')),
               h('div', { className: 'cs-welcome-title' }, t('emptyTitle')),
@@ -5646,7 +5665,7 @@ window.__ModuleLoader__.load({
           nodes.push(h('div', {
             key: turn.id,
             className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : ''),
-            style: { left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: layoutMode === 'horizontal' ? 10 + (turn.z || 0) : (turn.z || 0) },
+            style: { left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: turn.z || 0 },
           }, [
             h(Dot, {
                 key: 'dot',
