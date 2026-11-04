@@ -5975,19 +5975,19 @@ window.__ModuleLoader__.load({
             if (!branch.collapsed) return branch.turns.map((turn) => ({ turn, kind: 'branch', branchId: branch.id }))
             const pending = branch.turns.filter((turn) => turn.todo)
             if (pending.length === 0) return []
-            return [{ turn: pending[0], kind: 'branch', branchId: branch.id, todoCount: pending.length, collapsed: true }]
+            return [{ turn: pending[0], rectTurn: branch.turns[0], kind: 'branch', branchId: branch.id, todoCount: pending.length, collapsed: true }]
           }),
         ]
         const groups = new Map()
         for (const entry of entries) {
           if (!entry.turn.todo) continue
-          const rect = turnRects.get(entry.turn.id)
+          const rect = turnRects.get((entry.rectTurn || entry.turn).id)
           if (!rect) continue
           const left = view.x + rect.x * view.zoom
           const top = view.y + rect.y * view.zoom
           const right = left + rect.w * view.zoom
           const bottom = top + rect.h * view.zoom
-          if (!entry.collapsed && right >= 0 && left <= width && bottom >= 0 && top <= height) continue
+          if (right >= 0 && left <= width && bottom >= 0 && top <= height) continue
           const cardX = left + (rect.w * view.zoom) / 2
           const cardY = top + (rect.h * view.zoom) / 2
           const dx = cardX - width / 2
