@@ -3086,6 +3086,28 @@ window.__ModuleLoader__.load({
       const [marquee, setMarquee] = useState(null)
       const [selectedTurn, setSelectedTurn] = useState(null)
       const [contextMenu, setContextMenu] = useState(null)
+      useEffect(() => {
+        const closeContext = (event) => {
+          if (!contextMenu) return
+          const target = event.target
+          if (target && target.closest && target.closest('.cs-context-menu')) return
+          setContextMenu(null)
+        }
+        const onEscape = (event) => {
+          if (event.key !== 'Escape') return
+          setSelectedIds(new Set())
+          setSelectedTurn(null)
+          setMarquee(null)
+          setSelection(null)
+          setContextMenu(null)
+        }
+        window.addEventListener('pointerdown', closeContext, true)
+        window.addEventListener('keydown', onEscape)
+        return () => {
+          window.removeEventListener('pointerdown', closeContext, true)
+          window.removeEventListener('keydown', onEscape)
+        }
+      }, [contextMenu])
       const [quoteDraft, setQuoteDraft] = useState(null)
       const [selectedIds, setSelectedIds] = useState(() => new Set())
       const [anchorReveal, setAnchorReveal] = useState(null)
@@ -5662,6 +5684,17 @@ window.__ModuleLoader__.load({
           onPointerMove,
           onPointerUp: endPan,
           onPointerCancel: endPan,
+          onMouseDownCapture: (event) => { if (event.button === 1) event.preventDefault() },
+          onAuxClick: (event) => { if (event.button === 1) event.preventDefault() },
+          onPointerDownCapture: (event) => {
+            if (event.button !== 1) return
+            event.preventDefault()
+            event.stopPropagation()
+            setSelection(null)
+            try { event.currentTarget.setPointerCapture(event.pointerId) } catch (_error) {}
+            const current = spaceRef.current && spaceRef.current.view ? spaceRef.current.view : view
+            panRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, x: current.x, y: current.y }
+          },
         },
           h('div', {
             className: 'cs-world',
