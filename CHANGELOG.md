@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.13
+
+- 打开旧空间时自动把 DSH attachment 复制到 `.chat-space/attachments` 并改写为本地引用；原 DSH 文件保留；
+- 16 条核心测试 + 1 条浏览器 E2E。
+
 ## 0.9.12
 
 - 新上传附件改为 Mica 自有存储：`.chat-space/attachments`，永久删除时可靠清理；旧附件继续走 DSH attachment；

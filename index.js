@@ -267,18 +267,65 @@ export function apply(ctx) {
     return empty
   }
 
+  const migrateOneAttachment = async (ref, kind) => {
+    if (!ref || typeof ref !== 'object' || ref.storage === 'mica') return ref
+    if (!ctx.attachments) return ref
+    let buffer
+    if (kind === 'image') {
+      const stored = await ctx.attachments.readImage(ref)
+      buffer = Buffer.from(stored.data || [])
+    } else {
+      const chunks = []
+      for await (const chunk of ctx.attachments.readFileStream(ref)) chunks.push(Buffer.from(chunk))
+      buffer = Buffer.concat(chunks)
+    }
+    if (!buffer.length) return ref
+    const saved = await saveLocalAttachment(buffer, {
+      kind,
+      name: ref.name || (kind === 'image' ? 'image' : 'file'),
+      mediaType: ref.mediaType || '',
+    })
+    return { ...saved, legacyAttachmentId: ref.attachmentId || '' }
+  }
+
+  const migrateLegacyAttachments = async (space) => {
+    if (!space || !ctx.attachments) return false
+    const turns = [
+      ...(space.main && Array.isArray(space.main.turns) ? space.main.turns : []),
+      ...(Array.isArray(space.branches) ? space.branches.flatMap((branch) => (Array.isArray(branch.turns) ? branch.turns : [])) : []),
+    ]
+    let changed = false
+    for (const turn of turns) {
+      for (const item of (Array.isArray(turn && turn.attachments) ? turn.attachments : [])) {
+        if (!item || !item.attachment || item.attachment.storage === 'mica') continue
+        try {
+          item.attachment = await migrateOneAttachment(item.attachment, item.kind === 'image' ? 'image' : 'file')
+          changed = changed || item.attachment.storage === 'mica'
+        } catch (_error) {
+          // Keep the legacy reference if migration fails.
+        }
+      }
+    }
+    return changed
+  }
+
   const readSpace = async (requestedId) => {
     const library = await readLibrary()
     const id = validId(requestedId) && library.spaces.some((space) => space.id === requestedId)
       ? requestedId
       : (library.spaces[0] && library.spaces[0].id) || 'default'
     if (!validId(id)) return null
-    const space = await readJson(spaceFile(id))
+    let space = await readJson(spaceFile(id))
     if (!space || !space.main || !Array.isArray(space.main.turns) || !Array.isArray(space.branches)) return null
     if (!space.schemaVersion) {
       try { await copyFile(spaceFile(id), spaceFile(id) + '.pre-schema-v2.bak') } catch (_error) {}
       space.schemaVersion = SPACE_SCHEMA_VERSION
       await writeJson(spaceFile(id), space)
+    }
+    try {
+      if (await migrateLegacyAttachments(space)) await writeJson(spaceFile(id), space)
+    } catch (_error) {
+      // Migration is best effort.
     }
     return {
       ...space,

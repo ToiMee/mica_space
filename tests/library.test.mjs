@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
-import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { apply } from '../index.js'
@@ -26,6 +26,8 @@ function makeFakeCtx(root) {
     attachments: {
       fileHostPath(ref) { return ref && ref.hostPath ? ref.hostPath : null },
       imageHostPath() { return null },
+      async readImage(ref) { return { data: await readFile(ref.hostPath), mediaType: ref.mediaType || 'image/png' } },
+      async *readFileStream(ref) { yield await readFile(ref.hostPath) },
     },
   }
   apply(ctx)
@@ -116,6 +118,32 @@ test('space lifecycle, trash restore, duplicate, folder cycle, export/import', a
     const localPermanent = await request('POST', '/chat-space/api/trash/delete', { file: localTrashItem.file })
     assert.equal(localPermanent.status, 200)
     await assert.rejects(stat(localAttachmentPath))
+
+    const legacyPath = path.join(root, 'mica-legacy-source.txt')
+    await writeFile(legacyPath, 'legacy attachment bytes')
+    const legacySpace = await request('POST', '/chat-space/api/space/create', { title: '旧附件空间', layoutMode: 'vertical' })
+    const legacySpaceId = legacySpace.body.space.id
+    await request('POST', '/chat-space/api/save', {
+      space: {
+        ...legacySpace.body.space,
+        main: { turns: [{ id: 'turn-legacy-att', question: '旧附件', answer: '旧附件', status: 'completed', createdAt: Date.now(), attachments: [{ kind: 'file', attachment: { attachmentId: 'legacy-host', name: 'mica-legacy-source.txt', bytes: 23, hostPath: legacyPath } }] }] },
+        branches: [],
+      },
+      spaceId: legacySpaceId,
+    })
+    const migrated = await request('GET', '/chat-space/api/space?id=' + encodeURIComponent(legacySpaceId))
+    assert.equal(migrated.status, 200)
+    const migratedAttachment = migrated.body.space.main.turns[0].attachments[0].attachment
+    assert.equal(migratedAttachment.storage, 'mica')
+    const migratedPath = path.join(root, '.chat-space', 'attachments', migratedAttachment.file)
+    assert.equal((await stat(migratedPath)).isFile(), true)
+    await request('POST', '/chat-space/api/space/delete', { id: legacySpaceId })
+    const legacyTrash = await request('GET', '/chat-space/api/trash')
+    const legacyTrashItem = legacyTrash.body.items.find((item) => item.id === legacySpaceId)
+    assert.ok(legacyTrashItem)
+    await request('POST', '/chat-space/api/trash/delete', { file: legacyTrashItem.file })
+    await assert.rejects(stat(migratedPath))
+    assert.equal((await stat(legacyPath)).isFile(), true)
 
     const attachmentPath = path.join(root, 'mica-orphan-test.txt')
     await writeFile(attachmentPath, 'orphan')
