@@ -49,6 +49,22 @@ window.__ModuleLoader__.load({
       export: '导出',
       trash: '回收站',
       privacy: '隐私',
+      welcome: '使用说明',
+      welcomeVersion: '0.99 体验版',
+      welcomeTitle: '欢迎上船，先别急着踩油门',
+      welcomeIntro: '这是 Mica 空间 0.99 体验版：把一条长对话摊成一张能缩放、能分叉的地图。第一次用，先耽误你 30 秒看几条人话版说明。',
+      welcomeNotesTitle: '先把丑话说在前头',
+      welcomeNote1: '数据默认只躺在你电脑的 .chat-space 里。第一次用建议先“导出空间库”或配好 Git 备份，稳一手。',
+      welcomeNote2: '正常提问时，问题、上下文、附件和抽取出的文字会发送给 DSH 里配置的模型提供商；这是模型回答所必需的。',
+      welcomeNote3: '这是体验版，功能和数据格式还会变。分支、颜色、未读、文件夹这些都可以大胆试，但别拿它当唯一存档。',
+      welcomeNote4: '附件由 DSH attachment 服务保存，清理能力有限；删空间不一定马上释放底层附件，重要文件请自己留底。',
+      welcomePrivacyTitle: '隐私这件事',
+      welcomePrivacy1: '没有遥测，没有作者 API key，不会偷偷把空间打包上传。',
+      welcomePrivacy2: '只有你主动配置 Git remote 并点备份时，数据才会 push 到那个 remote。',
+      welcomePrivacy3: '.bak、.before-restore、导出 JSON 和 Git 备份里都可能包含对话内容，分享前自己检查。',
+      welcomeFeedback: '用着哪里别扭、哪里反人类，欢迎来 GitHub 拍我。别只骂，带上复现步骤，我改得快。',
+      welcomeFeedbackLink: '去 GitHub Issues 提意见',
+      welcomeStart: '知道了，开逛',
       settings: '设置',
       privacySettingsDesc: '数据、模型和附件隐私说明',
       backupSettingsDesc: '本地 git 提交和可选私有 remote',
@@ -260,6 +276,22 @@ window.__ModuleLoader__.load({
       export: 'Export',
       trash: 'Trash',
       privacy: 'Privacy',
+      welcome: 'Guide',
+      welcomeVersion: '0.99 preview',
+      welcomeTitle: 'Welcome aboard — no need to floor it yet',
+      welcomeIntro: 'Mica Space 0.99 preview turns a long conversation into a zoomable branching map. Give me 30 seconds for the human version of the manual.',
+      welcomeNotesTitle: 'A few honest warnings',
+      welcomeNote1: 'Data lives in .chat-space on your machine. Export the library or set up Git backup before you experiment.',
+      welcomeNote2: 'When you ask, the question, context, attachments, and extracted text go to the model provider configured in DSH.',
+      welcomeNote3: 'This is a preview: features and data formats can change. Try branches, colors, unread markers, folders — but do not make this your only copy.',
+      welcomeNote4: 'Attachments are owned by the DSH attachment service. Cleanup is limited; keep important files elsewhere.',
+      welcomePrivacyTitle: 'Privacy, briefly',
+      welcomePrivacy1: 'No telemetry, no author API key, no silent upload of your spaces.',
+      welcomePrivacy2: 'Data is pushed only when you configure a Git remote and click backup.',
+      welcomePrivacy3: '.bak, .before-restore, exported JSON and Git backups may contain conversation content. Check before sharing.',
+      welcomeFeedback: 'If something feels awkward or hostile, come poke me on GitHub. Include reproduction steps and I will fix it faster.',
+      welcomeFeedbackLink: 'Open a GitHub issue',
+      welcomeStart: 'Got it — let me in',
       settings: 'Settings',
       privacySettingsDesc: 'Data, model, and attachment privacy',
       backupSettingsDesc: 'Local git commit and optional private remote',
@@ -744,6 +776,16 @@ window.__ModuleLoader__.load({
 .cs-backup-modal { width: min(520px, calc(100vw - 48px)); }
 .cs-privacy-modal { width: min(620px, calc(100vw - 48px)); }
 .cs-settings-modal { width: min(560px, calc(100vw - 48px)); }
+.cs-welcome-modal { width: min(620px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
+.cs-welcome-badge { align-self: flex-start; padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--cs-accent) 14%, var(--cs-panel)); color: var(--cs-accent); font-size: 10px; font-weight: 700; letter-spacing: .03em; }
+.cs-welcome-lead { color: var(--cs-text); font-size: 13px; line-height: 1.7; }
+.cs-welcome-section { display: flex; flex-direction: column; gap: 5px; }
+.cs-welcome-section-title { color: var(--cs-text); font-size: 12px; font-weight: 700; }
+.cs-welcome-list { margin: 0; padding-left: 18px; color: var(--cs-muted); font-size: 12px; line-height: 1.7; }
+.cs-welcome-list li { margin-bottom: 4px; }
+.cs-welcome-feedback { padding: 9px 11px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); color: var(--cs-muted); font-size: 11px; line-height: 1.7; }
+.cs-welcome-feedback a { display: inline-block; margin-top: 4px; color: var(--cs-accent); text-decoration: none; }
+.cs-welcome-feedback a:hover { text-decoration: underline; }
 .cs-settings-list { display: flex; flex-direction: column; gap: 5px; }
 .cs-settings-row { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 10px 12px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); color: var(--cs-text); font: inherit; text-align: left; cursor: pointer; }
 .cs-settings-row:hover { border-color: var(--cs-accent); }
@@ -2448,7 +2490,7 @@ window.__ModuleLoader__.load({
       const [library, setLibrary] = useState(null)
       const [loadState, setLoadState] = useState('loading')
       const [loadError, setLoadError] = useState('')
-      const [activeId, setActiveId] = useState(() => readTextStorage(LAST_SPACE_KEY) || null)
+      const [activeId, setActiveId] = useState(() => readTextStorage(WELCOME_KEY) === '1' ? (readTextStorage(LAST_SPACE_KEY) || null) : null)
       const [selectedFolder, setSelectedFolder] = useState(() => readTextStorage(LAST_FOLDER_KEY) || 'all')
       const [folderHistory, setFolderHistory] = useState([])
       const [folderTreeOpen, setFolderTreeOpen] = useState(true)
@@ -2456,6 +2498,7 @@ window.__ModuleLoader__.load({
       const [folderViewMode, setFolderViewMode] = useState('list')
       const [search, setSearch] = useState('')
       const [trashOpen, setTrashOpen] = useState(false)
+      const [welcomeOpen, setWelcomeOpen] = useState(() => readTextStorage(WELCOME_KEY) !== '1')
       const [privacyOpen, setPrivacyOpen] = useState(false)
       const [settingsOpen, setSettingsOpen] = useState(false)
       const [recoveryOpen, setRecoveryOpen] = useState(false)
@@ -3258,10 +3301,45 @@ window.__ModuleLoader__.load({
                 )
           )
         ),
+        welcomeOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => { writeTextStorage(WELCOME_KEY, '1'); setWelcomeOpen(false) } },
+          h('div', { className: 'cs-lib-modal cs-welcome-modal', onClick: (event) => event.stopPropagation() },
+            h('div', { className: 'cs-welcome-badge' }, t('welcomeVersion')),
+            h('div', { className: 'cs-lib-modal-title' }, t('welcomeTitle')),
+            h('div', { className: 'cs-welcome-lead' }, t('welcomeIntro')),
+            h('div', { className: 'cs-welcome-section' },
+              h('div', { className: 'cs-welcome-section-title' }, t('welcomeNotesTitle')),
+              h('ul', { className: 'cs-welcome-list' },
+                h('li', null, t('welcomeNote1')),
+                h('li', null, t('welcomeNote2')),
+                h('li', null, t('welcomeNote3')),
+                h('li', null, t('welcomeNote4'))
+              )
+            ),
+            h('div', { className: 'cs-welcome-section' },
+              h('div', { className: 'cs-welcome-section-title' }, t('welcomePrivacyTitle')),
+              h('ul', { className: 'cs-welcome-list' },
+                h('li', null, t('welcomePrivacy1')),
+                h('li', null, t('welcomePrivacy2')),
+                h('li', null, t('welcomePrivacy3'))
+              )
+            ),
+            h('div', { className: 'cs-welcome-feedback' },
+              h('div', null, t('welcomeFeedback')),
+              h('a', { href: 'https://github.com/ToiMee/mica_space/issues', target: '_blank', rel: 'noreferrer' }, t('welcomeFeedbackLink'))
+            ),
+            h('div', { className: 'cs-lib-modal-actions' },
+              h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: () => { writeTextStorage(WELCOME_KEY, '1'); setWelcomeOpen(false) } }, t('welcomeStart'))
+            )
+          )
+        ) : null,
         settingsOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setSettingsOpen(false) },
           h('div', { className: 'cs-lib-modal cs-settings-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-lib-modal-title' }, t('settings')),
             h('div', { className: 'cs-settings-list' },
+              h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); setWelcomeOpen(true) } },
+                h('span', { className: 'cs-settings-label' }, t('welcome')),
+                h('span', { className: 'cs-settings-desc' }, t('welcomeVersion'))
+              ),
               h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); setPrivacyOpen(true) } },
                 h('span', { className: 'cs-settings-label' }, t('privacy')),
                 h('span', { className: 'cs-settings-desc' }, t('privacySettingsDesc'))
@@ -6278,6 +6356,7 @@ window.__ModuleLoader__.load({
     const ACTIVE_KEY = 'chat-space:active'
     const LAST_SPACE_KEY = 'chat-space:last-space'
     const LAST_FOLDER_KEY = 'chat-space:last-folder'
+    const WELCOME_KEY = 'chat-space:welcome-seen'
 
     function apply(ctx) {
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'chat-space: dictionaries')
