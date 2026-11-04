@@ -777,8 +777,9 @@ window.__ModuleLoader__.load({
 .cs-context-swatches { display: flex; gap: 6px; padding: 3px 8px 6px; }
 .cs-context-swatch { width: 18px; height: 18px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
 .cs-color-picker { padding: 3px 0; }
-.cs-color-change { padding: 3px 7px; border: 0; border-radius: 5px; background: transparent; color: var(--cs-accent); font: inherit; font-size: 11px; cursor: pointer; text-align: left; }
-.cs-color-change:hover { background: var(--cs-hover); text-decoration: underline; }
+.cs-color-change { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border: 0; border-radius: 5px; background: transparent; color: var(--cs-accent); font: inherit; font-size: 11px; cursor: pointer; text-align: left; text-decoration: none; }
+.cs-color-change:hover { background: var(--cs-hover); text-decoration: none; }
+.cs-color-change-arrow { color: var(--cs-muted); font-size: 8px; line-height: 1; }
 .cs-color-popover { margin-top: 6px; padding: 8px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); box-shadow: 0 8px 22px rgba(0,0,0,.16); display: flex; flex-direction: column; gap: 8px; }
 .cs-color-section { display: flex; flex-direction: column; gap: 4px; }
 .cs-color-label { color: var(--cs-muted); font-size: 9px; letter-spacing: .03em; }
@@ -1130,8 +1131,9 @@ window.__ModuleLoader__.load({
         h('button', {
           type: 'button',
           className: 'cs-color-change',
+          'aria-expanded': open,
           onClick: () => setOpen((current) => !current),
-        }, t('changeColor')),
+        }, t('changeColor'), h('span', { className: 'cs-color-change-arrow' }, open ? '▴' : '▾')),
         open
           ? h('div', { className: 'cs-color-popover' },
               h('div', { className: 'cs-color-section' },
