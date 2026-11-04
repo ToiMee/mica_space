@@ -128,6 +128,7 @@ window.__ModuleLoader__.load({
       quotePlaceholder: '针对这段引用继续问…',
       removeQuote: '移除引用',
       continueFollowUp: '继续追问',
+      collapseComposer: '收起追问框',
       continueMain: '继续主线',
       continueBranch: '继续这条分支',
       locateOriginal: '📌 定位原文',
@@ -145,6 +146,7 @@ window.__ModuleLoader__.load({
       branchColor: '分支颜色',
       mainLineColor: '主线颜色',
       color: '颜色',
+      customColor: '自定义',
       branchTag: '分支标签',
       copySelected: '复制选中的卡片',
       deleteSelected: '删除选中的卡片',
@@ -346,6 +348,7 @@ window.__ModuleLoader__.load({
       branchColor: 'Branch color',
       mainLineColor: 'Main line color',
       color: 'Color',
+      customColor: 'Custom',
       branchTag: 'Branch tag',
       copySelected: 'Copy selected',
       deleteSelected: 'Delete selected',
@@ -713,11 +716,16 @@ window.__ModuleLoader__.load({
 .cs-main-guide-h { left: 0; right: 0; height: 3px; background-image: repeating-linear-gradient(to right, var(--cs-accent) 0 14px, transparent 14px 30px); }
 .cs-dot-tip { position: fixed; z-index: 1200; max-width: 300px; padding: 8px 10px; border-radius: 8px; background: #1f2329; color: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,.25); font-size: 12px; line-height: 1.55; pointer-events: none; }
 .cs-bottom-composer { position: absolute; left: 50%; bottom: 18px; z-index: 950; display: flex; flex-direction: column; gap: 6px; width: min(640px, calc(100% - 220px)); transform: translateX(-50%); }
+.cs-bottom-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cs-bottom-label { align-self: flex-start; padding: 2px 8px; border: 1px solid var(--cs-border); border-radius: 999px; background: var(--cs-panel); color: var(--cs-muted); font-size: 11px; line-height: 1.4; }
+.cs-bottom-collapse { width: 24px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--cs-border); border-radius: 6px; background: var(--cs-panel); color: var(--cs-muted); font: inherit; font-size: 13px; line-height: 1; cursor: pointer; }
+.cs-bottom-collapse:hover { color: var(--cs-text); background: var(--cs-hover); }
+.cs-composer-collapsed { position: absolute; left: 50%; bottom: 18px; z-index: 950; transform: translateX(-50%); padding: 7px 12px; border: 1px solid var(--cs-border); border-radius: 999px; background: var(--cs-panel); color: var(--cs-accent); box-shadow: var(--cs-shadow); font: inherit; font-size: 12px; cursor: pointer; }
+.cs-composer-collapsed:hover { border-color: var(--cs-accent); }
 .cs-bottom-composer .cs-composer { box-shadow: 0 12px 32px rgba(0,0,0,.18); }
 .cs-card { cursor: default; }
-.cs-collapse-arrow { position: absolute; right: 5px; top: 50%; z-index: 6; width: 22px; height: 28px; display: flex; align-items: center; justify-content: center; transform: translateY(-50%); border: 1px solid var(--cs-border); border-radius: 6px; background: var(--cs-panel); color: var(--cs-muted); box-shadow: 0 2px 6px rgba(0,0,0,.12); font: inherit; font-size: 13px; line-height: 1; cursor: pointer; opacity: .82; transition: opacity .15s ease, color .15s ease; }
-.cs-collapse-arrow:hover { opacity: 1; color: var(--cs-text); }
+.cs-collapse-arrow { position: absolute; right: 2px; top: 50%; z-index: 6; width: 18px; height: 24px; display: flex; align-items: center; justify-content: center; transform: translateY(-50%); border: 0; border-radius: 5px; background: transparent; color: var(--cs-muted); font: inherit; font-size: 10px; line-height: 1; cursor: pointer; opacity: .55; transition: opacity .15s ease, background .15s ease, color .15s ease; }
+.cs-collapse-arrow:hover { opacity: 1; color: var(--cs-text); background: var(--cs-hover); }
 .cs-collapse-arrow-collapsed { color: var(--cs-accent); }
 .cs-branch-anim { pointer-events: none; }
 .cs-branch-collapse { animation: cs-branch-collapse .18s ease forwards; }
@@ -756,11 +764,17 @@ window.__ModuleLoader__.load({
 .cs-context-label { padding: 5px 8px 3px; color: var(--cs-muted); font-size: 10px; }
 .cs-context-swatches { display: flex; gap: 6px; padding: 3px 8px 6px; }
 .cs-context-swatch { width: 18px; height: 18px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
-.cs-color-picker { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 3px 0; }
-.cs-color-wheel { width: 26px; height: 22px; padding: 0; border: 1px solid var(--cs-border); border-radius: 5px; background: transparent; cursor: pointer; }
-.cs-color-hex { width: 74px; height: 22px; box-sizing: border-box; padding: 0 5px; border: 1px solid var(--cs-border); border-radius: 5px; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 10px; outline: none; }
+.cs-color-picker { padding: 3px 0; }
+.cs-color-current { display: flex; align-items: center; gap: 6px; width: 100%; padding: 5px 7px; border: 1px solid var(--cs-border); border-radius: 6px; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 10px; cursor: pointer; }
+.cs-color-current:hover { border-color: var(--cs-accent); }
+.cs-color-dot { width: 13px; height: 13px; flex-shrink: 0; border-radius: 50%; border: 1px solid rgba(0,0,0,.2); }
+.cs-color-value { flex: 1; text-align: left; font-family: ui-monospace, monospace; }
+.cs-color-chevron { color: var(--cs-muted); }
+.cs-color-controls { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
+.cs-color-wheel { width: 26px; height: 22px; flex-shrink: 0; padding: 0; border: 1px solid var(--cs-border); border-radius: 5px; background: transparent; cursor: pointer; }
+.cs-color-hex { width: 68px; height: 22px; box-sizing: border-box; padding: 0 5px; border: 1px solid var(--cs-border); border-radius: 5px; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 10px; outline: none; }
 .cs-color-hex:focus { border-color: var(--cs-accent); }
-.cs-color-swatches { display: flex; flex-wrap: wrap; gap: 3px; }
+.cs-color-select { min-width: 0; flex: 1; height: 22px; padding: 0 3px; border: 1px solid var(--cs-border); border-radius: 5px; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 10px; outline: none; }
 .cs-context-swatch:hover { border-color: var(--cs-text); }
 .cs-card-tag { flex-shrink: 0; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 5px; border: 1px solid var(--cs-border); border-radius: 4px; color: var(--cs-muted); font-size: 9px; }
 .cs-collapse { padding: 1px 5px; }
@@ -1087,6 +1101,7 @@ window.__ModuleLoader__.load({
     function ColorPicker({ value, onChange, t }) {
       const safe = isHexColor(value) ? value : MAIN_COLOR
       const [text, setText] = useState(safe)
+      const [open, setOpen] = useState(false)
       useEffect(() => { setText(safe) }, [safe])
       const apply = (next) => {
         if (isHexColor(next)) {
@@ -1098,41 +1113,53 @@ window.__ModuleLoader__.load({
         }
       }
       return h('div', { className: 'cs-color-picker' },
-        h('input', {
-          type: 'color',
-          className: 'cs-color-wheel',
-          value: safe,
+        h('button', {
+          type: 'button',
+          className: 'cs-color-current',
           title: t('color'),
-          onChange: (event) => apply(event.target.value),
-        }),
-        h('input', {
-          type: 'text',
-          className: 'cs-color-hex',
-          value: text,
-          maxLength: 7,
-          spellCheck: false,
-          placeholder: '#RRGGBB',
-          onChange: (event) => {
-            setText(event.target.value)
-            if (isHexColor(event.target.value)) onChange(event.target.value.toLowerCase())
-          },
-          onBlur: () => apply(text),
-          onKeyDown: (event) => {
-            if (event.key !== 'Enter') return
-            event.preventDefault()
-            apply(text)
-          },
-        }),
-        h('div', { className: 'cs-color-swatches' },
-          MINERAL_COLORS.map((color, index) => h('button', {
-            key: 'picker-color-' + index,
-            type: 'button',
-            className: 'cs-context-swatch',
-            style: { background: color },
-            title: color,
-            onClick: () => apply(color),
-          }))
-        )
+          onClick: () => setOpen((current) => !current),
+        },
+          h('span', { className: 'cs-color-dot', style: { background: safe } }),
+          h('span', { className: 'cs-color-value' }, safe.toUpperCase()),
+          h('span', { className: 'cs-color-chevron' }, open ? '▴' : '▾')
+        ),
+        open
+          ? h('div', { className: 'cs-color-controls' },
+              h('input', {
+                type: 'color',
+                className: 'cs-color-wheel',
+                value: safe,
+                title: t('color'),
+                onChange: (event) => apply(event.target.value),
+              }),
+              h('input', {
+                type: 'text',
+                className: 'cs-color-hex',
+                value: text,
+                maxLength: 7,
+                spellCheck: false,
+                placeholder: '#RRGGBB',
+                onChange: (event) => {
+                  setText(event.target.value)
+                  if (isHexColor(event.target.value)) onChange(event.target.value.toLowerCase())
+                },
+                onBlur: () => apply(text),
+                onKeyDown: (event) => {
+                  if (event.key !== 'Enter') return
+                  event.preventDefault()
+                  apply(text)
+                },
+              }),
+              h('select', {
+                className: 'cs-color-select',
+                value: MINERAL_COLORS.indexOf(safe) >= 0 ? safe : '',
+                onChange: (event) => { if (event.target.value) apply(event.target.value) },
+              },
+                h('option', { value: '' }, t('customColor')),
+                MINERAL_COLORS.map((color) => h('option', { key: color, value: color }, color))
+              )
+            )
+          : null
       )
     }
 
@@ -3183,6 +3210,7 @@ window.__ModuleLoader__.load({
       const [memoryOpen, setMemoryOpen] = useState(false)
       const [marquee, setMarquee] = useState(null)
       const [selectedTurn, setSelectedTurn] = useState(null)
+      const [composerCollapsed, setComposerCollapsed] = useState(false)
       const [contextMenu, setContextMenu] = useState(null)
       const [branchTransition, setBranchTransition] = useState(null)
       const branchTransitionTimerRef = useRef(null)
@@ -4523,6 +4551,7 @@ window.__ModuleLoader__.load({
         clearUnread(turn, kind, branchId)
         setSelectedIds(new Set([turn.id]))
         setSelectedTurn({ turnId: turn.id, kind, branchId })
+        setComposerCollapsed(false)
         focusTurn(turn.id)
       }
 
@@ -5213,7 +5242,7 @@ window.__ModuleLoader__.load({
           const baseY = layoutMode === 'horizontal' ? TOP_PAD : TOP_PAD + index * MAIN_STEP_V
           nodes.push(h('div', {
             key: turn.id,
-            className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : '', branchTransition && branchTransition.id === branch.id ? 'cs-branch-anim cs-branch-' + branchTransition.mode : ''),
+            className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : ''),
             style: { left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: turn.z || 0 },
           }, [
             h(Dot, {
@@ -5294,7 +5323,7 @@ window.__ModuleLoader__.load({
           if (!rect) return null
           return h('div', {
             key: turn.id,
-            className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : ''),
+            className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : '', branchTransition && branchTransition.id === branch.id ? 'cs-branch-anim cs-branch-' + branchTransition.mode : ''),
             style: { left: rect.x - position.x, top: rect.y - position.y, width: rect.w, height: rect.h, zIndex: turn.z || 0 },
           }, [
             h(Dot, {
@@ -5379,8 +5408,19 @@ window.__ModuleLoader__.load({
         if (!composerVisible) return null
         const branch = selectedBranch
         const quote = quoteDraft
+        if (composerCollapsed && !quote) {
+          return h('button', {
+            type: 'button',
+            className: 'cs-composer-collapsed',
+            onClick: () => setComposerCollapsed(false),
+            title: t('continueFollowUp'),
+          }, '+ ' + t('continueFollowUp'))
+        }
         return h('div', { className: 'cs-bottom-composer' },
-          h('div', { className: 'cs-bottom-label' }, quote ? t('quoteFollowUp') : branch ? t('continueBranch') : t('continueMain')),
+          h('div', { className: 'cs-bottom-head' },
+            h('div', { className: 'cs-bottom-label' }, quote ? t('quoteFollowUp') : branch ? t('continueBranch') : t('continueMain')),
+            h('button', { type: 'button', className: 'cs-bottom-collapse', onClick: () => setComposerCollapsed(true), title: t('collapseComposer') }, '⌄')
+          ),
           quote
             ? h('div', { className: 'cs-composer-quote' },
                 h('span', { className: 'cs-quote-line', 'aria-hidden': true }),
