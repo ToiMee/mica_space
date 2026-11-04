@@ -773,6 +773,32 @@ window.__ModuleLoader__.load({
 .cs-root ::-webkit-scrollbar { width: 8px; height: 8px; }
 .cs-root ::-webkit-scrollbar-thumb { background: var(--cs-border-strong); border-radius: 999px; }
 .cs-root ::-webkit-scrollbar-track { background: transparent; }
+@media (max-width: 760px) {
+  .cs-topbar { height: auto; min-height: 58px; flex-wrap: wrap; align-items: flex-start; padding: 8px 10px; gap: 8px; }
+  .cs-top-actions { flex-wrap: wrap; gap: 6px; }
+  .cs-topbar .cs-btn { font-size: 11px; padding: 5px 7px; }
+  .cs-lib-header { flex-wrap: wrap; padding: 10px 12px; gap: 8px; }
+  .cs-lib-body { flex-direction: column; }
+  .cs-lib-side { width: 100%; max-height: 30vh; border-right: 0; border-bottom: 1px solid var(--cs-border); padding: 8px; }
+  .cs-lib-main { padding: 12px; }
+  .cs-lib-spaces, .cs-lib-subfolders { grid-template-columns: 1fr; }
+  .cs-bottom-composer { width: calc(100% - 24px); bottom: 10px; }
+  .cs-hintbar { display: none; }
+  .cs-modal { max-width: calc(100vw - 24px); }
+  .cs-context-menu { max-width: calc(100vw - 16px); }
+}
+@media (max-width: 520px) {
+  .cs-lib-search { width: 100%; }
+  .cs-top-actions { width: 100%; }
+  .cs-composer { padding: 9px; }
+  .cs-composer-bar { gap: 6px; }
+  .cs-zoom { right: 8px; bottom: 8px; }
+}
+@media (pointer: coarse) {
+  .cs-lib-folder { min-height: 40px; }
+  .cs-btn, .cs-mini, .cs-lib-mini { min-height: 32px; }
+}
+
 `
 
     let counter = 0

@@ -81,6 +81,10 @@ Mica Space 是 DSH 的可缩放对话地图插件：一条纵向主线，多条�
 
 `npm run e2e:live` 会启动本机 Chrome 访问 `MICA_URL`。DSH Web 如果要求认证 URL，脚本会 SKIP；请把 `dsh web` 打印的带认证 URL 设到 `MICA_URL`。
 
+## 平板/Web
+
+Mica 运行在 DSH Web GUI 中，平板浏览器只要能打开 DSH Web 就能使用。窄屏下空间库变为上下布局、画布工具栏自动换行、输入框和弹窗适配屏幕宽度。
+
 ## 测试
 
 ```bash
@@ -93,4 +97,4 @@ https://github.com/ToiMee
 
 ## 版本
 
-`0.9.0` — 预览版，零配置本地记忆 + 父子级轻量检索 + 主线 callback + 设置/备份恢复 + UI smoke + live E2E harness。
+`0.10.0` — 预览版，零配置本地记忆 + 父子级轻量检索 + 主线 callback + 设置/备份恢复 + 响应式平板/Web 布局。
