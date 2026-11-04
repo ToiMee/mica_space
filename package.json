@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-chat-space",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "description": "Mica Space: a zoomable, branching conversation canvas for DSH, with local zero-config memory.",
@@ -43,6 +43,15 @@
     "rag"
   ],
   "scripts": {
-    "test": "node --test tests/context.test.mjs tests/library.test.mjs tests/embedding.test.mjs tests/semantic.test.mjs tests/parent-child.test.mjs tests/rag-eval.test.mjs"
+    "test": "node --test tests/context.test.mjs tests/library.test.mjs tests/embedding.test.mjs tests/semantic.test.mjs tests/parent-child.test.mjs tests/rag-eval.test.mjs tests/performance.test.mjs"
+  },
+  "homepage": "https://github.com/ToiMee",
+  "author": {
+    "name": "ToiMee",
+    "url": "https://github.com/ToiMee"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ToiMee"
   }
 }

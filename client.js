@@ -47,6 +47,12 @@ window.__ModuleLoader__.load({
       export: '导出',
       trash: '回收站',
       privacy: '隐私',
+      settings: '设置',
+      privacySettingsDesc: '数据、模型和附件隐私说明',
+      backupSettingsDesc: '本地 git 提交和可选私有 remote',
+      recoverySettingsDesc: '从 .bak / .pre-schema-v2.bak 恢复',
+      importSettingsDesc: '导入整个空间库',
+      exportSettingsDesc: '导出整个空间库 JSON',
       recovery: '数据恢复',
       recoveryFailed: '恢复失败',
       noBackups: '没有找到备份',
@@ -238,6 +244,12 @@ window.__ModuleLoader__.load({
       export: 'Export',
       trash: 'Trash',
       privacy: 'Privacy',
+      settings: 'Settings',
+      privacySettingsDesc: 'Data, model, and attachment privacy',
+      backupSettingsDesc: 'Local git commit and optional private remote',
+      recoverySettingsDesc: 'Restore from .bak / .pre-schema-v2.bak',
+      importSettingsDesc: 'Import the whole library',
+      exportSettingsDesc: 'Export the whole library as JSON',
       recovery: 'Recovery',
       recoveryFailed: 'Recovery failed',
       noBackups: 'No backups found',
@@ -665,6 +677,13 @@ window.__ModuleLoader__.load({
 .cs-lib-trash-modal { width: min(620px, calc(100vw - 48px)); }
 .cs-backup-modal { width: min(520px, calc(100vw - 48px)); }
 .cs-privacy-modal { width: min(620px, calc(100vw - 48px)); }
+.cs-settings-modal { width: min(560px, calc(100vw - 48px)); }
+.cs-settings-list { display: flex; flex-direction: column; gap: 5px; }
+.cs-settings-row { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 10px 12px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); color: var(--cs-text); font: inherit; text-align: left; cursor: pointer; }
+.cs-settings-row:hover { border-color: var(--cs-accent); }
+.cs-settings-label { font-size: 12px; font-weight: 600; }
+.cs-settings-desc { color: var(--cs-muted); font-size: 10px; }
+.cs-settings-divider { height: 1px; margin: 5px 4px; background: var(--cs-border); }
 .cs-recovery-modal { width: min(640px, calc(100vw - 48px)); }
 .cs-recovery-list { display: flex; flex-direction: column; gap: 6px; max-height: min(420px, calc(100vh - 260px)); overflow: auto; }
 .cs-recovery-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); }
@@ -2198,6 +2217,7 @@ window.__ModuleLoader__.load({
       const [search, setSearch] = useState('')
       const [trashOpen, setTrashOpen] = useState(false)
       const [privacyOpen, setPrivacyOpen] = useState(false)
+      const [settingsOpen, setSettingsOpen] = useState(false)
       const [recoveryOpen, setRecoveryOpen] = useState(false)
       const [recoveryItems, setRecoveryItems] = useState([])
       const [recoveryLoading, setRecoveryLoading] = useState(false)
@@ -2732,13 +2752,9 @@ window.__ModuleLoader__.load({
             )
           ),
           h('div', { className: 'cs-top-actions' },
-            h('button', { type: 'button', className: 'cs-btn', onClick: openBackup }, t('backup')),
-            h('button', { type: 'button', className: 'cs-btn', onClick: exportLibrary }, t('exportLibrary')),
-            h('button', { type: 'button', className: 'cs-btn', onClick: () => { if (libraryImportRef.current) libraryImportRef.current.click() } }, t('importLibrary')),
-            h('input', { ref: libraryImportRef, type: 'file', accept: '.json,application/json', style: { display: 'none' }, onChange: importLibraryFile }),
             h('button', { type: 'button', className: 'cs-btn', onClick: openTrash }, t('trash')),
-            h('button', { type: 'button', className: 'cs-btn', onClick: () => setPrivacyOpen(true) }, t('privacy')),
-            h('button', { type: 'button', className: 'cs-btn', onClick: openRecovery }, t('recovery')),
+            h('button', { type: 'button', className: 'cs-btn', onClick: () => setSettingsOpen(true) }, t('settings')),
+            h('input', { ref: libraryImportRef, type: 'file', accept: '.json,application/json', style: { display: 'none' }, onChange: importLibraryFile }),
             h('input', {
               className: 'cs-lib-search',
               type: 'search',
@@ -2837,6 +2853,37 @@ window.__ModuleLoader__.load({
               : null
           )
         ),
+        settingsOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setSettingsOpen(false) },
+          h('div', { className: 'cs-lib-modal cs-settings-modal', onClick: (event) => event.stopPropagation() },
+            h('div', { className: 'cs-lib-modal-title' }, t('settings')),
+            h('div', { className: 'cs-settings-list' },
+              h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); setPrivacyOpen(true) } },
+                h('span', { className: 'cs-settings-label' }, t('privacy')),
+                h('span', { className: 'cs-settings-desc' }, t('privacySettingsDesc'))
+              ),
+              h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); openBackup() } },
+                h('span', { className: 'cs-settings-label' }, t('backup')),
+                h('span', { className: 'cs-settings-desc' }, t('backupSettingsDesc'))
+              ),
+              h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); openRecovery() } },
+                h('span', { className: 'cs-settings-label' }, t('recovery')),
+                h('span', { className: 'cs-settings-desc' }, t('recoverySettingsDesc'))
+              ),
+              h('div', { className: 'cs-settings-divider' }),
+              h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { if (libraryImportRef.current) libraryImportRef.current.click() } },
+                h('span', { className: 'cs-settings-label' }, t('importLibrary')),
+                h('span', { className: 'cs-settings-desc' }, t('importSettingsDesc'))
+              ),
+              h('button', { type: 'button', className: 'cs-settings-row', onClick: exportLibrary },
+                h('span', { className: 'cs-settings-label' }, t('exportLibrary')),
+                h('span', { className: 'cs-settings-desc' }, t('exportSettingsDesc'))
+              )
+            ),
+            h('div', { className: 'cs-lib-modal-actions' },
+              h('button', { type: 'button', className: 'cs-btn', onClick: () => setSettingsOpen(false) }, t('close'))
+            )
+          )
+        ) : null,
         recoveryOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setRecoveryOpen(false) },
           h('div', { className: 'cs-lib-modal cs-recovery-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-lib-modal-title' }, t('recovery')),

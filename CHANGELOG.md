@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- 设置菜单集中隐私、Git 备份、数据恢复、导入导出；
+- 数据恢复面板在 library 损坏时仍能列出 library 备份；
+- 检索性能基线测试（120 条 item × 50 query）；
+- 项目主页指向 https://github.com/ToiMee。
+
 ## 0.4.0
 
 - 主线可基于支线记忆做有来源的 callback；

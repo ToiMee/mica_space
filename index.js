@@ -504,8 +504,9 @@ export function apply(ctx) {
       { kind: 'library', id: 'library', source: 'bak', file: libraryFile() },
       { kind: 'library', id: 'library', source: 'pre-schema', file: libraryFile() },
     ]
-    const library = await readLibrary()
-    const spaceBackups = library.spaces.flatMap((meta) => ([
+    let library = null
+    try { library = await readLibrary() } catch (_error) {}
+    const spaceBackups = (library ? library.spaces : []).flatMap((meta) => ([
       { kind: 'space', id: meta.id, title: meta.title, source: 'bak', file: spaceFile(meta.id) },
       { kind: 'space', id: meta.id, title: meta.title, source: 'pre-schema', file: spaceFile(meta.id) },
     ]))
