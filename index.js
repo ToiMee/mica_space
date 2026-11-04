@@ -385,6 +385,20 @@ export function apply(ctx) {
       if (!name.endsWith('.json') || name.includes('.bak')) continue
       const record = await readJson(path.join(directory, name))
       if (!record) continue
+      if (record.kind === 'folder' || Array.isArray(record.folders)) {
+        const root = (record.folders || []).find((item) => item && item.id === record.rootId) || (record.folders || [])[0]
+        if (!root || !validId(root.id)) continue
+        items.push({
+          kind: 'folder',
+          file: name,
+          id: root.id,
+          title: String(root.name || '未命名文件夹').slice(0, 200),
+          folderCount: (record.folders || []).length,
+          spaceCount: (record.spaces || []).length,
+          deletedAt: Number.isFinite(record.deletedAt) ? record.deletedAt : 0,
+        })
+        continue
+      }
       const space = record.space && typeof record.space === 'object' ? record.space : record
       if (!space || !validId(space.id)) continue
       const stamp = name.match(/-(\d{10,})\.json$/)
@@ -404,6 +418,27 @@ export function apply(ctx) {
     if (!file || !file.endsWith('.json')) throw new Error('回收站记录不合法')
     const record = await readJson(path.join(trashDir(), file))
     if (!record) throw new Error('回收站记录不存在')
+    if (record.kind === 'folder' || Array.isArray(record.folders)) {
+      const library = await readLibrary()
+      for (const folder of (record.folders || [])) {
+        if (!folder || !validId(folder.id) || library.folders.some((item) => item.id === folder.id)) continue
+        library.folders.push({ ...folder, parentId: library.folders.some((item) => item.id === folder.parentId) ? folder.parentId : null })
+      }
+      await writeJson(libraryFile(), library)
+      for (const item of (record.spaces || [])) {
+        const space = item && item.space
+        if (!space || !validId(space.id)) continue
+        await writeSpaceData(space, space.id)
+        const current = await readLibrary()
+        const meta = current.spaces.find((entry) => entry.id === space.id)
+        if (meta) {
+          meta.folderId = current.folders.some((folder) => folder.id === item.folderId) ? item.folderId : null
+          await writeJson(libraryFile(), current)
+        }
+      }
+      try { await unlink(path.join(trashDir(), file)) } catch (error) { if (error && error.code !== 'ENOENT') throw error }
+      return readLibrary()
+    }
     const space = record.space && typeof record.space === 'object' ? record.space : record
     if (!space || !validId(space.id)) throw new Error('回收站记录损坏')
     const result = await writeSpaceData(space, space.id)
@@ -446,6 +481,12 @@ export function apply(ctx) {
       if (!name.endsWith('.json') || name.includes('.bak') || name === excludeTrashFile) continue
       const record = await readJson(path.join(directory, name))
       if (!record) continue
+      if (record.kind === 'folder' || Array.isArray(record.spaces)) {
+        for (const item of (record.spaces || [])) {
+          if (item && item.space) collectAttachmentRefs(item.space, refs)
+        }
+        continue
+      }
       const space = record.space && typeof record.space === 'object' ? record.space : record
       if (space) collectAttachmentRefs(space, refs)
     }
@@ -461,7 +502,13 @@ export function apply(ctx) {
     try { await unlink(trashFile) } catch (error) { if (error && error.code !== 'ENOENT') throw error }
     if (target) {
       const targetRefs = new Map()
-      collectAttachmentRefs(target.space && typeof target.space === 'object' ? target.space : target, targetRefs)
+      if (target.kind === 'folder' || Array.isArray(target.spaces)) {
+        for (const item of (target.spaces || [])) {
+          if (item && item.space) collectAttachmentRefs(item.space, targetRefs)
+        }
+      } else {
+        collectAttachmentRefs(target.space && typeof target.space === 'object' ? target.space : target, targetRefs)
+      }
       if (targetRefs.size > 0) {
         const remaining = await collectAllAttachmentRefs(file)
         for (const [attachmentId, item] of targetRefs) {
@@ -660,19 +707,27 @@ export function apply(ctx) {
       }
     }
     await mkdir(trashDir(), { recursive: true })
+    const removedFolders = library.folders.filter((item) => removed.has(item.id))
     const removedSpaces = library.spaces.filter((item) => removed.has(item.folderId))
+    const bundledSpaces = []
     for (const meta of removedSpaces) {
       try {
         const space = await readJson(spaceFile(meta.id))
-        if (space) {
-          const record = { space, folderId: meta.folderId || null, deletedAt: Date.now() }
-          await writeJson(path.join(trashDir(), meta.id + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.json'), record)
-        }
+        if (space) bundledSpaces.push({ space, folderId: meta.folderId || null })
         await unlink(spaceFile(meta.id))
       } catch (error) {
         if (error && error.code !== 'ENOENT') throw error
       }
     }
+    const record = {
+      kind: 'folder',
+      rootId: id,
+      parentId: folder.parentId || null,
+      folders: removedFolders,
+      spaces: bundledSpaces,
+      deletedAt: Date.now(),
+    }
+    await writeJson(path.join(trashDir(), 'folder-' + id + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.json'), record)
     library.spaces = library.spaces.filter((item) => !removed.has(item.folderId))
     library.folders = library.folders.filter((item) => !removed.has(item.id))
     await writeJson(libraryFile(), library)

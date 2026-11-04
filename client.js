@@ -2685,7 +2685,7 @@ window.__ModuleLoader__.load({
         if (!window.confirm(t('confirmDeleteFolder'))) return
         const data = await post('/folder/delete', { id: folder.id })
         if (data.library) setLibrary(data.library)
-        if (selectedFolder === folder.id) setSelectedFolder('all')
+        if (data.library && selectedFolder !== 'all' && selectedFolder !== 'none' && selectedFolder !== 'folders' && !data.library.folders.some((item) => item.id === selectedFolder)) setSelectedFolder('all')
       })
 
       const saveRename = () => run(async () => {
@@ -3295,10 +3295,11 @@ window.__ModuleLoader__.load({
                   ? h('div', { className: 'cs-lib-empty-text' }, t('trashEmpty'))
                   : trashItems.map((item) => h('div', { key: item.file, className: 'cs-lib-trash-row' },
                       h('div', { className: 'cs-lib-trash-info' },
-                        h('div', { className: 'cs-lib-trash-title' }, item.title || t('untitledSpace')),
+                        h('div', { className: 'cs-lib-trash-title' }, (item.kind === 'folder' ? '📁 ' : '') + (item.title || t('untitledSpace'))),
                         h('div', { className: 'cs-lib-trash-meta' },
-                          (item.deletedAt ? formatDate(item.deletedAt) : '') +
-                          (item.folderId && folderById.get(item.folderId) ? ' · ' + folderById.get(item.folderId).name : '')
+                          item.kind === 'folder'
+                            ? (item.folderCount || 0) + ' ' + t('folders') + ' · ' + (item.spaceCount || 0) + ' ' + t('spaces') + (item.deletedAt ? ' · ' + formatDate(item.deletedAt) : '')
+                            : (item.deletedAt ? formatDate(item.deletedAt) : '') + (item.folderId && folderById.get(item.folderId) ? ' · ' + folderById.get(item.folderId).name : '')
                         )
                       ),
                       h('button', { type: 'button', className: 'cs-lib-mini', disabled: busy, onClick: () => restoreTrashItem(item) }, t('restore')),
