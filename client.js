@@ -635,6 +635,9 @@ window.__ModuleLoader__.load({
 .cs-lib-body { flex: 1; min-height: 0; display: flex; }
 .cs-lib-side { width: 230px; flex-shrink: 0; padding: 12px 8px; border-right: 1px solid var(--cs-border); overflow: auto; }
 .cs-lib-side-title { padding: 0 10px 8px; color: var(--cs-muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.cs-lib-side-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: transparent; cursor: pointer; font: inherit; text-align: left; }
+.cs-lib-side-toggle:hover { color: var(--cs-text); }
+.cs-lib-side-caret { font-size: 9px; }
 .cs-lib-folder { display: flex; align-items: center; gap: 6px; min-height: 30px; padding: 5px 8px; border-radius: 7px; color: var(--cs-text); cursor: pointer; font-size: 13px; }
 .cs-lib-folder:hover { background: var(--cs-hover); }
 .cs-lib-folder.cs-drop-over { background: color-mix(in srgb, var(--cs-accent) 14%, transparent); outline: 1px dashed var(--cs-accent); outline-offset: -1px; }
@@ -2408,6 +2411,7 @@ window.__ModuleLoader__.load({
       const [loadError, setLoadError] = useState('')
       const [activeId, setActiveId] = useState(() => readTextStorage(LAST_SPACE_KEY) || null)
       const [selectedFolder, setSelectedFolder] = useState('all')
+      const [folderTreeOpen, setFolderTreeOpen] = useState(true)
       const [search, setSearch] = useState('')
       const [trashOpen, setTrashOpen] = useState(false)
       const [privacyOpen, setPrivacyOpen] = useState(false)
@@ -2962,46 +2966,53 @@ window.__ModuleLoader__.load({
         notice ? h('div', { className: 'cs-lib-notice' }, notice) : null,
         h('div', { className: 'cs-lib-body' },
           h('aside', { className: 'cs-lib-side' },
-            h('div', { className: 'cs-lib-side-title' }, t('folders')),
-            h('div', {
-              className: cx('cs-lib-folder', selectedFolder === 'all' ? 'cs-lib-folder-active' : '', dragOverFolder === 'all' ? 'cs-drop-over' : ''),
-              onClick: () => setSelectedFolder('all'),
-              onDragOver: (event) => { event.preventDefault(); setDragOverFolder('all') },
-              onDragLeave: () => setDragOverFolder(null),
-              onDrop: (event) => {
-                event.preventDefault()
-                setDragOverFolder(null)
-                const folderId = event.dataTransfer.getData('application/x-mica-folder')
-                if (folderId) { const child = folderById.get(folderId); if (child) moveFolder(child, null); return }
-                const id = event.dataTransfer.getData('application/x-mica-space')
-                const target = spaces.find((space) => space.id === id)
-                if (target) moveSpace(target, null)
+            h('button', {
+              type: 'button',
+              className: 'cs-lib-side-title cs-lib-side-toggle',
+              onClick: () => setFolderTreeOpen((open) => !open),
+            }, h('span', null, t('folders')), h('span', { className: 'cs-lib-side-caret' }, folderTreeOpen ? '▾' : '▸')),
+            folderTreeOpen ? h(React.Fragment, null,
+              h('div', {
+                className: cx('cs-lib-folder', selectedFolder === 'all' ? 'cs-lib-folder-active' : '', dragOverFolder === 'all' ? 'cs-drop-over' : ''),
+                onClick: () => setSelectedFolder('all'),
+                onDragOver: (event) => { event.preventDefault(); setDragOverFolder('all') },
+                onDragLeave: () => setDragOverFolder(null),
+                onDrop: (event) => {
+                  event.preventDefault()
+                  setDragOverFolder(null)
+                  const folderId = event.dataTransfer.getData('application/x-mica-folder')
+                  if (folderId) { const child = folderById.get(folderId); if (child) moveFolder(child, null); return }
+                  const id = event.dataTransfer.getData('application/x-mica-space')
+                  const target = spaces.find((space) => space.id === id)
+                  if (target) moveSpace(target, null)
+                },
               },
-            },
-              h('span', { className: 'cs-lib-folder-icon' }, '◆'),
-              h('span', { className: 'cs-lib-folder-name' }, t('allSpaces')),
-              h('span', { className: 'cs-lib-folder-count' }, spaces.length)
-            ),
-            h('div', {
-              className: cx('cs-lib-folder', selectedFolder === 'none' ? 'cs-lib-folder-active' : '', dragOverFolder === 'none' ? 'cs-drop-over' : ''),
-              onClick: () => setSelectedFolder('none'),
-              onDragOver: (event) => { event.preventDefault(); setDragOverFolder('none') },
-              onDragLeave: () => setDragOverFolder(null),
-              onDrop: (event) => {
-                event.preventDefault()
-                setDragOverFolder(null)
-                const folderId = event.dataTransfer.getData('application/x-mica-folder')
-                if (folderId) { const child = folderById.get(folderId); if (child) moveFolder(child, null); return }
-                const id = event.dataTransfer.getData('application/x-mica-space')
-                const target = spaces.find((space) => space.id === id)
-                if (target) moveSpace(target, null)
+                h('span', { className: 'cs-lib-folder-icon' }, '◆'),
+                h('span', { className: 'cs-lib-folder-name' }, t('allSpaces')),
+                h('span', { className: 'cs-lib-folder-count' }, spaces.length)
+              ),
+              h('div', {
+                className: cx('cs-lib-folder', selectedFolder === 'none' ? 'cs-lib-folder-active' : '', dragOverFolder === 'none' ? 'cs-drop-over' : ''),
+                onClick: () => setSelectedFolder('none'),
+                onDragOver: (event) => { event.preventDefault(); setDragOverFolder('none') },
+                onDragLeave: () => setDragOverFolder(null),
+                onDrop: (event) => {
+                  event.preventDefault()
+                  setDragOverFolder(null)
+                  const folderId = event.dataTransfer.getData('application/x-mica-folder')
+                  if (folderId) { const child = folderById.get(folderId); if (child) moveFolder(child, null); return }
+                  const id = event.dataTransfer.getData('application/x-mica-space')
+                  const target = spaces.find((space) => space.id === id)
+                  if (target) moveSpace(target, null)
+                },
               },
-            },
-              h('span', { className: 'cs-lib-folder-icon' }, '·'),
-              h('span', { className: 'cs-lib-folder-name' }, t('uncategorized')),
-              h('span', { className: 'cs-lib-folder-count' }, spaces.filter((space) => !space.folderId).length)
-            ),
-            renderFolderTree(null, 0),
+                h('span', { className: 'cs-lib-folder-icon' }, '·'),
+                h('span', { className: 'cs-lib-folder-name' }, t('uncategorized')),
+                h('span', { className: 'cs-lib-folder-count' }, spaces.filter((space) => !space.folderId).length)
+              ),
+              renderFolderTree(null, 0),
+              h('button', { type: 'button', className: 'cs-lib-newfolder', onClick: openNewFolder }, '+ ' + t('newFolder'))
+            ) : null,
           ),
           h('section', { className: 'cs-lib-main' },
             h('div', { className: 'cs-lib-main-head' },
