@@ -50,10 +50,11 @@ window.__ModuleLoader__.load({
       settings: '设置',
       privacySettingsDesc: '数据、模型和附件隐私说明',
       backupSettingsDesc: '本地 git 提交和可选私有 remote',
-      recoverySettingsDesc: '从 .bak / .pre-schema-v2.bak 恢复',
       importSettingsDesc: '导入整个空间库',
       exportSettingsDesc: '导出整个空间库 JSON',
       recovery: '数据恢复',
+      recoveryHint: '这是备份恢复，不是回收站。它会用所选备份覆盖当前数据；恢复前会先把当前文件保存为 .before-restore。只有数据损坏、升级失败或误操作导致打不开时才使用。',
+      recoverySettingsDesc: '慎用：从备份覆盖当前数据',
       recoveryFailed: '恢复失败',
       noBackups: '没有找到备份',
       libraryBackup: '空间库备份',
@@ -247,10 +248,11 @@ window.__ModuleLoader__.load({
       settings: 'Settings',
       privacySettingsDesc: 'Data, model, and attachment privacy',
       backupSettingsDesc: 'Local git commit and optional private remote',
-      recoverySettingsDesc: 'Restore from .bak / .pre-schema-v2.bak',
       importSettingsDesc: 'Import the whole library',
       exportSettingsDesc: 'Export the whole library as JSON',
       recovery: 'Recovery',
+      recoveryHint: 'This restores an old snapshot, not the trash. It overwrites current data with the selected backup; the current file is copied to .before-restore first. Use it only when data is corrupted, an upgrade failed, or the app cannot open.',
+      recoverySettingsDesc: 'Advanced: overwrite current data from a backup',
       recoveryFailed: 'Recovery failed',
       noBackups: 'No backups found',
       libraryBackup: 'Library backup',
@@ -685,6 +687,7 @@ window.__ModuleLoader__.load({
 .cs-settings-desc { color: var(--cs-muted); font-size: 10px; }
 .cs-settings-divider { height: 1px; margin: 5px 4px; background: var(--cs-border); }
 .cs-recovery-modal { width: min(640px, calc(100vw - 48px)); }
+.cs-recovery-note { padding: 9px 10px; border: 1px solid color-mix(in srgb, #e8b84a 45%, var(--cs-border)); border-radius: 8px; background: color-mix(in srgb, #e8b84a 10%, var(--cs-bg)); color: var(--cs-text); font-size: 11px; line-height: 1.6; }
 .cs-recovery-list { display: flex; flex-direction: column; gap: 6px; max-height: min(420px, calc(100vh - 260px)); overflow: auto; }
 .cs-recovery-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); }
 .cs-recovery-info { flex: 1; min-width: 0; }
@@ -2887,6 +2890,7 @@ window.__ModuleLoader__.load({
         recoveryOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setRecoveryOpen(false) },
           h('div', { className: 'cs-lib-modal cs-recovery-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-lib-modal-title' }, t('recovery')),
+            h('div', { className: 'cs-recovery-note' }, t('recoveryHint')),
             recoveryLoading
               ? h('div', { className: 'cs-lib-empty-text' }, t('loading'))
               : recoveryItems.length === 0

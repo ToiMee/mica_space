@@ -149,6 +149,7 @@ test('root renders library, canvas, settings, privacy, and recovery without cras
   await act(async () => { recovery.props.onClick(); await flush(); await flush() })
   assert.match(textOf(renderer.root), /Test Space/)
   assert.match(textOf(renderer.root), /bak/)
+  assert.match(textOf(renderer.root), /recoveryHint/)
   const closeRecovery = buttonByText(renderer, 'close')
   await act(async () => { closeRecovery.props.onClick(); await flush() })
 
