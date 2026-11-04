@@ -1,3 +1,11 @@
 *.bak
 node_modules/
 .DS_Store
+.chat-space/
+*.tgz
+.env
+.env.*
+coverage/
+.vscode/
+.idea/
+*.log

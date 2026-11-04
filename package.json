@@ -3,7 +3,7 @@
   "version": "0.12.0",
   "private": true,
   "type": "module",
-  "description": "Mica Space: a zoomable, branching conversation canvas for DSH, with local zero-config memory.",
+  "description": "Mica Space: a zoomable branching conversation canvas for DSH, with local zero-config memory, quotes, attachments, and backups.",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
