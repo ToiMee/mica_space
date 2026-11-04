@@ -55,7 +55,7 @@ const fetchMock = async (url) => {
   const target = String(url)
   if (target.includes('/library')) return jsonResponse({ ok: true, library, model: { provider: 'test', model: 'test' } })
   if (target.includes('/space?id=')) return jsonResponse({ ok: true, space, model: { provider: 'test', model: 'test' } })
-  if (target.includes('/maintenance/backups')) return jsonResponse({ ok: true, items: [] })
+  if (target.includes('/maintenance/backups')) return jsonResponse({ ok: true, items: [{ kind: 'space', id: 'default', title: 'Test Space', source: 'bak', bytes: 128, modifiedAt: Date.now() }] })
   if (target.includes('/backup')) return jsonResponse({ ok: true, config: { remote: '', branch: 'main' } })
   if (target.includes('/trash')) return jsonResponse({ ok: true, items: [] })
   return jsonResponse({ ok: true })
@@ -140,6 +140,26 @@ test('root renders library, canvas, settings, privacy, and recovery without cras
   assert.ok(privacy, 'privacy row missing')
   await act(async () => { privacy.props.onClick(); await flush() })
   assert.match(textOf(renderer.root), /privacyBody/)
+  const closePrivacy = buttonByText(renderer, 'close')
+  await act(async () => { closePrivacy.props.onClick(); await flush() })
+
+  await act(async () => { settings.props.onClick(); await flush() })
+  const recovery = findAll(renderer, (node) => node.type === 'button' && textOf(node).startsWith('recovery'))[0]
+  assert.ok(recovery, 'recovery row missing')
+  await act(async () => { recovery.props.onClick(); await flush(); await flush() })
+  assert.match(textOf(renderer.root), /Test Space/)
+  assert.match(textOf(renderer.root), /bak/)
+  const closeRecovery = buttonByText(renderer, 'close')
+  await act(async () => { closeRecovery.props.onClick(); await flush() })
+
+  const cardAgain = findAll(renderer, (node) => node.props && node.props.className === 'cs-lib-space-card')[0]
+  await act(async () => { cardAgain.props.onClick(); await flush(); await flush() })
+  const memory = buttonByText(renderer, 'memory')
+  assert.ok(memory, 'memory button missing')
+  await act(async () => { memory.props.onClick(); await flush() })
+  assert.match(textOf(renderer.root), /memoryLexical/)
+  assert.match(textOf(renderer.root), /memorySemantic/)
+  assert.match(textOf(renderer.root), /summaryFrequency/)
 
   await act(async () => { renderer.unmount(); await flush() })
 })

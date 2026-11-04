@@ -89,4 +89,4 @@ https://github.com/ToiMee
 
 ## 版本
 
-`0.6.0` — 预览版，零配置本地记忆 + 父子级轻量检索 + 主线 callback + 设置/备份恢复 + UI smoke test。
+`0.7.0` — 预览版，零配置本地记忆 + 父子级轻量检索 + 主线 callback + 设置/备份恢复 + 扩展 UI smoke。
