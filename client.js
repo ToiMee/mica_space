@@ -150,6 +150,7 @@ window.__ModuleLoader__.load({
       colorWheel: '色盘',
       presetColors: '预设颜色',
       hexColor: '十六进制',
+      colorUsed: '已使用',
       branchTag: '分支标签',
       copySelected: '复制选中的卡片',
       deleteSelected: '删除选中的卡片',
@@ -356,6 +357,7 @@ window.__ModuleLoader__.load({
       colorWheel: 'Color wheel',
       presetColors: 'Presets',
       hexColor: 'Hex',
+      colorUsed: 'Used',
       branchTag: 'Branch tag',
       copySelected: 'Copy selected',
       deleteSelected: 'Delete selected',
@@ -606,7 +608,7 @@ window.__ModuleLoader__.load({
 .cs-dot-main { background: var(--cs-accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--cs-accent) 14%, transparent); }
 .cs-dot-branch { background: var(--cs-accent-soft); box-shadow: 0 0 0 4px rgba(51,112,255,.08); }
 .cs-highlight { animation: cs-pulse 1.2s ease-out 2; }
-@keyframes cs-pulse { 0% { box-shadow: 0 0 0 0 rgba(51,112,255,.4); } 100% { box-shadow: 0 0 0 14px rgba(51,112,255,0); } }
+@keyframes cs-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cs-card-accent, var(--cs-accent)) 45%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
 .cs-branch-lane { position: absolute; width: var(--cs-card-w); height: 0; }
 .cs-node { transition: opacity .18s ease; }
 .cs-root.cs-card-focus .cs-node:not(.cs-focus-card) { opacity: .22; }
@@ -792,7 +794,8 @@ window.__ModuleLoader__.load({
 .cs-color-hex { width: 100%; height: 24px; box-sizing: border-box; padding: 0 6px; border: 1px solid var(--cs-border); border-radius: 6px; background: var(--cs-panel); color: var(--cs-text); font: inherit; font-size: 10px; outline: none; }
 .cs-color-hex:focus { border-color: var(--cs-accent); }
 .cs-color-swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
-.cs-color-swatch { width: 100%; aspect-ratio: 1; padding: 0; border: 1px solid rgba(0,0,0,.2); border-radius: 4px; cursor: pointer; }
+.cs-color-swatch { position: relative; width: 100%; aspect-ratio: 1; padding: 0; border: 1px solid rgba(0,0,0,.2); border-radius: 4px; cursor: pointer; }
+.cs-color-swatch-used::after { content: '✓'; position: absolute; top: 1px; right: 1px; width: 10px; height: 10px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(0,0,0,.68); color: #fff; font-size: 7px; line-height: 1; }
 .cs-color-swatch-active { outline: 2px solid var(--cs-text); outline-offset: 1px; }
 .cs-context-swatch:hover { border-color: var(--cs-text); }
 .cs-card-tag { flex-shrink: 0; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 5px; border: 1px solid var(--cs-border); border-radius: 4px; color: var(--cs-muted); font-size: 9px; }
@@ -1117,7 +1120,7 @@ window.__ModuleLoader__.load({
       return MINERAL_COLORS[((colorIndex % MINERAL_COLORS.length) + MINERAL_COLORS.length) % MINERAL_COLORS.length]
     }
 
-    function ColorPicker({ value, onChange, t }) {
+    function ColorPicker({ value, onChange, t, usedColors }) {
       const safe = isHexColor(value) ? value : MAIN_COLOR
       const [text, setText] = useState(safe)
       const [open, setOpen] = useState(false)
@@ -1156,9 +1159,9 @@ window.__ModuleLoader__.load({
                   MINERAL_COLORS.map((color) => h('button', {
                     key: 'picker-color-' + color,
                     type: 'button',
-                    className: cx('cs-color-swatch', color === safe ? 'cs-color-swatch-active' : ''),
+                    className: cx('cs-color-swatch', color === safe ? 'cs-color-swatch-active' : '', Array.isArray(usedColors) && usedColors.indexOf(color.toLowerCase()) >= 0 ? 'cs-color-swatch-used' : ''),
                     style: { background: color },
-                    title: color,
+                    title: color + (Array.isArray(usedColors) && usedColors.indexOf(color.toLowerCase()) >= 0 ? ' · ' + t('colorUsed') : ''),
                     onClick: () => chooseColor(color),
                   }))
                 )
@@ -5323,7 +5326,7 @@ window.__ModuleLoader__.load({
                 isFirst: false,
                 detail: 'full',
                 highlighted: highlight === turn.id,
-                color: MAIN_COLOR,
+                color: mainColor,
                 onSelection: handleSelection,
                 onAskWhole: (item) => openDraftFor(item.id, item.answer, null, 'answer'),
                 onDelete: (turnId) => deleteTurn('main', null, turnId),
@@ -5665,6 +5668,7 @@ window.__ModuleLoader__.load({
 
       const renderContextMenu = () => {
         if (!contextMenu) return null
+        const usedColors = Array.from(new Set([mainColor.toLowerCase(), ...branches.map((branch, index) => branchColorOf(branch, index).toLowerCase())]))
         return h('div', {
           className: 'cs-context-layer',
           onMouseDown: () => setContextMenu(null),
@@ -5691,12 +5695,13 @@ window.__ModuleLoader__.load({
               ? h('button', { type: 'button', onClick: contextToggleCollapse }, (branches.find((branch) => branch.id === contextMenu.branchId) || {}).collapsed ? t('expandBranch') : t('collapseBranch'))
               : null,
             contextMenu.kind === 'main'
-              ? h(ColorPicker, { value: mainColor, onChange: setMainColor, t })
+              ? h(ColorPicker, { value: mainColor, onChange: setMainColor, t, usedColors })
               : contextMenu.branchId
                 ? h(ColorPicker, {
                       value: branchColorOf(branches.find((branch) => branch.id === contextMenu.branchId) || {}, branches.findIndex((branch) => branch.id === contextMenu.branchId)),
                       onChange: contextSetColor,
                       t,
+                      usedColors,
                     })
                 : null,
             contextMenu.branchId
