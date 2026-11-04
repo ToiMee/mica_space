@@ -2447,6 +2447,7 @@ window.__ModuleLoader__.load({
       const [selectedFolder, setSelectedFolder] = useState('all')
       const [folderTreeOpen, setFolderTreeOpen] = useState(true)
       const [collapsedFolders, setCollapsedFolders] = useState(() => new Set())
+      const [folderViewMode, setFolderViewMode] = useState('list')
       const [search, setSearch] = useState('')
       const [trashOpen, setTrashOpen] = useState(false)
       const [privacyOpen, setPrivacyOpen] = useState(false)
