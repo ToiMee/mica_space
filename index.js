@@ -12,11 +12,14 @@ import { execFile } from 'node:child_process'
 import { copyFile, mkdir, readFile, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
+import { fileURLToPath } from 'node:url'
 import { inflateRawSync, inflateSync } from 'node:zlib'
 
 const execFileAsync = promisify(execFile)
 
 const API_ROOT = '/chat-space/api'
+const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url))
+const WELCOME_COPY_FILE = path.join(PLUGIN_DIR, 'copy', 'welcome.json')
 const DATA_DIR_NAME = '.chat-space'
 const LIBRARY_FILE_NAME = 'library.json'
 const LEGACY_FILE_NAME = 'space.json'
@@ -742,6 +745,16 @@ export function apply(ctx) {
 
   ctx.effect(() => {
     const disposers = [
+      route(API_ROOT + '/welcome-copy', async (req, res) => {
+        if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: '只支持 GET' })
+        try {
+          const copy = JSON.parse(await readFile(WELCOME_COPY_FILE, 'utf8'))
+          sendJson(res, 200, { ok: true, copy })
+        } catch (_error) {
+          sendJson(res, 200, { ok: true, copy: null })
+        }
+      }),
+
       route(API_ROOT + '/library', async (req, res) => {
         if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: '只支持 GET' })
         try {

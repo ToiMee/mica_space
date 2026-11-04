@@ -723,6 +723,9 @@ window.__ModuleLoader__.load({
 .cs-lib-main { flex: 1; min-width: 0; overflow: auto; padding: 16px 20px 28px; }
 .cs-lib-main-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .cs-lib-main-actions { display: flex; align-items: center; gap: 8px; }
+.cs-lib-navigation-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-width: 0; }
+.cs-lib-navigation-row .cs-lib-breadcrumb { flex: 1; min-width: 0; }
+.cs-lib-navigation-row .cs-lib-back { flex-shrink: 0; margin-bottom: 0; }
 .cs-lib-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; min-width: 0; color: var(--cs-muted); font-size: 10px; line-height: 1.4; }
 .cs-lib-breadcrumb-link { padding: 0; border: 0; background: transparent; color: var(--cs-muted); font: inherit; font-size: 10px; cursor: pointer; }
 .cs-lib-breadcrumb-link:hover { color: var(--cs-accent); text-decoration: underline; }
@@ -2495,10 +2498,11 @@ window.__ModuleLoader__.load({
       const [folderHistory, setFolderHistory] = useState([])
       const [folderTreeOpen, setFolderTreeOpen] = useState(true)
       const [collapsedFolders, setCollapsedFolders] = useState(() => new Set())
-      const [folderViewMode, setFolderViewMode] = useState('list')
+      const [folderViewMode, setFolderViewMode] = useState(() => readTextStorage(FOLDER_VIEW_KEY) === 'grid' ? 'grid' : 'list')
       const [search, setSearch] = useState('')
       const [trashOpen, setTrashOpen] = useState(false)
       const [welcomeOpen, setWelcomeOpen] = useState(() => readTextStorage(WELCOME_KEY) !== '1')
+      const [welcomeCopy, setWelcomeCopy] = useState(null)
       const [privacyOpen, setPrivacyOpen] = useState(false)
       const [settingsOpen, setSettingsOpen] = useState(false)
       const [recoveryOpen, setRecoveryOpen] = useState(false)
@@ -2557,6 +2561,15 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         loadLibrary()
       }, [loadLibrary])
+
+      useEffect(() => {
+        let alive = true
+        fetch(API + '/welcome-copy', { headers: { Accept: 'application/json' } })
+          .then((response) => response.json())
+          .then((body) => { if (alive && body && body.copy) setWelcomeCopy(body.copy) })
+          .catch(() => {})
+        return () => { alive = false }
+      }, [])
 
       const post = async (pathName, body) => {
         const response = await fetch(API + pathName, {
@@ -2663,6 +2676,7 @@ window.__ModuleLoader__.load({
         }
         return chain
       }
+      const welcomeText = (key) => (welcomeCopy && typeof welcomeCopy[key] === 'string' ? welcomeCopy[key] : t(key))
       const breadcrumbs = selectedFolder === 'folders'
         ? [{ label: t('allFolders'), value: 'folders' }]
         : selectedFolder === 'all'
@@ -3212,17 +3226,19 @@ window.__ModuleLoader__.load({
           h('section', { className: 'cs-lib-main' },
             h('div', { className: 'cs-lib-main-head' },
               h('div', { className: 'cs-lib-main-title-wrap' },
-                h('div', { className: 'cs-lib-breadcrumb' },
-                  breadcrumbs.map((item, index) => h(React.Fragment, { key: item.value },
-                    index > 0 ? h('span', { className: 'cs-lib-breadcrumb-sep' }, '/') : null,
-                    index === breadcrumbs.length - 1
-                      ? h('span', { className: 'cs-lib-breadcrumb-current' }, item.label)
-                      : h('button', { type: 'button', className: 'cs-lib-breadcrumb-link', onClick: () => navigateFolder(item.value) }, item.label)
-                  ))
+                h('div', { className: 'cs-lib-navigation-row' },
+                  h('div', { className: 'cs-lib-breadcrumb' },
+                    breadcrumbs.map((item, index) => h(React.Fragment, { key: item.value },
+                      index > 0 ? h('span', { className: 'cs-lib-breadcrumb-sep' }, '/') : null,
+                      index === breadcrumbs.length - 1
+                        ? h('span', { className: 'cs-lib-breadcrumb-current' }, item.label)
+                        : h('button', { type: 'button', className: 'cs-lib-breadcrumb-link', onClick: () => navigateFolder(item.value) }, item.label)
+                    ))
+                  ),
+                  selectedFolder !== 'all' && selectedFolder !== 'none' && selectedFolder !== 'folders'
+                    ? h('button', { type: 'button', className: 'cs-lib-back', onClick: goUpFolder }, '← ' + t('upOneLevel'))
+                    : null
                 ),
-                selectedFolder !== 'all' && selectedFolder !== 'none' && selectedFolder !== 'folders'
-                  ? h('button', { type: 'button', className: 'cs-lib-back', onClick: goUpFolder }, '← ' + t('upOneLevel'))
-                  : null,
                 h('div', null,
                   h('div', { className: 'cs-lib-main-title' }, selectedName),
                   h('div', { className: 'cs-lib-main-sub' },
@@ -3234,7 +3250,7 @@ window.__ModuleLoader__.load({
               ),
               h('div', { className: 'cs-lib-main-actions' },
                 selectedFolder !== 'all' && selectedFolder !== 'none'
-                  ? h('button', { type: 'button', className: 'cs-btn', onClick: () => setFolderViewMode((mode) => mode === 'grid' ? 'list' : 'grid') }, folderViewMode === 'grid' ? t('listView') : t('gridView'))
+                  ? h('button', { type: 'button', className: 'cs-btn', onClick: toggleFolderView }, folderViewMode === 'grid' ? t('listView') : t('gridView'))
                   : null,
                 selectedFolder !== 'all' && selectedFolder !== 'none'
                   ? h('button', { type: 'button', className: 'cs-btn', onClick: () => openNewFolder() }, '+ ' + t('newFolder'))
@@ -3303,32 +3319,32 @@ window.__ModuleLoader__.load({
         ),
         welcomeOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => { writeTextStorage(WELCOME_KEY, '1'); setWelcomeOpen(false) } },
           h('div', { className: 'cs-lib-modal cs-welcome-modal', onClick: (event) => event.stopPropagation() },
-            h('div', { className: 'cs-welcome-badge' }, t('welcomeVersion')),
-            h('div', { className: 'cs-lib-modal-title' }, t('welcomeTitle')),
-            h('div', { className: 'cs-welcome-lead' }, t('welcomeIntro')),
+            h('div', { className: 'cs-welcome-badge' }, welcomeText('welcomeVersion')),
+            h('div', { className: 'cs-lib-modal-title' }, welcomeText('welcomeTitle')),
+            h('div', { className: 'cs-welcome-lead' }, welcomeText('welcomeIntro')),
             h('div', { className: 'cs-welcome-section' },
-              h('div', { className: 'cs-welcome-section-title' }, t('welcomeNotesTitle')),
+              h('div', { className: 'cs-welcome-section-title' }, welcomeText('welcomeNotesTitle')),
               h('ul', { className: 'cs-welcome-list' },
-                h('li', null, t('welcomeNote1')),
-                h('li', null, t('welcomeNote2')),
-                h('li', null, t('welcomeNote3')),
-                h('li', null, t('welcomeNote4'))
+                h('li', null, welcomeText('welcomeNote1')),
+                h('li', null, welcomeText('welcomeNote2')),
+                h('li', null, welcomeText('welcomeNote3')),
+                h('li', null, welcomeText('welcomeNote4'))
               )
             ),
             h('div', { className: 'cs-welcome-section' },
-              h('div', { className: 'cs-welcome-section-title' }, t('welcomePrivacyTitle')),
+              h('div', { className: 'cs-welcome-section-title' }, welcomeText('welcomePrivacyTitle')),
               h('ul', { className: 'cs-welcome-list' },
-                h('li', null, t('welcomePrivacy1')),
-                h('li', null, t('welcomePrivacy2')),
-                h('li', null, t('welcomePrivacy3'))
+                h('li', null, welcomeText('welcomePrivacy1')),
+                h('li', null, welcomeText('welcomePrivacy2')),
+                h('li', null, welcomeText('welcomePrivacy3'))
               )
             ),
             h('div', { className: 'cs-welcome-feedback' },
-              h('div', null, t('welcomeFeedback')),
-              h('a', { href: 'https://github.com/ToiMee/mica_space/issues', target: '_blank', rel: 'noreferrer' }, t('welcomeFeedbackLink'))
+              h('div', null, welcomeText('welcomeFeedback')),
+              h('a', { href: 'https://github.com/ToiMee/mica_space/issues', target: '_blank', rel: 'noreferrer' }, welcomeText('welcomeFeedbackLink'))
             ),
             h('div', { className: 'cs-lib-modal-actions' },
-              h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: () => { writeTextStorage(WELCOME_KEY, '1'); setWelcomeOpen(false) } }, t('welcomeStart'))
+              h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: () => { writeTextStorage(WELCOME_KEY, '1'); setWelcomeOpen(false) } }, welcomeText('welcomeStart'))
             )
           )
         ) : null,
@@ -3338,7 +3354,7 @@ window.__ModuleLoader__.load({
             h('div', { className: 'cs-settings-list' },
               h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); setWelcomeOpen(true) } },
                 h('span', { className: 'cs-settings-label' }, t('welcome')),
-                h('span', { className: 'cs-settings-desc' }, t('welcomeVersion'))
+                h('span', { className: 'cs-settings-desc' }, welcomeText('welcomeVersion'))
               ),
               h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); setPrivacyOpen(true) } },
                 h('span', { className: 'cs-settings-label' }, t('privacy')),
@@ -6357,6 +6373,7 @@ window.__ModuleLoader__.load({
     const LAST_SPACE_KEY = 'chat-space:last-space'
     const LAST_FOLDER_KEY = 'chat-space:last-folder'
     const WELCOME_KEY = 'chat-space:welcome-seen'
+    const FOLDER_VIEW_KEY = 'chat-space:folder-view'
 
     function apply(ctx) {
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'chat-space: dictionaries')
