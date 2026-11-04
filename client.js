@@ -28,6 +28,8 @@ window.__ModuleLoader__.load({
     const MIN_ZOOM = 0.15
     const MAX_ZOOM = 2.5
     const MAIN_COLOR = '#4fc3f7'
+    const HEX_COLOR = /^#[0-9a-f]{6}$/i
+    const isHexColor = (value) => typeof value === 'string' && HEX_COLOR.test(value)
     const MINERAL_COLORS = [
       '#d4a843', '#d4874a', '#5d9b6a', '#9b7dcc', '#5da0a0', '#d4a8b0',
       '#9a8e82', '#6d8aaa', '#8a9448', '#5a4d4a', '#b8554a', '#b5a67a',
@@ -141,6 +143,8 @@ window.__ModuleLoader__.load({
       collapseBranch: '折叠分支',
       expandBranch: '展开分支',
       branchColor: '分支颜色',
+      mainLineColor: '主线颜色',
+      color: '颜色',
       branchTag: '分支标签',
       copySelected: '复制选中的卡片',
       deleteSelected: '删除选中的卡片',
@@ -159,7 +163,6 @@ window.__ModuleLoader__.load({
       focusMain: '回归主线',
       layoutVertical: '竖向布局',
       layoutHorizontal: '横向布局',
-      toggleLayout: '切换横竖',
       verticalShort: '竖',
       horizontalShort: '横',
       switchLayout: '切换竖向/横向布局',
@@ -208,6 +211,7 @@ window.__ModuleLoader__.load({
       failed: '回答失败',
       cancelled: '已停止',
       reask: '重新问',
+      unread: '未读',
       confirmDeleteMain: '删除这条主线问答会同时删除它下面的分支，继续？',
       zoomIn: '放大',
       zoomOut: '缩小',
@@ -340,6 +344,8 @@ window.__ModuleLoader__.load({
       collapseBranch: 'Collapse branch',
       expandBranch: 'Expand branch',
       branchColor: 'Branch color',
+      mainLineColor: 'Main line color',
+      color: 'Color',
       branchTag: 'Branch tag',
       copySelected: 'Copy selected',
       deleteSelected: 'Delete selected',
@@ -358,7 +364,6 @@ window.__ModuleLoader__.load({
       focusMain: 'Back to main line',
       layoutVertical: 'Vertical layout',
       layoutHorizontal: 'Horizontal layout',
-      toggleLayout: 'Toggle layout',
       verticalShort: 'V',
       horizontalShort: 'H',
       switchLayout: 'Switch layout direction',
@@ -407,6 +412,7 @@ window.__ModuleLoader__.load({
       failed: 'Answer failed',
       cancelled: 'Stopped',
       reask: 'Ask again',
+      unread: 'Unread',
       confirmDeleteMain: 'Deleting this main-line question also deletes its branches. Continue?',
       zoomIn: 'Zoom in',
       zoomOut: 'Zoom out',
@@ -576,6 +582,8 @@ window.__ModuleLoader__.load({
 .cs-dot-badge { position: absolute; display: flex; align-items: center; justify-content: center; border-style: solid; border-radius: 50%; font-weight: 800; line-height: 1; pointer-events: none; z-index: 4; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
 .cs-dot-badge-flag { background: #e5484d; color: #fff; border-color: #ffe1e1; }
 .cs-dot-badge-pending { background: #ffd23f; color: #241d0c; border-color: #fff6c9; box-shadow: 0 0 0 3px rgba(255,210,63,.22), 0 2px 8px rgba(0,0,0,.45); }
+.cs-dot-badge-unread { background: #3b9dff; color: #fff; border-color: #d8ecff; box-shadow: 0 0 0 3px rgba(59,157,255,.22), 0 2px 8px rgba(0,0,0,.45); }
+.cs-unread-badge { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px; border-radius: 50%; background: #3b9dff; color: #fff; font-size: 9px; line-height: 1; box-shadow: 0 0 0 2px rgba(59,157,255,.18); }
 .cs-dot-flag { position: absolute; color: #e5484d; line-height: 1; pointer-events: none; text-shadow: 0 0 2px rgba(255,255,255,.9); }
 .cs-marquee { position: fixed; z-index: 5000; border: 1px dashed var(--cs-accent); border-radius: 2px; background: color-mix(in srgb, var(--cs-accent) 10%, transparent); pointer-events: none; }
 .cs-dot { border: none; padding: 0; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 4px rgba(51,112,255,.12); transition: transform .12s ease; }
@@ -708,6 +716,14 @@ window.__ModuleLoader__.load({
 .cs-bottom-label { align-self: flex-start; padding: 2px 8px; border: 1px solid var(--cs-border); border-radius: 999px; background: var(--cs-panel); color: var(--cs-muted); font-size: 11px; line-height: 1.4; }
 .cs-bottom-composer .cs-composer { box-shadow: 0 12px 32px rgba(0,0,0,.18); }
 .cs-card { cursor: default; }
+.cs-collapse-arrow { position: absolute; right: 5px; top: 50%; z-index: 6; width: 22px; height: 28px; display: flex; align-items: center; justify-content: center; transform: translateY(-50%); border: 1px solid var(--cs-border); border-radius: 6px; background: var(--cs-panel); color: var(--cs-muted); box-shadow: 0 2px 6px rgba(0,0,0,.12); font: inherit; font-size: 13px; line-height: 1; cursor: pointer; opacity: .82; transition: opacity .15s ease, color .15s ease; }
+.cs-collapse-arrow:hover { opacity: 1; color: var(--cs-text); }
+.cs-collapse-arrow-collapsed { color: var(--cs-accent); }
+.cs-branch-anim { pointer-events: none; }
+.cs-branch-collapse { animation: cs-branch-collapse .18s ease forwards; }
+.cs-branch-expand { animation: cs-branch-expand .24s ease; }
+@keyframes cs-branch-collapse { to { opacity: 0; transform: scale(.96); } }
+@keyframes cs-branch-expand { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
 .cs-card.cs-selected { border-color: var(--cs-card-accent, var(--cs-accent)); }
 .cs-card:not(.cs-active) { user-select: none; }
 .cs-card.cs-active { user-select: text; }
@@ -725,6 +741,8 @@ window.__ModuleLoader__.load({
 .cs-pending-marker { position: absolute; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; padding: 0; border: 2px solid #fff3c4; border-radius: 50%; background: #e8b84a; color: #241d0c; box-shadow: 0 0 0 3px rgba(232,184,74,.22), 0 7px 18px rgba(0,0,0,.35); transform: translate(-50%,-50%); font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; pointer-events: auto; animation: cs-pending-pulse 1.8s ease-in-out infinite; }
 .cs-pending-marker:hover { transform: translate(-50%,-50%) scale(1.12); }
 .cs-pending-count { position: absolute; top: -6px; right: -6px; min-width: 15px; height: 15px; display: flex; align-items: center; justify-content: center; padding: 0 3px; border-radius: 8px; background: #1d1a12; color: #ffe7a3; font-size: 9px; font-weight: 700; }
+.cs-unread-marker { width: 20px; height: 20px; border-color: #d8ecff; background: #3b9dff; color: #fff; font-size: 11px; box-shadow: 0 0 0 3px rgba(59,157,255,.2), 0 7px 18px rgba(0,0,0,.35); animation: none; }
+.cs-unread-count { background: #0d2b4d; color: #d8ecff; }
 @keyframes cs-pending-pulse { 0%,100% { box-shadow: 0 0 0 3px rgba(232,184,74,.22), 0 7px 18px rgba(0,0,0,.35); } 50% { box-shadow: 0 0 0 7px rgba(232,184,74,.10), 0 7px 18px rgba(0,0,0,.35); } }
 .cs-flag { padding: 0 2px; border: 0; background: transparent; color: var(--cs-muted); font-size: 14px; line-height: 1; cursor: pointer; }
 .cs-flag-on { color: #e5484d; }
@@ -738,6 +756,11 @@ window.__ModuleLoader__.load({
 .cs-context-label { padding: 5px 8px 3px; color: var(--cs-muted); font-size: 10px; }
 .cs-context-swatches { display: flex; gap: 6px; padding: 3px 8px 6px; }
 .cs-context-swatch { width: 18px; height: 18px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
+.cs-color-picker { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 3px 0; }
+.cs-color-wheel { width: 26px; height: 22px; padding: 0; border: 1px solid var(--cs-border); border-radius: 5px; background: transparent; cursor: pointer; }
+.cs-color-hex { width: 74px; height: 22px; box-sizing: border-box; padding: 0 5px; border: 1px solid var(--cs-border); border-radius: 5px; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 10px; outline: none; }
+.cs-color-hex:focus { border-color: var(--cs-accent); }
+.cs-color-swatches { display: flex; flex-wrap: wrap; gap: 3px; }
 .cs-context-swatch:hover { border-color: var(--cs-text); }
 .cs-card-tag { flex-shrink: 0; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 5px; border: 1px solid var(--cs-border); border-radius: 4px; color: var(--cs-muted); font-size: 9px; }
 .cs-collapse { padding: 1px 5px; }
@@ -972,6 +995,7 @@ window.__ModuleLoader__.load({
         z: finite(turn.z, 0),
         todo: Boolean(turn.todo),
         flag: Boolean(turn.flag),
+        unread: Boolean(turn.unread),
         attachments,
         layout,
       }
@@ -985,6 +1009,7 @@ window.__ModuleLoader__.load({
         main: { turns: [] },
         branches: [],
         layoutMode: 'vertical',
+        mainColor: MAIN_COLOR,
         view: { x: 120, y: 120, zoom: 1 },
       }
       if (!raw || typeof raw !== 'object') return fallback
@@ -1001,6 +1026,7 @@ window.__ModuleLoader__.load({
               brief: stringOf(branch.brief),
               parentBranchId: typeof branch.parentBranchId === 'string' && branch.parentBranchId ? branch.parentBranchId : null,
               colorIndex: Number.isInteger(branch.colorIndex) ? branch.colorIndex : index,
+              color: isHexColor(branch.color) ? branch.color : '',
               collapsed: Boolean(branch.collapsed),
               tag: stringOf(branch.tag).slice(0, 20),
               createdAt: finite(branch.createdAt, Date.now()),
@@ -1029,6 +1055,7 @@ window.__ModuleLoader__.load({
         main: { turns: mainTurns },
         branches,
         layoutMode: raw.layoutMode === 'horizontal' ? 'horizontal' : 'vertical',
+        mainColor: isHexColor(raw.mainColor) ? raw.mainColor : MAIN_COLOR,
         memoryMode: raw.memoryMode === 'semantic' ? 'semantic' : 'lexical',
         summaryMode: raw.summaryMode === 'every3' ? 'every3' : raw.summaryMode === 'off' ? 'off' : 'every',
         view: rawView
@@ -1051,15 +1078,62 @@ window.__ModuleLoader__.load({
       }
     }
 
-    function cardColorOf(turn, fallback) {
-      return turn && Number.isInteger(turn.colorIndex)
-        ? MINERAL_COLORS[((turn.colorIndex % MINERAL_COLORS.length) + MINERAL_COLORS.length) % MINERAL_COLORS.length]
-        : fallback
-    }
-
     function branchColorOf(branch, index) {
+      if (branch && isHexColor(branch.color)) return branch.color
       const colorIndex = Number.isInteger(branch.colorIndex) ? branch.colorIndex : index
       return MINERAL_COLORS[((colorIndex % MINERAL_COLORS.length) + MINERAL_COLORS.length) % MINERAL_COLORS.length]
+    }
+
+    function ColorPicker({ value, onChange, t }) {
+      const safe = isHexColor(value) ? value : MAIN_COLOR
+      const [text, setText] = useState(safe)
+      useEffect(() => { setText(safe) }, [safe])
+      const apply = (next) => {
+        if (isHexColor(next)) {
+          const normalized = next.toLowerCase()
+          setText(normalized)
+          onChange(normalized)
+        } else {
+          setText(safe)
+        }
+      }
+      return h('div', { className: 'cs-color-picker' },
+        h('input', {
+          type: 'color',
+          className: 'cs-color-wheel',
+          value: safe,
+          title: t('color'),
+          onChange: (event) => apply(event.target.value),
+        }),
+        h('input', {
+          type: 'text',
+          className: 'cs-color-hex',
+          value: text,
+          maxLength: 7,
+          spellCheck: false,
+          placeholder: '#RRGGBB',
+          onChange: (event) => {
+            setText(event.target.value)
+            if (isHexColor(event.target.value)) onChange(event.target.value.toLowerCase())
+          },
+          onBlur: () => apply(text),
+          onKeyDown: (event) => {
+            if (event.key !== 'Enter') return
+            event.preventDefault()
+            apply(text)
+          },
+        }),
+        h('div', { className: 'cs-color-swatches' },
+          MINERAL_COLORS.map((color, index) => h('button', {
+            key: 'picker-color-' + index,
+            type: 'button',
+            className: 'cs-context-swatch',
+            style: { background: color },
+            title: color,
+            onClick: () => apply(color),
+          }))
+        )
+      )
     }
 
     function nextColorIndex(branches) {
@@ -1730,7 +1804,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function Dot({ kind, zoom, label, color, selected, flagged, pending, onClick, onHover, onLeave, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }) {
+    function Dot({ kind, zoom, label, color, selected, flagged, pending, unread, onClick, onHover, onLeave, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }) {
       const edge = kind === 'main'
         ? Math.max(10, 24 / Math.max(zoom, 0.01))
         : Math.max(8, 15 / Math.max(zoom, 0.01))
@@ -1746,7 +1820,9 @@ window.__ModuleLoader__.load({
         top: '50%',
         transform: side === 'flag'
           ? 'translate(calc(-50% - ' + offset + 'px), calc(-50% - ' + offset + 'px))'
-          : 'translate(calc(-50% + ' + offset + 'px), calc(-50% - ' + offset + 'px))',
+          : side === 'unread'
+            ? 'translate(calc(-50% + ' + offset + 'px), calc(-50% + ' + offset + 'px))'
+            : 'translate(calc(-50% + ' + offset + 'px), calc(-50% - ' + offset + 'px))',
       })
       return h('div', { className: 'cs-dot-wrap' },
         selected ? h('span', {
@@ -1778,6 +1854,9 @@ window.__ModuleLoader__.load({
           : null,
         pending
           ? h('span', { className: 'cs-dot-badge cs-dot-badge-pending', style: badgeStyle('pending'), title: label }, '!')
+          : null,
+        unread
+          ? h('span', { className: 'cs-dot-badge cs-dot-badge-unread', style: badgeStyle('unread'), title: label }, '●')
           : null
       )
     }
@@ -2070,6 +2149,15 @@ window.__ModuleLoader__.load({
           if (onContextMenu) onContextMenu(event)
         },
       },
+        kind === 'branch' && isFirst && branch.turns.length > 1
+          ? h('button', {
+              type: 'button',
+              className: cx('cs-collapse-arrow', collapsed ? 'cs-collapse-arrow-collapsed' : ''),
+              title: collapsed ? t('expandBranch') : t('collapseBranch'),
+              onPointerDown: (event) => event.stopPropagation(),
+              onClick: (event) => { event.stopPropagation(); onToggleCollapse() },
+            }, collapsed ? '▸' : '▾')
+          : null,
         h('div', { className: 'cs-card-head' },
           h('div', { className: 'cs-card-tags' },
             sequence ? h('span', { className: 'cs-seq' }, sequence) : null,
@@ -2087,6 +2175,9 @@ window.__ModuleLoader__.load({
               h('span', { className: 'cs-todo-box' }, turn.todo ? '!' : ''),
               h('span', { className: 'cs-todo-text' }, t('todo'))
             ),
+            turn.unread
+              ? h('span', { className: 'cs-unread-badge', title: t('unread') }, '●')
+              : null,
             h('button', {
               type: 'button',
               className: cx('cs-flag', turn.flag ? 'cs-flag-on' : ''),
@@ -2094,9 +2185,6 @@ window.__ModuleLoader__.load({
               onClick: () => onToggleFlag(!turn.flag),
             }, '⚑'),
             tag ? h('span', { className: 'cs-card-tag' }, tag) : null,
-            kind === 'branch' && isFirst && hiddenCount > 0
-              ? h('button', { type: 'button', className: 'cs-mini cs-collapse', title: collapsed ? t('expandBranch') : t('collapseBranch'), onClick: (event) => { event.stopPropagation(); onToggleCollapse() } }, collapsed ? '+' + hiddenCount : '−')
-              : null,
             kind === 'branch' && isFirst && branch.anchorText
               ? h('span', { className: 'cs-anchor', title: branch.anchorText }, t('branchFrom') + ' · ' + (branch.anchorSource === 'answer' ? t('wholeAnswer') : truncate(branch.anchorText, 26)))
               : null
@@ -3062,6 +3150,7 @@ window.__ModuleLoader__.load({
     function ChatSpacePanel({ tr, t: slotT, onBackToConversation, spaceId, onBackToLibrary }) {
       const t = typeof tr === 'function' ? tr : typeof slotT === 'function' ? slotT : (key) => key
       const [space, setSpace] = useState(null)
+      const mainColor = isHexColor(space && space.mainColor) ? space.mainColor : MAIN_COLOR
       const [model, setModel] = useState(null)
       const [loadState, setLoadState] = useState('loading')
       const [loadError, setLoadError] = useState('')
@@ -3095,6 +3184,8 @@ window.__ModuleLoader__.load({
       const [marquee, setMarquee] = useState(null)
       const [selectedTurn, setSelectedTurn] = useState(null)
       const [contextMenu, setContextMenu] = useState(null)
+      const [branchTransition, setBranchTransition] = useState(null)
+      const branchTransitionTimerRef = useRef(null)
       useEffect(() => {
         const closeContext = (event) => {
           if (!contextMenu) return
@@ -3581,7 +3672,7 @@ window.__ModuleLoader__.load({
         ? selectedBranch.turns.some((turn) => turn.status === 'streaming')
         : mainBusy
       const layerEntries = [
-        ...mainTurns.map((turn) => ({ turn, kind: 'main', branchId: null, color: MAIN_COLOR, tag: t('main') })),
+        ...mainTurns.map((turn) => ({ turn, kind: 'main', branchId: null, color: mainColor, tag: t('main') })),
         ...branches.flatMap((branch) => branch.turns.map((turn) => ({
           turn,
           kind: 'branch',
@@ -3752,27 +3843,9 @@ window.__ModuleLoader__.load({
         toggleBranchCollapse(branchId)
       }
 
-      const contextSetCardColor = (colorIndex) => {
-        if (!contextMenu) return
-        const target = contextMenu.turn
-        const kind = contextMenu.kind
-        const branchId = contextMenu.branchId
-        setContextMenu(null)
-        pushHistory()
-        commit((previous) => {
-          if (kind === 'main') {
-            return { ...previous, main: { ...previous.main, turns: previous.main.turns.map((turn) => turn.id === target.id ? { ...turn, colorIndex } : turn) } }
-          }
-          return { ...previous, branches: previous.branches.map((branch) => branch.id === branchId ? { ...branch, turns: branch.turns.map((turn) => turn.id === target.id ? { ...turn, colorIndex } : turn) } : branch) }
-        })
-        saveSoon(100)
-      }
-
-      const contextSetColor = (colorIndex) => {
+      const contextSetColor = (color) => {
         if (!contextMenu || !contextMenu.branchId) return
-        const branchId = contextMenu.branchId
-        setContextMenu(null)
-        setBranchColor(branchId, colorIndex)
+        setBranchColor(contextMenu.branchId, color)
       }
 
       const contextSetTag = () => {
@@ -3826,24 +3899,48 @@ window.__ModuleLoader__.load({
       }
 
       const toggleBranchCollapse = (branchId) => {
+        const current = spaceRef.current
+        const branch = current && current.branches.find((item) => item.id === branchId)
+        if (!branch) return
+        if (branchTransition && branchTransition.id === branchId) return
+        if (branchTransitionTimerRef.current) clearTimeout(branchTransitionTimerRef.current)
+        if (!branch.collapsed) {
+          pushHistory()
+          setBranchTransition({ id: branchId, mode: 'collapse' })
+          branchTransitionTimerRef.current = setTimeout(() => {
+            commit((previous) => ({
+              ...previous,
+              branches: previous.branches.map((item) => item.id === branchId ? { ...item, collapsed: true } : item),
+            }))
+            setBranchTransition(null)
+            saveSoon(100)
+          }, 180)
+        } else {
+          pushHistory()
+          commit((previous) => ({
+            ...previous,
+            branches: previous.branches.map((item) => item.id === branchId ? { ...item, collapsed: false } : item),
+          }))
+          setBranchTransition({ id: branchId, mode: 'expand' })
+          branchTransitionTimerRef.current = setTimeout(() => setBranchTransition(null), 260)
+          saveSoon(100)
+        }
+      }
+
+      const setBranchColor = (branchId, color) => {
         pushHistory()
         commit((previous) => ({
           ...previous,
           branches: previous.branches.map((branch) => (
-            branch.id === branchId ? { ...branch, collapsed: !branch.collapsed } : branch
+            branch.id === branchId ? { ...branch, color } : branch
           )),
         }))
         saveSoon(100)
       }
 
-      const setBranchColor = (branchId, colorIndex) => {
+      const setMainColor = (color) => {
         pushHistory()
-        commit((previous) => ({
-          ...previous,
-          branches: previous.branches.map((branch) => (
-            branch.id === branchId ? { ...branch, colorIndex } : branch
-          )),
-        }))
+        commit((previous) => ({ ...previous, mainColor: color }))
         saveSoon(100)
       }
 
@@ -4266,7 +4363,7 @@ window.__ModuleLoader__.load({
 
       const hideHover = () => setHover(null)
 
-      const runStream = async ({ kind, branchId, turnId, payload }) => {
+      const runStream = async ({ kind, branchId, turnId, retryTurnId, payload }) => {
         const controller = new AbortController()
         streamsRef.current.set(turnId, controller)
         let answer = ''
@@ -4313,7 +4410,7 @@ window.__ModuleLoader__.load({
                   updateTurn(kind, branchId, turnId, { answer, status: 'streaming' })
                 } else if (event && event.type === 'done') {
                   finished = true
-                  updateTurn(kind, branchId, turnId, { answer, status: 'completed', usage: event.usage || null, error: '' })
+                  updateTurn(kind, branchId, turnId, { answer, status: 'completed', usage: event.usage || null, error: '', unread: Boolean(retryTurnId) })
                   if (summaryMode === 'every' || (summaryMode === 'every3' && (() => {
                     const currentTurns = [
                       ...(spaceRef.current && spaceRef.current.main ? spaceRef.current.main.turns : []),
@@ -4339,6 +4436,7 @@ window.__ModuleLoader__.load({
               answer,
               status: answer ? 'completed' : 'failed',
               error: answer ? '' : '连接中断',
+              unread: answer ? Boolean(retryTurnId) : false,
             })
           }
         } catch (error) {
@@ -4387,6 +4485,12 @@ window.__ModuleLoader__.load({
         focusTurn(branch.anchorTurnId)
       }
 
+      const clearUnread = (turn, kind, branchId) => {
+        if (!turn || !turn.unread) return
+        updateTurn(kind, branchId, turn.id, { unread: false })
+        saveSoon(120)
+      }
+
       const handleCardClick = (event, turn, kind, branchId) => {
         if (suppressCardClickRef.current) {
           suppressCardClickRef.current = false
@@ -4406,6 +4510,7 @@ window.__ModuleLoader__.load({
           setSelectedTurn(null)
           return
         }
+        clearUnread(turn, kind, branchId)
         if (selectedTurn && selectedTurn.turnId === turn.id) return
         setSelectedIds(new Set([turn.id]))
         setSelectedTurn(null)
@@ -4415,6 +4520,7 @@ window.__ModuleLoader__.load({
         const target = event && event.target
         if (target && target.closest && target.closest('button, input, textarea, a, label, .cs-resize, .cs-grip')) return
         if (event && (event.ctrlKey || event.metaKey)) return
+        clearUnread(turn, kind, branchId)
         setSelectedIds(new Set([turn.id]))
         setSelectedTurn({ turnId: turn.id, kind, branchId })
         focusTurn(turn.id)
@@ -4600,6 +4706,7 @@ window.__ModuleLoader__.load({
             status: 'streaming',
             error: '',
             usage: null,
+            unread: false,
             attachments: turnAttachments,
           })
         } else {
@@ -4645,19 +4752,21 @@ window.__ModuleLoader__.load({
           mainDigest,
           attachments: turnAttachments,
         }
-        runStream({ kind, branchId: targetBranch ? targetBranch.id : null, turnId, payload })
+        runStream({ kind, branchId: targetBranch ? targetBranch.id : null, turnId, retryTurnId, payload })
 
         if (kind === 'main') {
           const index = retryTurnId ? currentTurns.findIndex((turn) => turn.id === retryTurnId) : currentTurns.length
-          setTimeout(() => centerOn(
-            layoutMode === 'horizontal' ? TOP_PAD + Math.max(0, index) * MAIN_STEP_H + MAIN_W / 2 : MAIN_W / 2,
-            layoutMode === 'horizontal' ? TOP_PAD + MAIN_H / 2 : TOP_PAD + Math.max(0, index) * MAIN_STEP_V + MAIN_H / 2,
-            Math.max(0.85, view.zoom),
-          ), 60)
+          if (!retryTurnId) {
+            setTimeout(() => centerOn(
+              layoutMode === 'horizontal' ? TOP_PAD + Math.max(0, index) * MAIN_STEP_H + MAIN_W / 2 : MAIN_W / 2,
+              layoutMode === 'horizontal' ? TOP_PAD + MAIN_H / 2 : TOP_PAD + Math.max(0, index) * MAIN_STEP_V + MAIN_H / 2,
+              Math.max(0.85, view.zoom),
+            ), 60)
+          }
         } else {
           const position = positions.get(targetBranch.id)
           const turnIndex = retryTurnId ? targetBranch.turns.findIndex((turn) => turn.id === retryTurnId) : targetBranch.turns.length
-          if (position) {
+          if (position && !retryTurnId) {
             setTimeout(() => centerOn(position.x + CARD_W / 2, position.y + Math.max(0, turnIndex) * TURN_STEP + CARD_H / 2, Math.max(0.85, view.zoom)), 60)
           }
         }
@@ -5035,7 +5144,7 @@ window.__ModuleLoader__.load({
           paths.push(h('path', {
             key: 'main-' + index,
             className: 'cs-link-main',
-            style: { stroke: MAIN_COLOR, strokeWidth: mainLineWidth },
+            style: { stroke: mainColor, strokeWidth: mainLineWidth },
             d: dotMode
               ? centerPath(mainRects[index - 1], mainRects[index])
               : curvePorts(
@@ -5104,7 +5213,7 @@ window.__ModuleLoader__.load({
           const baseY = layoutMode === 'horizontal' ? TOP_PAD : TOP_PAD + index * MAIN_STEP_V
           nodes.push(h('div', {
             key: turn.id,
-            className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : ''),
+            className: cx('cs-node', detail === 'dot' ? 'cs-detail-dot' : 'cs-detail-full', focusIds.has(turn.id) ? 'cs-focus-card' : '', branchTransition && branchTransition.id === branch.id ? 'cs-branch-anim cs-branch-' + branchTransition.mode : ''),
             style: { left: rect.x, top: rect.y, width: rect.w, height: rect.h, zIndex: turn.z || 0 },
           }, [
             h(Dot, {
@@ -5112,14 +5221,16 @@ window.__ModuleLoader__.load({
                 kind: 'main',
                 flagged: Boolean(turn.flag),
                 pending: Boolean(turn.todo),
+                unread: Boolean(turn.unread),
                 zoom: view.zoom,
                 label: turn.summary || truncate(turn.question, 80),
-                color: cardColorOf(turn, MAIN_COLOR),
+                color: mainColor,
                 onClick: () => {
                   if (suppressDotClickRef.current) {
                     suppressDotClickRef.current = false
                     return
                   }
+                  clearUnread(turn, 'main', null)
                   focusTurn(turn.id)
                 },
                 onHover: (event) => showHover(turn, 'main', null, event),
@@ -5168,7 +5279,7 @@ window.__ModuleLoader__.load({
                 onResizeEnd: endTurnFrame,
                 onBringToFront: () => bringToFront(turn, 'main', null),
               }),
-            ...(renderPorts(turn.id, rect, MAIN_COLOR, true) || []),
+            ...(renderPorts(turn.id, rect, mainColor, true) || []),
           ]))
         })
         return nodes
@@ -5191,14 +5302,16 @@ window.__ModuleLoader__.load({
                 kind: 'branch',
                 flagged: Boolean(turn.flag),
                 pending: Boolean(turn.todo),
+                unread: Boolean(turn.unread),
                 zoom: view.zoom,
                 label: turn.summary || truncate(turn.question, 80),
-                color: cardColorOf(turn, position.color),
+                color: position.color,
                 onClick: () => {
                   if (suppressDotClickRef.current) {
                     suppressDotClickRef.current = false
                     return
                   }
+                  clearUnread(turn, 'branch', branch.id)
                   focusTurn(turn.id)
                 },
                 onHover: (event) => showHover(turn, 'branch', branch.id, event),
@@ -5391,6 +5504,64 @@ window.__ModuleLoader__.load({
             count > 1 ? h('span', { className: 'cs-pending-count' }, String(count)) : null
           ))
         }
+        const unreadGroups = new Map()
+        for (const entry of entries) {
+          if (!entry.turn.unread) continue
+          const rect = turnRects.get(entry.turn.id)
+          if (!rect) continue
+          const left = view.x + rect.x * view.zoom
+          const top = view.y + rect.y * view.zoom
+          const right = left + rect.w * view.zoom
+          const bottom = top + rect.h * view.zoom
+          if (right >= 0 && left <= width && bottom >= 0 && top <= height) continue
+          const cardX = left + (rect.w * view.zoom) / 2
+          const cardY = top + (rect.h * view.zoom) / 2
+          const dx = cardX - width / 2
+          const dy = cardY - height / 2
+          if (dx === 0 && dy === 0) continue
+          let side
+          let coord
+          if (Math.abs(dx) >= Math.abs(dy)) {
+            side = dx > 0 ? 'right' : 'left'
+            coord = cardY
+          } else {
+            side = dy > 0 ? 'bottom' : 'top'
+            coord = cardX
+          }
+          if (!unreadGroups.has(side)) unreadGroups.set(side, [])
+          unreadGroups.get(side).push({ entry, coord })
+        }
+        for (const [side, items] of unreadGroups) {
+          items.sort((left, right) => left.coord - right.coord)
+          const count = items.length
+          const average = items.reduce((sum, item) => sum + item.coord, 0) / count
+          let markerX = width / 2
+          let markerY = height / 2
+          if (side === 'top' || side === 'bottom') {
+            markerX = Math.max(padding, Math.min(width - padding, average))
+            markerY = side === 'top' ? padding : height - padding
+          } else {
+            markerX = side === 'left' ? padding : width - padding
+            markerY = Math.max(padding, Math.min(height - padding, average))
+          }
+          const titles = items.map((item) => truncate(item.entry.turn.question, 50)).join(' / ')
+          markers.push(h('button', {
+            key: 'unread-' + side,
+            type: 'button',
+            className: 'cs-pending-marker cs-unread-marker',
+            style: { left: markerX, top: markerY },
+            title: (count > 1 ? t('unread') + ' ' + count + '：' : t('unread') + '：') + titles,
+            onPointerDown: (event) => event.stopPropagation(),
+            onClick: (event) => {
+              event.stopPropagation()
+              clearUnread(items[0].entry.turn, items[0].entry.kind, items[0].entry.branchId)
+              focusTurn(items[0].entry.turn.id)
+            },
+          },
+            h('span', null, '●'),
+            count > 1 ? h('span', { className: 'cs-pending-count cs-unread-count' }, String(count)) : null
+          ))
+        }
         return markers.length > 0 ? h('div', { className: 'cs-pending-layer' }, markers) : null
       }
 
@@ -5422,34 +5593,21 @@ window.__ModuleLoader__.load({
             contextMenu.branchId
               ? h('button', { type: 'button', onClick: contextToggleCollapse }, (branches.find((branch) => branch.id === contextMenu.branchId) || {}).collapsed ? t('expandBranch') : t('collapseBranch'))
               : null,
-            h('div', null,
-              h('div', { className: 'cs-context-label' }, t('cardColor')),
-              h('div', { className: 'cs-context-swatches' },
-                MINERAL_COLORS.map((color, index) => h('button', {
-                  key: 'card-color-' + index,
-                  type: 'button',
-                  className: 'cs-context-swatch',
-                  style: { background: color },
-                  title: t('cardColor') + ' ' + (index + 1),
-                  onClick: () => contextSetCardColor(index),
-                }))
-              )
-            ),
-            contextMenu.branchId
+            contextMenu.kind === 'main'
               ? h('div', null,
-                  h('div', { className: 'cs-context-label' }, t('branchColor')),
-                  h('div', { className: 'cs-context-swatches' },
-                    MINERAL_COLORS.map((color, index) => h('button', {
-                      key: 'color-' + index,
-                      type: 'button',
-                      className: 'cs-context-swatch',
-                      style: { background: color },
-                      title: t('branchColor') + ' ' + (index + 1),
-                      onClick: () => contextSetColor(index),
-                    }))
-                  )
+                  h('div', { className: 'cs-context-label' }, t('mainLineColor')),
+                  h(ColorPicker, { value: mainColor, onChange: setMainColor, t })
                 )
-              : null,
+              : contextMenu.branchId
+                ? h('div', null,
+                    h('div', { className: 'cs-context-label' }, t('branchColor')),
+                    h(ColorPicker, {
+                      value: branchColorOf(branches.find((branch) => branch.id === contextMenu.branchId) || {}, branches.findIndex((branch) => branch.id === contextMenu.branchId)),
+                      onChange: contextSetColor,
+                      t,
+                    })
+                  )
+                : null,
             contextMenu.branchId
               ? h('button', { type: 'button', onClick: contextSetTag }, t('branchTag'))
               : null,
@@ -5524,7 +5682,7 @@ window.__ModuleLoader__.load({
         }
         const renderLayerTurn = (turn, kind, branchId, sequence) => {
           const children = branchesByAnchor.get(turn.id) || []
-          const color = kind === 'main' ? MAIN_COLOR : ((positions.get(branchId) || {}).color || MAIN_COLOR)
+          const color = kind === 'main' ? mainColor : ((positions.get(branchId) || {}).color || MAIN_COLOR)
           return h('div', { key: 'layer-turn-' + turn.id, className: 'cs-layer-tree-group' },
             h('button', {
               type: 'button',
