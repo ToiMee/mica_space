@@ -207,6 +207,7 @@ window.__ModuleLoader__.load({
       confirmDeleteBranch: '删除这条问答会同时删除它下面的分分支，继续？',
       failed: '回答失败',
       cancelled: '已停止',
+      reask: '重新问',
       confirmDeleteMain: '删除这条主线问答会同时删除它下面的分支，继续？',
       zoomIn: '放大',
       zoomOut: '缩小',
@@ -405,6 +406,7 @@ window.__ModuleLoader__.load({
       confirmDeleteBranch: 'Deleting this turn also deletes its sub-branches. Continue?',
       failed: 'Answer failed',
       cancelled: 'Stopped',
+      reask: 'Ask again',
       confirmDeleteMain: 'Deleting this main-line question also deletes its branches. Continue?',
       zoomIn: 'Zoom in',
       zoomOut: 'Zoom out',
@@ -464,7 +466,7 @@ window.__ModuleLoader__.load({
 .cs-welcome-node { height: var(--cs-card-h); }
 .cs-composer-dragging { outline: 2px dashed var(--cs-accent); outline-offset: -4px; background: color-mix(in srgb, var(--cs-accent) 8%, var(--cs-panel)); }
 .cs-composer { height: auto; }
-.cs-card { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--cs-panel); border: 1px solid var(--cs-border); border-left: 3px solid var(--cs-card-accent, var(--cs-accent)); border-radius: var(--cs-radius); box-shadow: var(--cs-shadow); transition: border-color .15s ease, box-shadow .15s ease; }
+.cs-card { width: 100%; height: 100%; container-type: inline-size; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--cs-panel); border: 1px solid var(--cs-border); border-left: 3px solid var(--cs-card-accent, var(--cs-accent)); border-radius: var(--cs-radius); box-shadow: var(--cs-shadow); transition: border-color .15s ease, box-shadow .15s ease; }
 .cs-card-main { border-left: 3px solid var(--cs-accent); }
 .cs-card-branch { border-left: 3px solid var(--cs-accent-soft); }
 .cs-card-welcome { justify-content: center; align-items: flex-start; gap: 10px; padding: 28px; border-left: 3px solid var(--cs-accent); }
@@ -719,7 +721,7 @@ window.__ModuleLoader__.load({
 .cs-port { position: absolute; z-index: 6; width: 10px; height: 10px; border: 2px solid var(--cs-panel); border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 1px var(--cs-border); pointer-events: none; }
 .cs-port-main { width: 12px; height: 12px; }
 .cs-todo { position: relative; display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: transparent; color: var(--cs-muted); font: inherit; font-size: 10px; cursor: pointer; }
-.cs-todo-text { color: var(--cs-accent); font-size: 9px; }
+.cs-todo-text { color: var(--cs-accent); font-size: 9px; white-space: nowrap; }
 .cs-todo input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .cs-todo-box { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border: 1.5px solid var(--cs-border-strong); border-radius: 3px; color: #fff; font-size: 10px; line-height: 1; }
 .cs-todo-on .cs-todo-box { background: #e8b84a; border-color: #e8b84a; color: #1d1a12; font-weight: 800; }
@@ -799,6 +801,9 @@ window.__ModuleLoader__.load({
   .cs-btn, .cs-mini, .cs-lib-mini { min-height: 32px; }
 }
 
+@container (max-width: 380px) {
+  .cs-todo-text { display: none; }
+}
 `
 
     let counter = 0
@@ -2189,7 +2194,9 @@ window.__ModuleLoader__.load({
               h('span', { className: 'cs-status' }, streaming ? t('sending') : failed ? t('failed') : cancelled ? t('cancelled') : ''),
               streaming
                 ? h('button', { type: 'button', className: 'cs-mini', onClick: () => onStop(turn.id) }, t('stop'))
-                : h('span', { className: 'cs-usage' }, formatUsage(turn.usage))
+                : cancelled
+                  ? h('button', { type: 'button', className: 'cs-mini cs-reask', onClick: () => onRetry(turn.id) }, t('reask'))
+                  : h('span', { className: 'cs-usage' }, formatUsage(turn.usage))
             )
           : null,
         detail === 'full'
@@ -3430,18 +3437,6 @@ window.__ModuleLoader__.load({
           scrollRange()
           setTimeout(() => {
             scrollRange()
-            const viewport = viewportRef.current
-            if (!viewport) return
-            const rr = range.getBoundingClientRect()
-            const vr = viewport.getBoundingClientRect()
-            if (!rr || (rr.width === 0 && rr.height === 0)) return
-            const dx = (vr.left + vr.width / 2) - (rr.left + rr.width / 2)
-            const dy = (vr.top + vr.height / 2) - (rr.top + rr.height / 2)
-            commit((previous) => ({
-              ...previous,
-              view: { ...previous.view, x: previous.view.x + dx, y: previous.view.y + dy },
-            }))
-            saveSoon(500)
             setTimeout(() => {
               if (anchorOverlayRef.current) {
                 anchorOverlayRef.current.remove()
