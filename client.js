@@ -597,6 +597,8 @@ window.__ModuleLoader__.load({
 .cs-marquee { position: fixed; z-index: 5000; border: 1px dashed var(--cs-accent); border-radius: 2px; background: color-mix(in srgb, var(--cs-accent) 10%, transparent); pointer-events: none; }
 .cs-dot { border: none; padding: 0; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 4px rgba(51,112,255,.12); transition: transform .12s ease; }
 .cs-dot:hover { transform: scale(1.15); }
+.cs-dot-collapsed { box-shadow: 0 0 0 3px var(--cs-panel), 4px 4px 0 0 var(--cs-border), 7px 7px 0 0 var(--cs-panel), 7px 7px 0 1px var(--cs-border) !important; }
+.cs-dot-badge { letter-spacing: -.04em; }
 .cs-dot-main { background: var(--cs-accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--cs-accent) 14%, transparent); }
 .cs-dot-branch { background: var(--cs-accent-soft); box-shadow: 0 0 0 4px rgba(51,112,255,.08); }
 .cs-highlight { animation: cs-pulse 1.2s ease-out 2; }
@@ -738,10 +740,10 @@ window.__ModuleLoader__.load({
 .cs-branch-lane { transition: opacity .24s ease; }
 .cs-branch-lane.cs-branch-expand { opacity: 1; }
 @starting-style { .cs-branch-lane.cs-branch-expand { opacity: 0; } }
-.cs-link-collapse { animation: cs-link-collapse .18s ease forwards; }
+.cs-link-branch.cs-link-collapse, .cs-link-branch-spine.cs-link-collapse { opacity: 0; transition: opacity .18s ease; }
 @keyframes cs-branch-collapse { to { opacity: 0; transform: scale(.96); } }
-@keyframes cs-link-collapse { to { opacity: 0; } }
 .cs-card.cs-selected { border-color: var(--cs-card-accent, var(--cs-accent)); }
+.cs-card-collapsed-stack { box-shadow: 6px 6px 0 -1px var(--cs-panel), 6px 6px 0 0 var(--cs-border), 12px 12px 0 -1px var(--cs-panel), 12px 12px 0 0 var(--cs-border), var(--cs-shadow) !important; }
 .cs-card:not(.cs-active) { user-select: none; }
 .cs-card.cs-active { user-select: text; }
 .cs-card:not(.cs-active) .cs-a { cursor: default; user-select: none; }
@@ -1847,7 +1849,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function Dot({ kind, zoom, label, color, selected, flagged, pending, unread, onClick, onHover, onLeave, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }) {
+    function Dot({ kind, zoom, label, color, selected, flagged, flagCount, pending, pendingCount, unread, collapsed, onClick, onHover, onLeave, onPointerDown, onPointerMove, onPointerUp, onPointerCancel }) {
       const edge = kind === 'main'
         ? Math.max(10, 24 / Math.max(zoom, 0.01))
         : Math.max(8, 15 / Math.max(zoom, 0.01))
@@ -1880,7 +1882,7 @@ window.__ModuleLoader__.load({
         }) : null,
         h('button', {
           type: 'button',
-          className: cx('cs-dot', kind === 'main' ? 'cs-dot-main' : 'cs-dot-branch'),
+          className: cx('cs-dot', kind === 'main' ? 'cs-dot-main' : 'cs-dot-branch', collapsed ? 'cs-dot-collapsed' : ''),
           style: { width: edge, height: edge, background: color, touchAction: 'none', position: 'relative' },
           'aria-label': label,
           onClick,
@@ -1893,10 +1895,10 @@ window.__ModuleLoader__.load({
           onContextMenu: (event) => event.preventDefault(),
         }),
         flagged
-          ? h('span', { className: 'cs-dot-badge cs-dot-badge-flag', style: badgeStyle('flag'), title: label }, '⚑')
+          ? h('span', { className: 'cs-dot-badge cs-dot-badge-flag', style: badgeStyle('flag'), title: label }, flagCount > 1 ? '⚑' + flagCount : '⚑')
           : null,
         pending
-          ? h('span', { className: 'cs-dot-badge cs-dot-badge-pending', style: badgeStyle('pending'), title: label }, '!')
+          ? h('span', { className: 'cs-dot-badge cs-dot-badge-pending', style: badgeStyle('pending'), title: label }, pendingCount > 1 ? '!' + pendingCount : '!')
           : null,
         unread
           ? h('span', { className: 'cs-dot-badge cs-dot-badge-unread', style: badgeStyle('unread'), title: label }, '●')
@@ -2171,6 +2173,7 @@ window.__ModuleLoader__.load({
           'cs-card',
           kind === 'main' ? 'cs-card-main' : 'cs-card-branch',
           detail === 'compact' ? 'cs-card-compact' : '',
+          kind === 'branch' && isFirst && collapsed && hiddenCount > 0 ? 'cs-card-collapsed-stack' : '',
           highlighted ? 'cs-highlight' : '',
           selected ? 'cs-selected' : '',
           active ? 'cs-active' : ''
@@ -3664,9 +3667,13 @@ window.__ModuleLoader__.load({
           addPort(branch.anchorTurnId, anchorSide)
           addPort(first.id, side)
         }
-        for (let index = 1; index < visibleTurns.length; index += 1) {
-          addPort(visibleTurns[index - 1].id, 'bottom')
-          addPort(visibleTurns[index].id, 'top')
+        for (let index = 0; index < visibleTurns.length; index += 1) {
+          const turn = visibleTurns[index]
+          addPort(turn.id, 'left')
+          addPort(turn.id, 'right')
+          addPort(turn.id, 'top')
+          addPort(turn.id, 'bottom')
+          if (index > 0) addPort(visibleTurns[index - 1].id, 'bottom')
         }
       }
       const detail = view.zoom >= 0.25 ? 'full' : 'dot'
@@ -5345,9 +5352,12 @@ window.__ModuleLoader__.load({
             h(Dot, {
                 key: 'dot',
                 kind: 'branch',
-                flagged: Boolean(turn.flag),
-                pending: Boolean(turn.todo),
+                flagged: branch.collapsed ? branch.turns.some((item) => item.flag) : Boolean(turn.flag),
+                flagCount: branch.collapsed ? branch.turns.filter((item) => item.flag).length : 0,
+                pending: branch.collapsed ? branch.turns.some((item) => item.todo) : Boolean(turn.todo),
+                pendingCount: branch.collapsed ? branch.turns.filter((item) => item.todo).length : 0,
                 unread: Boolean(turn.unread),
+                collapsed: Boolean(branch.collapsed),
                 zoom: view.zoom,
                 label: turn.summary || truncate(turn.question, 80),
                 color: position.color,
