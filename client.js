@@ -2692,7 +2692,11 @@ window.__ModuleLoader__.load({
         }
         return chain
       }
-      const welcomeText = (key) => (welcomeCopy && typeof welcomeCopy[key] === 'string' ? welcomeCopy[key] : t(key))
+      const welcomeText = (key) => {
+        const localized = t(key)
+        const useChineseCopy = /[\u4e00-\u9fa5]/.test(String(localized))
+        return useChineseCopy && welcomeCopy && typeof welcomeCopy[key] === 'string' ? welcomeCopy[key] : localized
+      }
       const breadcrumbs = selectedFolder === 'folders'
         ? [{ label: t('allFolders'), value: 'folders' }]
         : selectedFolder === 'all'
