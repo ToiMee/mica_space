@@ -223,6 +223,7 @@ window.__ModuleLoader__.load({
       attachmentLimit: '最多 6 个附件',
       attachmentQuestion: '请查看附件',
       removeAttachment: '移除附件',
+      ocrDemoHint: 'Demo 版：扫描/图片型 PDF 只 OCR 前 8 页，扫描质量会影响结果。',
       attachments: '个附件',
       sending: '正在回答…',
       thinking: '正在思考…',
@@ -452,6 +453,7 @@ window.__ModuleLoader__.load({
       attachmentLimit: 'Up to 6 attachments',
       attachmentQuestion: 'Please look at the attachment',
       removeAttachment: 'Remove attachment',
+      ocrDemoHint: 'Demo: only the first 8 pages of scanned/image PDFs are OCR\'d; scan quality affects results.',
       attachments: 'attachments',
       sending: 'Answering…',
       thinking: 'Thinking…',
@@ -598,6 +600,7 @@ window.__ModuleLoader__.load({
 .cs-composer-remove { flex-shrink: 0; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--cs-muted); cursor: pointer; font-size: 13px; line-height: 18px; }
 .cs-composer-remove:hover { background: var(--cs-hover); color: var(--cs-text); }
 .cs-upload-error { color: #d9534f; font-size: 11px; line-height: 1.4; }
+.cs-ocr-demo-hint { padding: 6px 8px; border: 1px solid color-mix(in srgb, #e8b84a 42%, var(--cs-border)); border-radius: 7px; background: color-mix(in srgb, #e8b84a 9%, var(--cs-bg)); color: var(--cs-muted); font-size: 10px; line-height: 1.5; }
 .cs-attachments { flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .cs-attachment-image { display: block; width: 88px; height: 88px; overflow: hidden; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); }
 .cs-attachment-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -2254,6 +2257,9 @@ window.__ModuleLoader__.load({
                 h('button', { type: 'button', className: 'cs-composer-remove', title: t('removeAttachment'), onClick: () => removeAttachment(index) }, '×')
               ))
             )
+          : null,
+        attachments.some((item) => /\.pdf$/i.test(String(item.attachment && item.attachment.name || '')))
+          ? h('div', { className: 'cs-ocr-demo-hint' }, t('ocrDemoHint'))
           : null,
         error ? h('div', { className: 'cs-upload-error' }, error) : null,
         h('div', { className: 'cs-composer-bar' },
