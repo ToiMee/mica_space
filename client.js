@@ -158,7 +158,7 @@ window.__ModuleLoader__.load({
       followUpTitle: '针对这段文字追问',
       questionPlaceholder: '你想问什么？',
       branchBrief: '分支说明（可选）',
-      branchBriefPlaceholder: '给这个分支一个简短说明，帮助 AI 理解你的目的',
+      branchBriefPlaceholder: '给这个分支一个简短说明，帮助 AI 理解你的目的（可选）',
       createBranch: '创建分支',
       cancel: '取消',
       backToMain: '回到主线',
@@ -225,8 +225,8 @@ window.__ModuleLoader__.load({
       summaryLoading: 'AI 正在总结…',
       noSummary: '暂无摘要',
       close: '关闭',
-      branchBriefLabel: '分支说明',
-      addBranchBrief: '添加说明',
+      branchBriefLabel: '分支说明（可选）',
+      addBranchBrief: '添加说明（可选）',
       noAnswer: '（还没有回答）',
       loadErrorHint: '请刷新页面，或检查 DSH 是否仍在运行。',
       renderError: 'Mica空间出错了',
@@ -364,7 +364,7 @@ window.__ModuleLoader__.load({
       followUpTitle: 'Ask about this passage',
       questionPlaceholder: 'What do you want to ask?',
       branchBrief: 'Branch note (optional)',
-      branchBriefPlaceholder: 'A short note about what this branch is for',
+      branchBriefPlaceholder: 'A short note about what this branch is for (optional)',
       createBranch: 'Create branch',
       cancel: 'Cancel',
       backToMain: 'Back to main',
@@ -431,8 +431,8 @@ window.__ModuleLoader__.load({
       summaryLoading: 'AI is summarizing…',
       noSummary: 'No summary',
       close: 'Close',
-      branchBriefLabel: 'Branch note',
-      addBranchBrief: 'Add note',
+      branchBriefLabel: 'Branch note (optional)',
+      addBranchBrief: 'Add note (optional)',
       noAnswer: '(no answer yet)',
       loadErrorHint: 'Refresh the page, or check that DSH is still running.',
       renderError: 'Mica Space hit an error',
@@ -529,7 +529,7 @@ window.__ModuleLoader__.load({
 .cs-branch-anchor-text { max-height: 58px; overflow: auto; white-space: pre-wrap; color: var(--cs-muted); font-size: 11px; line-height: 1.55; }
 .cs-add-brief { align-self: flex-start; padding: 2px 0; border: 0; background: transparent; color: var(--cs-accent); font: inherit; font-size: 10px; cursor: pointer; }
 .cs-add-brief:hover { text-decoration: underline; }
-.cs-brief-input { width: 100%; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--cs-text); padding: 4px 6px; font: inherit; font-size: 11px; line-height: 1.5; outline: none; }
+.cs-brief-input { width: 100%; min-height: 38px; max-height: 84px; resize: vertical; overflow: auto; line-height: 1.5; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--cs-text); padding: 4px 6px; font: inherit; font-size: 11px; line-height: 1.5; outline: none; }
 .cs-brief-input:hover, .cs-brief-input:focus { border-color: var(--cs-border-strong); background: var(--cs-panel); }
 .cs-composer-quote { display: flex; align-items: flex-start; gap: 8px; padding: 7px 9px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); color: var(--cs-muted); font-size: 12px; line-height: 1.55; }
 .cs-quote-line { flex-shrink: 0; width: 3px; align-self: stretch; border-radius: 2px; background: var(--cs-accent); }
@@ -2265,8 +2265,9 @@ window.__ModuleLoader__.load({
                 h('div', { className: 'cs-branch-anchor-label' }, t('branchBriefLabel')),
                 h('div', { className: 'cs-branch-anchor-text' }, branch.anchorText),
                 branch.brief || briefEditor
-                  ? h('input', {
+                  ? h('textarea', {
                       className: 'cs-brief-input',
+                      rows: 2,
                       value: branch.brief,
                       autoFocus: briefEditor && !branch.brief,
                       placeholder: t('branchBriefPlaceholder'),
@@ -3513,6 +3514,16 @@ window.__ModuleLoader__.load({
           const current = spaceRef.current
           if (!current) return
           const target = event.target
+          if (!event.altKey && target && target.closest) {
+            const briefField = target.closest('.cs-brief-input')
+            const briefBox = target.closest('.cs-branch-meta')
+            const field = briefField || (briefBox ? briefBox.querySelector('.cs-brief-input') : null)
+            if (field) {
+              event.preventDefault()
+              field.scrollTop += event.deltaY
+              return
+            }
+          }
           const card = target && target.closest ? target.closest('.cs-card') : null
           if (!event.altKey && selectedTurn && card && card.getAttribute('data-turn-id') === selectedTurn.turnId) {
             const body = card.querySelector('.cs-card-body')
