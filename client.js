@@ -50,9 +50,11 @@ window.__ModuleLoader__.load({
       trash: '回收站',
       privacy: '隐私',
       welcome: '使用说明',
-      welcomeVersion: "v0.99.0 体验版",
+      language: '界面语言',
+      languageFollowsDsh: '跟随 DSH 的界面语言',
+      welcomeVersion: "v0.99 Demo",
       welcomeTitle: "欢迎使用Mica Space！",
-      welcomeIntro: "这是 Mica 空间 0.99.0 体验版。\n\n长对话里追问一多，上下文容易变成一团线，想回到某个回答继续问，得上下翻找。\n\nMica 就是为解决这个问题：把追问摊成分支地图，主线保留，支线各自展开。",
+      welcomeIntro: "这是 Mica 空间 0.99 Demo。\n\n长对话里追问一多，上下文容易变成一团线，想回到某个回答继续问，得上下翻找。\n\nMica 就是为解决这个问题：把追问摊成分支地图，主线保留，支线各自展开。",
       welcomeNotesTitle: "有几点重要事项：",
       welcomeNote1: "数据只保存在你电脑的 .chat-space。第一次用建议先导出，或配好 Git 备份。",
       welcomeNote2: "提问时，问题、上下文、附件和抽取文字会发送给 DSH 配置的模型提供商。",
@@ -281,9 +283,11 @@ window.__ModuleLoader__.load({
       trash: 'Trash',
       privacy: 'Privacy',
       welcome: 'Guide',
-      welcomeVersion: '0.99.0 preview',
+      language: 'Language',
+      languageFollowsDsh: 'Follows the DSH interface language',
+      welcomeVersion: '0.99 Demo',
       welcomeTitle: 'Welcome aboard — no need to floor it yet',
-      welcomeIntro: 'Mica Space 0.99.0 preview is for long conversations where follow-ups pile up into a tangle. Instead of scrolling back to find an answer, Mica spreads each follow-up into a branch while the main line stays intact. Take a moment to read the notes first.',
+      welcomeIntro: 'Mica Space 0.99 Demo is for long conversations where follow-ups pile up into a tangle. Instead of scrolling back to find an answer, Mica spreads each follow-up into a branch while the main line stays intact. Take a moment to read the notes first.',
       welcomeNotesTitle: 'A few practical notes',
       welcomeNote1: 'Data is stored in .chat-space on your machine. Export the library or set up Git backup before you experiment.',
       welcomeNote2: 'When you ask, the question, context, attachments, and extracted text go to the model provider configured in DSH.',
@@ -810,6 +814,8 @@ window.__ModuleLoader__.load({
 .cs-settings-list { display: flex; flex-direction: column; gap: 5px; }
 .cs-settings-row { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 10px 12px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); color: var(--cs-text); font: inherit; text-align: left; cursor: pointer; }
 .cs-settings-row:hover { border-color: var(--cs-accent); }
+.cs-settings-static { cursor: default; }
+.cs-settings-static:hover { border-color: var(--cs-border); }
 .cs-settings-label { font-size: 12px; font-weight: 600; }
 .cs-settings-desc { color: var(--cs-muted); font-size: 10px; }
 .cs-settings-divider { height: 1px; margin: 5px 4px; background: var(--cs-border); }
@@ -3447,6 +3453,10 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); setWelcomeOpen(true) } },
                 h('span', { className: 'cs-settings-label' }, t('welcome')),
                 h('span', { className: 'cs-settings-desc' }, welcomeText('welcomeVersion'))
+              ),
+              h('div', { className: 'cs-settings-row cs-settings-static' },
+                h('span', { className: 'cs-settings-label' }, t('language')),
+                h('span', { className: 'cs-settings-desc' }, t('languageFollowsDsh'))
               ),
               h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); setPrivacyOpen(true) } },
                 h('span', { className: 'cs-settings-label' }, t('privacy')),

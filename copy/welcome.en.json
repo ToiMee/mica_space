@@ -1,7 +1,7 @@
 {
-  "welcomeVersion": "v0.9.9 preview",
+  "welcomeVersion": "v0.99 Demo",
   "welcomeTitle": "Welcome to Mica Space",
-  "welcomeIntro": "Mica Space 0.9.9 preview.\n\nIn a long conversation, follow-ups quickly become a tangle. To continue from an earlier answer, you have to scroll up and hunt for it.\n\nMica is built for exactly this: each follow-up becomes a branch on a map, while the main line stays intact.",
+  "welcomeIntro": "Mica Space 0.99 Demo.\n\nIn a long conversation, follow-ups quickly become a tangle. To continue from an earlier answer, you have to scroll up and hunt for it.\n\nMica is built for exactly this: each follow-up becomes a branch on a map, while the main line stays intact.",
   "welcomeNotesTitle": "A few things to know:",
   "welcomeNote1": "Data is stored in .chat-space on your machine. Export the library or set up Git backup before you rely on it.",
   "welcomeNote2": "When you ask, the question, context, attachments, and extracted text are sent to the model provider configured in DSH.",
