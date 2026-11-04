@@ -3657,7 +3657,8 @@ window.__ModuleLoader__.load({
         const allowed = layoutMode === 'vertical'
           ? (mainIndex === 0 ? ['top', 'left', 'right'] : ['left', 'right'])
           : (mainIndex === 0 ? ['left', 'top', 'bottom'] : ['top', 'bottom'])
-        const desired = position.side || 'left'
+        const raw = position.side || 'left'
+        const desired = raw === 'left' ? 'right' : raw === 'right' ? 'left' : raw === 'top' ? 'bottom' : 'top'
         if (allowed.indexOf(desired) >= 0) return desired
         const anchorRect = turnRects.get(branch.anchorTurnId)
         const firstRect = branch.turns.length > 0 ? turnRects.get(branch.turns[0].id) : null
