@@ -655,7 +655,7 @@ window.__ModuleLoader__.load({
 .cs-lib-manager-count { flex-shrink: 0; color: var(--cs-muted); font-size: 10px; }
 .cs-lib-manager-row .cs-lib-folder-actions { display: inline-flex; }
 .cs-lib-side-title { padding: 0 10px 8px; color: var(--cs-muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
-.cs-lib-side-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: transparent; cursor: pointer; font: inherit; text-align: left; }
+.cs-lib-side-toggle { display: flex; align-items: center; justify-content: center; width: 14px; flex-shrink: 0; padding: 0; border: 0; background: transparent; cursor: pointer; font: inherit; text-align: center; }
 .cs-lib-side-toggle:hover { color: var(--cs-text); }
 .cs-lib-side-caret { font-size: 9px; }
 .cs-lib-folder { display: flex; align-items: center; gap: 6px; min-height: 30px; padding: 5px 8px; border-radius: 7px; color: var(--cs-text); cursor: pointer; font-size: 13px; }
