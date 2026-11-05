@@ -2,6 +2,8 @@
 
 [English](README.en.md)
 
+**Current demo:** `0.99.7` · [Download / Release](https://github.com/ToiMee/mica_space/releases/latest)
+
 Mica Space 是 DSH 的可缩放对话地图插件：一条纵向主线，多条从回答分叉的支线，每个空间是一张独立画布。
 
 长对话里，一个回答下面往往要继续追问很多次。传统聊天只能一直往下滚，想回到某个回答时又得上下翻找，文字一多就很难受。Mica Space 让每条追问直接从那张回答分叉：主线保持完整上下文，支线各自展开；后续回到主线时，本地记忆还能 callback 之前支线的结论。
