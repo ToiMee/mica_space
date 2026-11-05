@@ -2,6 +2,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const vm = require('node:vm')
+const path = require('node:path')
 const React = require('react')
 const TestRenderer = require('react-test-renderer')
 const { act } = TestRenderer
@@ -78,7 +79,7 @@ const sandbox = {
   sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
 }
 vm.createContext(sandbox)
-vm.runInContext(fs.readFileSync('C:/Users/73678/dsh-chat-space-plugin/client.js', 'utf8'), sandbox)
+vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'client.js'), 'utf8'), sandbox)
 assert.ok(captured, 'client plugin did not register')
 const plugin = captured.factory((id) => {
   if (id === 'react') return React
