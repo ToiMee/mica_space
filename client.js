@@ -1853,9 +1853,15 @@ window.__ModuleLoader__.load({
         const key = (parentId || 'main') + '|' + branch.anchorTurnId
         const siblingIndex = siblings.get(key) || 0
         siblings.set(key, siblingIndex + 1)
-        const x = (horizontal
-          ? (parentPosition ? parentPosition.x + BRANCH_STEP : anchor.x)
-          : (parentPosition ? parentPosition.x + BRANCH_STEP : BRANCH_X)) + siblingIndex * SIBLING_STEP
+        const sideDirection = siblingIndex % 2 === 0 ? 1 : -1
+        const sideSlot = Math.floor(siblingIndex / 2)
+        const base = parentPosition ? parentPosition.x : anchor.x
+        const anchorWidth = parentPosition ? CARD_W : anchor.w
+        const x = horizontal
+          ? (parentPosition ? parentPosition.x + BRANCH_STEP : anchor.x) + siblingIndex * SIBLING_STEP
+          : (sideDirection > 0
+            ? base + anchorWidth + GAP + sideSlot * SIBLING_STEP
+            : base - CARD_W - GAP - sideSlot * SIBLING_STEP)
         const y = horizontal ? anchor.y + anchor.h + GAP : anchor.y
         const position = {
           branch,
