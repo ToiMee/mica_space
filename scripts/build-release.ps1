@@ -18,6 +18,7 @@ $files = @(
   'package-lock.json',
   'cordis.patch.yml',
   'README.md',
+  'README.en.md',
   'CHANGELOG.md',
   'LICENSE',
   'PRIVACY.md',
