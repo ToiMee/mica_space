@@ -175,7 +175,8 @@ window.__ModuleLoader__.load({
       presetColors: '预设颜色',
       hexColor: '十六进制',
       colorUsed: '已使用',
-      branchTag: '分支标签',
+      branchTag: '分支名称（optional）',
+      branchNameOptional: '分支名称（optional）',
       copySelected: '复制选中的卡片',
       deleteSelected: '删除选中的卡片',
       deleteOne: '只删除这张卡',
@@ -407,7 +408,8 @@ window.__ModuleLoader__.load({
       presetColors: 'Presets',
       hexColor: 'Hex',
       colorUsed: 'Used',
-      branchTag: 'Branch tag',
+      branchTag: 'Branch name (optional)',
+      branchNameOptional: 'Branch name (optional)',
       copySelected: 'Copy selected',
       deleteSelected: 'Delete selected',
       deleteOne: 'Delete this card only',
@@ -588,6 +590,8 @@ window.__ModuleLoader__.load({
 .cs-composer-quote-text { flex: 1; min-width: 0; max-height: 52px; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; }
 .cs-composer-quote-remove { flex-shrink: 0; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--cs-muted); cursor: pointer; font-size: 13px; line-height: 18px; }
 .cs-composer-quote-remove:hover { background: var(--cs-hover); color: var(--cs-text); }
+.cs-composer-branch-name { width: 100%; min-height: 32px; padding: 6px 8px; border: 1px solid var(--cs-border); border-radius: 7px; outline: none; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 11px; }
+.cs-composer-branch-name:focus { border-color: var(--cs-accent); }
 .cs-composer { width: 100%; display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--cs-border); border-radius: var(--cs-radius); background: var(--cs-panel); box-shadow: var(--cs-shadow); }
 .cs-input { width: 100%; min-height: 64px; max-height: 180px; resize: vertical; overscroll-behavior: contain; border: none; outline: none; background: transparent; color: var(--cs-text); font: inherit; font-size: 13px; line-height: 1.6; }
 .cs-input::placeholder { color: var(--cs-muted); }
@@ -1201,7 +1205,7 @@ window.__ModuleLoader__.load({
               colorIndex: Number.isInteger(branch.colorIndex) ? branch.colorIndex : index,
               color: isHexColor(branch.color) ? branch.color : '',
               collapsed: Boolean(branch.collapsed),
-              tag: stringOf(branch.tag).slice(0, 20),
+              tag: stringOf(branch.tag).slice(0, 40),
               createdAt: finite(branch.createdAt, Date.now()),
               turns: Array.isArray(branch.turns) ? branch.turns.map(normalizeTurn).filter(Boolean) : [],
             }))
@@ -4483,7 +4487,7 @@ window.__ModuleLoader__.load({
         commit((previous) => ({
           ...previous,
           branches: previous.branches.map((branch) => (
-            branch.id === branchId ? { ...branch, tag: String(tag || '').slice(0, 20) } : branch
+            branch.id === branchId ? { ...branch, tag: String(tag || '').slice(0, 40) } : branch
           )),
         }))
         saveSoon(100)
@@ -5387,6 +5391,7 @@ window.__ModuleLoader__.load({
           anchorText: text,
           anchorSource: anchorSource || 'selection',
           parentBranchId: parentBranchId || null,
+          tag: '',
         })
         setDraft(null)
         setSelection(null)
@@ -5410,6 +5415,7 @@ window.__ModuleLoader__.load({
           anchorSource: quoteDraft.anchorSource || 'selection',
           parentBranchId: quoteDraft.parentBranchId || null,
           colorIndex: nextColorIndex(current.branches),
+          tag: String(quoteDraft.tag || '').trim().slice(0, 40),
           brief: '',
           createdAt: Date.now(),
           turns: [],
@@ -5433,6 +5439,7 @@ window.__ModuleLoader__.load({
           anchorSource: draft.anchorSource || 'selection',
           parentBranchId: draft.parentBranchId || null,
           colorIndex: nextColorIndex(current.branches),
+          tag: String(draft.tag || '').trim().slice(0, 40),
           brief: draft.brief.trim(),
           createdAt: Date.now(),
           turns: [],
@@ -5948,6 +5955,15 @@ window.__ModuleLoader__.load({
                 }, '×')
               )
             : null,
+          quote
+            ? h('input', {
+                className: 'cs-composer-branch-name',
+                value: quote.tag || '',
+                placeholder: t('branchNameOptional'),
+                maxLength: 40,
+                onChange: (event) => setQuoteDraft((current) => current ? { ...current, tag: event.target.value } : current),
+              })
+            : null,
           h(Composer, {
             t,
             placeholder: quote ? t('quotePlaceholder') : branch ? t('branchPlaceholder') : t('mainPlaceholder'),
@@ -6350,6 +6366,17 @@ window.__ModuleLoader__.load({
                     submitDraft()
                   }
                 },
+              })
+            ),
+            h('label', { className: 'cs-field' },
+              h('span', null, t('branchNameOptional')),
+              h('input', {
+                className: 'cs-modal-input',
+                style: { minHeight: 38 },
+                value: draft.tag || '',
+                placeholder: t('branchNameOptional'),
+                maxLength: 40,
+                onChange: (event) => setDraft({ ...draft, tag: event.target.value }),
               })
             ),
             h('label', { className: 'cs-field' },
