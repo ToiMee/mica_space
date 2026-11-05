@@ -4657,18 +4657,24 @@ window.__ModuleLoader__.load({
         dotPressRef.current = press
       }
 
+      const activateDotDrag = (press) => {
+        clearTimeout(press.timer)
+        press.timer = null
+        press.activated = true
+        press.moved = true
+        bringToFront(press.turn, press.kind, press.branchId)
+        setSelectedIds(new Set([press.turn.id]))
+        setSelectedTurn(null)
+      }
+
       const moveDotPress = (event) => {
         const press = dotPressRef.current
         if (!press || press.pointerId !== event.pointerId) return
         const dxPixels = event.clientX - press.startX
         const dyPixels = event.clientY - press.startY
         if (!press.activated) {
-          if (Math.abs(dxPixels) > 6 || Math.abs(dyPixels) > 6) {
-            clearTimeout(press.timer)
-            press.timer = null
-            press.moved = true
-          }
-          return
+          if (Math.abs(dxPixels) <= 4 && Math.abs(dyPixels) <= 4) return
+          activateDotDrag(press)
         }
         event.preventDefault?.()
         press.moved = true
