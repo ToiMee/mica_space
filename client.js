@@ -86,6 +86,7 @@ window.__ModuleLoader__.load({
       privacyBody: 'Mica Space 的数据默认保存在当前工作区的 .chat-space 目录。\n\n轻量记忆和本地语义模式不会访问网络。你正常提问时，问题、上下文、附件和抽取出的文件文本会发送给 DSH 当前配置的模型提供商。\n\n附件由 DSH attachment 服务保存；Git 备份只有在你填写 remote 并点击备份时才会 push。插件本身不包含遥测，也不包含作者的 API key。',
       backup: 'Git 备份',
       backupHint: '备份库数据到本地 git；填私有仓库地址后同时 push。附件文件不包含在 git 里。',
+      backupScopeNote: '备份/导出包含：空间、分支、问答、文件夹、记忆和视图。不包含附件原文件；恢复后问答还在，但扫描件、讲义和图片需要重新提供。',
       backupRemote: '远程仓库（可选）',
       backupBranch: '分支',
       backupNow: '立即备份',
@@ -177,6 +178,7 @@ window.__ModuleLoader__.load({
       colorUsed: '已使用',
       branchTag: '分支名称（optional）',
       branchNameOptional: '分支名称（optional）',
+      sources: '参考来源',
       copySelected: '复制选中的卡片',
       deleteSelected: '删除选中的卡片',
       deleteOne: '只删除这张卡',
@@ -320,6 +322,7 @@ window.__ModuleLoader__.load({
       privacyBody: 'Mica Space stores data in .chat-space under the current workspace.\n\nLightweight and local semantic memory do not use the network. When you ask, the question, context, attachments, and extracted file text are sent to the model provider configured in DSH.\n\nAttachments are stored by the DSH attachment service. Git backup pushes only when you configure a remote and click backup. The plugin contains no telemetry and no author API key.',
       backup: 'Git backup',
       backupHint: 'Commit library data to a local git repo; set a private remote to push. Attachments are not included.',
+      backupScopeNote: 'Backup/export includes spaces, branches, conversations, folders, memory, and view state. Attachment files are not included; after restore, scanned PDFs, handouts, and images must be provided again.',
       backupRemote: 'Remote repository (optional)',
       backupBranch: 'Branch',
       backupNow: 'Backup now',
@@ -410,6 +413,7 @@ window.__ModuleLoader__.load({
       colorUsed: 'Used',
       branchTag: 'Branch name (optional)',
       branchNameOptional: 'Branch name (optional)',
+      sources: 'Sources',
       copySelected: 'Copy selected',
       deleteSelected: 'Delete selected',
       deleteOne: 'Delete this card only',
@@ -554,6 +558,10 @@ window.__ModuleLoader__.load({
 .cs-mini { border: none; background: transparent; color: var(--cs-muted); border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 11px; line-height: 16px; cursor: pointer; white-space: nowrap; }
 .cs-mini:hover { background: var(--cs-hover); color: var(--cs-text); }
 .cs-danger:hover { color: #d93026; }
+.cs-card-sources { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-top: 2px; }
+.cs-sources-label { color: var(--cs-muted); font-size: 9px; letter-spacing: .03em; text-transform: uppercase; }
+.cs-source-chip { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 5px; border: 1px solid var(--cs-border); border-radius: 5px; background: var(--cs-bg); color: var(--cs-muted); font: inherit; font-size: 9px; line-height: 1.3; cursor: pointer; }
+.cs-source-chip:hover { border-color: var(--cs-accent); color: var(--cs-accent); }
 .cs-card-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; scrollbar-width: thin; scrollbar-color: var(--cs-border-strong) transparent; }
 .cs-q { flex-shrink: 0; display: flex; align-items: flex-start; gap: 8px; }
 .cs-q-mark { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 6px; background: var(--cs-hover); color: var(--cs-muted); font-size: 11px; font-weight: 700; }
@@ -822,6 +830,7 @@ window.__ModuleLoader__.load({
 .cs-settings-static:hover { border-color: var(--cs-border); }
 .cs-settings-label { font-size: 12px; font-weight: 600; }
 .cs-settings-desc { color: var(--cs-muted); font-size: 10px; }
+.cs-settings-note { margin-top: 2px; padding: 8px 10px; border: 1px solid color-mix(in srgb, #e8b84a 38%, var(--cs-border)); border-radius: 7px; background: color-mix(in srgb, #e8b84a 8%, var(--cs-bg)); color: var(--cs-muted); font-size: 10px; line-height: 1.55; }
 .cs-settings-divider { height: 1px; margin: 5px 4px; background: var(--cs-border); }
 .cs-recovery-modal { width: min(640px, calc(100vw - 48px)); }
 .cs-recovery-note { padding: 9px 10px; border: 1px solid color-mix(in srgb, #e8b84a 45%, var(--cs-border)); border-radius: 8px; background: color-mix(in srgb, #e8b84a 10%, var(--cs-bg)); color: var(--cs-text); font-size: 11px; line-height: 1.6; }
@@ -2307,6 +2316,7 @@ window.__ModuleLoader__.load({
       onBringToFront, selected, active, side, sequence, onToggleTodo, onToggleFlag,
       onCardPointerDown, onCardPointerMove, onCardPointerUp, onCardPointerCancel, onCardClick, onCardDoubleClick, onLocateAnchor,
       onContextMenu, tag, collapsed, hiddenCount, collapsedPendingCount, onToggleCollapse,
+      sources, onSourceClick,
     }) {
       const streaming = turn.status === 'streaming'
       const [briefEditor, setBriefEditor] = useState(false)
@@ -3499,6 +3509,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'cs-lib-modal cs-recovery-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-lib-modal-title' }, t('recovery')),
             h('div', { className: 'cs-recovery-note' }, t('recoveryHint')),
+            h('div', { className: 'cs-settings-note' }, t('backupScopeNote')),
             recoveryLoading
               ? h('div', { className: 'cs-lib-empty-text' }, t('loading'))
               : recoveryItems.length === 0
@@ -3530,6 +3541,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'cs-lib-modal cs-backup-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-lib-modal-title' }, t('backup')),
             h('div', { className: 'cs-backup-note' }, t('backupHint')),
+            h('div', { className: 'cs-settings-note' }, t('backupScopeNote')),
             h('label', { className: 'cs-backup-field' },
               h('span', null, t('backupRemote')),
               h('input', { className: 'cs-lib-input', value: backupRemote, placeholder: 'git@github.com:you/mica-space-backup.git', onChange: (event) => setBackupRemote(event.target.value) })
@@ -5061,6 +5073,17 @@ window.__ModuleLoader__.load({
         highlightTimerRef.current = setTimeout(() => setHighlight(null), 1800)
       }
 
+      const jumpToSource = (source) => {
+        if (!source || !source.turnId) return
+        const current = spaceRef.current
+        const branch = source.branchId && current
+          ? current.branches.find((item) => item.id === source.branchId)
+          : null
+        if (branch && branch.collapsed) toggleBranchCollapse(branch.id)
+        if (branch) setTimeout(() => focusTurn(source.turnId), 100)
+        else focusTurn(source.turnId)
+      }
+
       const resetView = () => {
         commit((previous) => ({ ...previous, view: { x: 120, y: 120, zoom: 1 } }))
         setSelection(null)
@@ -5219,7 +5242,7 @@ window.__ModuleLoader__.load({
             mainContext = parentTurns
               .slice(Math.max(0, anchorIndex - 5), anchorIndex + 1)
               .filter((turn) => turn.status === 'completed' || turn.status === 'cancelled')
-              .map((turn) => ({ question: turn.question, answer: turn.answer }))
+              .map((turn) => ({ turnId: turn.id, question: turn.question, answer: turn.answer }))
           }
         }
 
@@ -5262,6 +5285,32 @@ window.__ModuleLoader__.load({
         const memory = buildContextMemory(currentSpace)
         const retrieved = buildRetrieval(currentSpace, question)
         touchRetrievedMemory(retrieved)
+        const sourceMap = new Map()
+        const addSource = (turnId) => {
+          if (!turnId || sourceMap.has(turnId)) return
+          const mainIndex = currentSpace && currentSpace.main ? currentSpace.main.turns.findIndex((item) => item.id === turnId) : -1
+          if (mainIndex >= 0) {
+            const sourceTurn = currentSpace.main.turns[mainIndex]
+            sourceMap.set(turnId, { turnId, kind: 'main', branchId: null, label: 'M' + (mainIndex + 1), question: truncate(sourceTurn.question, 80) })
+            return
+          }
+          if (!currentSpace) return
+          for (let index = 0; index < currentSpace.branches.length; index += 1) {
+            const branch = currentSpace.branches[index]
+            const sourceTurn = branch.turns.find((item) => item.id === turnId)
+            if (sourceTurn) {
+              sourceMap.set(turnId, { turnId, kind: 'branch', branchId: branch.id, label: 'B' + (index + 1), question: truncate(sourceTurn.question, 80) })
+              return
+            }
+          }
+        }
+        for (const item of retrieved) {
+          addSource(item.parentTurnId)
+          for (const id of (Array.isArray(item.sourceTurnIds) ? item.sourceTurnIds : [])) addSource(id)
+        }
+        for (const item of mainContext) addSource(item.turnId)
+        const sources = [...sourceMap.values()].slice(0, 6)
+        updateTurn(kind, targetBranch ? targetBranch.id : null, turnId, { sources })
         const payload = {
           kind,
           branchId: targetBranch ? targetBranch.id : null,
@@ -5809,6 +5858,8 @@ window.__ModuleLoader__.load({
                 sequence: 'M' + (index + 1),
                 onToggleTodo: (value) => toggleMark(turn, 'main', null, 'todo', value),
                 onToggleFlag: (value) => toggleMark(turn, 'main', null, 'flag', value),
+                sources: turn.sources || [],
+                onSourceClick: jumpToSource,
                 onCardPointerDown: (event) => beginCardPress(event, turn, 'main', null, baseX, baseY, rect),
                 onCardPointerMove: moveCardPress,
                 onCardPointerUp: endCardPress,
@@ -5899,6 +5950,8 @@ window.__ModuleLoader__.load({
                 onToggleCollapse: () => toggleBranchCollapse(branch.id),
                 onToggleTodo: (value) => toggleMark(turn, 'branch', branch.id, 'todo', value),
                 onToggleFlag: (value) => toggleMark(turn, 'branch', branch.id, 'flag', value),
+                sources: turn.sources || [],
+                onSourceClick: jumpToSource,
                 onCardPointerDown: (event) => beginCardPress(event, turn, 'branch', branch.id, position.x, position.y + index * TURN_STEP, rect),
                 onCardPointerMove: moveCardPress,
                 onCardPointerUp: endCardPress,
