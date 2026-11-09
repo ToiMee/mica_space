@@ -1183,6 +1183,9 @@ window.__ModuleLoader__.load({
         flag: Boolean(turn.flag),
         unread: Boolean(turn.unread),
         attachments,
+        sources: Array.isArray(turn.sources)
+          ? turn.sources.filter(source => source && typeof source.turnId === 'string' && typeof source.label === 'string').slice(0, 6)
+          : [],
         layout,
       }
     }
@@ -2136,6 +2139,66 @@ window.__ModuleLoader__.load({
       return API + '/attachment?kind=' + kind + '&ref=' + encodeURIComponent(JSON.stringify(ref)) + (download ? '&download=1' : '')
     }
 
+    function AttachmentImage({ item, linked = false }) {
+      const href = attachmentHref(item, false)
+      const bridge = window.__micaAttachmentBlob
+      const [blob, setBlob] = useState('')
+      useEffect(() => {
+        if (!bridge) return
+        let active = true
+        let url
+        setBlob('')
+        bridge(href).then((value) => {
+          url = value
+          if (active) setBlob(url)
+          else URL.revokeObjectURL(url)
+        }).catch(() => {})
+        return () => {
+          active = false
+          if (url) URL.revokeObjectURL(url)
+        }
+      }, [bridge, href])
+      const src = bridge ? blob : href
+      const name = item.attachment?.name || 'image'
+      if (!src) return h('span', { className: 'cs-attachment-name' }, name)
+      const image = h('img', {
+        src, alt: name, loading: 'lazy', decoding: 'async',
+        onError: linked ? (event) => {
+          const img = event.currentTarget
+          img.style.display = 'none'
+          if (img.parentElement) {
+            img.parentElement.classList.add('cs-attachment-missing')
+            img.parentElement.title = '附件不可用'
+          }
+        } : undefined,
+      })
+      if (!linked) return image
+      return h('a', {
+        href: src, className: 'cs-attachment-image', target: '_blank', rel: 'noreferrer',
+        onPointerDown: (event) => event.stopPropagation(),
+        onClick: (event) => event.stopPropagation(),
+      }, image)
+    }
+
+    async function downloadPanelAttachment(event, item) {
+      event.stopPropagation()
+      const bridge = window.__micaAttachmentBlob
+      if (!bridge) return
+      event.preventDefault()
+      try {
+        const url = await bridge(attachmentHref(item, true))
+        const link = document.createElement('a')
+        link.href = url
+        link.download = item.attachment?.name || 'attachment'
+        document.body.append(link)
+        link.click()
+        link.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 30000)
+      } catch (error) {
+        window.alert(error.message)
+      }
+    }
+
     function formatBytes(value) {
       const bytes = Number(value) || 0
       if (bytes < 1024) return bytes + ' B'
@@ -2274,7 +2337,7 @@ window.__ModuleLoader__.load({
           ? h('div', { className: 'cs-composer-attachments' },
               attachments.map((item, index) => h('div', { key: index, className: 'cs-composer-attachment' },
                 item.kind === 'image'
-                  ? h('img', { src: attachmentHref(item, false), alt: item.attachment && item.attachment.name || 'image' })
+                  ? h(AttachmentImage, { item })
                   : h('span', { className: 'cs-composer-file-icon' }, '📎'),
                 h('span', { className: 'cs-composer-attachment-name', title: item.attachment && item.attachment.name || '' },
                   item.attachment && item.attachment.name || (item.kind === 'image' ? 'image' : 'file')
@@ -2465,35 +2528,14 @@ window.__ModuleLoader__.load({
           turn.attachments && turn.attachments.length > 0
             ? h('div', { className: 'cs-attachments' },
                 turn.attachments.map((item, index) => item.kind === 'image'
-                  ? h('a', {
-                      key: 'att-' + index,
-                      className: 'cs-attachment-image',
-                      href: attachmentHref(item, false),
-                      target: '_blank',
-                      rel: 'noreferrer',
-                      onPointerDown: (event) => event.stopPropagation(),
-                      onClick: (event) => event.stopPropagation(),
-                    }, h('img', {
-                        src: attachmentHref(item, false),
-                        alt: item.attachment && item.attachment.name || 'image',
-                        loading: 'lazy',
-                        decoding: 'async',
-                        onError: (event) => {
-                          const img = event.currentTarget
-                          img.style.display = 'none'
-                          if (img.parentElement) {
-                            img.parentElement.classList.add('cs-attachment-missing')
-                            img.parentElement.title = '附件不可用'
-                          }
-                        },
-                      }))
+                  ? h(AttachmentImage, { key: 'att-' + index, item, linked: true })
                   : h('a', {
                       key: 'att-' + index,
                       className: 'cs-attachment-file',
                       href: attachmentHref(item, true),
                       download: item.attachment && item.attachment.name || true,
                       onPointerDown: (event) => event.stopPropagation(),
-                      onClick: (event) => event.stopPropagation(),
+                      onClick: (event) => downloadPanelAttachment(event, item),
                     },
                       h('span', { className: 'cs-attachment-icon' }, '📎'),
                       h('span', { className: 'cs-attachment-name' }, item.attachment && item.attachment.name || 'file'),
@@ -2510,6 +2552,18 @@ window.__ModuleLoader__.load({
                   streaming ? h('span', { className: 'cs-cursor', 'aria-hidden': true }) : null
                 )
           ),
+          detail === 'full' && sources && sources.length > 0
+            ? h('div', { className: 'cs-card-sources', onPointerDown: event => event.stopPropagation(), onClick: event => event.stopPropagation() },
+                h('span', { className: 'cs-sources-label' }, t('sources')),
+                sources.map(source => h('button', {
+                  key: source.turnId,
+                  type: 'button',
+                  className: 'cs-source-chip',
+                  title: source.question,
+                  onClick: () => onSourceClick(source),
+                }, source.label))
+              )
+            : null,
           failed && turn.error
             ? h('div', { className: 'cs-error' },
                 h('span', null, turn.error),
@@ -3469,6 +3523,7 @@ window.__ModuleLoader__.load({
         settingsOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setSettingsOpen(false) },
           h('div', { className: 'cs-lib-modal cs-settings-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-lib-modal-title' }, t('settings')),
+            h('div', { className: 'cs-settings-note' }, t('backupScopeNote')),
             h('div', { className: 'cs-settings-list' },
               h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); setWelcomeOpen(true) } },
                 h('span', { className: 'cs-settings-label' }, t('welcome')),
@@ -5309,6 +5364,7 @@ window.__ModuleLoader__.load({
           for (const id of (Array.isArray(item.sourceTurnIds) ? item.sourceTurnIds : [])) addSource(id)
         }
         for (const item of mainContext) addSource(item.turnId)
+        for (const item of recent.slice().reverse()) addSource(item.id)
         const sources = [...sourceMap.values()].slice(0, 6)
         updateTurn(kind, targetBranch ? targetBranch.id : null, turnId, { sources })
         const payload = {

@@ -2,6 +2,8 @@
 
 [English](README.en.md)
 
+**Codex 桌面版** · [安装与配置](codex/README.md)
+
 **Current demo:** `0.99.7` · [Download / Release](https://github.com/ToiMee/mica_space/releases/latest)
 
 Mica Space 是 DSH 的可缩放对话地图插件：一条纵向主线，多条从回答分叉的支线，每个空间是一张独立画布。

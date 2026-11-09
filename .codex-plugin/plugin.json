@@ -1,0 +1,10 @@
+{
+  "name": "mica-space",
+  "version": "0.99.8-codex.1",
+  "description": "Mica Space branching learning canvas",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Mica Space",
+    "shortDescription": "Branch from an answer and return to the learning thread."
+  }
+}

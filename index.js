@@ -1206,6 +1206,7 @@ async function handleChat(ctx, req, res) {
   const maxHistoryChars = Math.max(4000, promptBudgetChars - system.length - question.length - 8000)
   const messages = buildMessages({ history, question, provider, model, attachments, fileTexts, maxHistoryChars })
 
+  if (res.writableEnded || res.destroyed) return
   const controller = new AbortController()
   let closed = false
   res.on('close', () => {

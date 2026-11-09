@@ -1,0 +1,14 @@
+{
+  "name": "mica-space-local",
+  "interface": {
+    "displayName": "Mica Space Local"
+  },
+  "plugins": [
+    {
+      "name": "mica-space",
+      "source": { "source": "local", "path": "./" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Productivity"
+    }
+  ]
+}
