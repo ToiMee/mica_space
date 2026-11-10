@@ -3686,44 +3686,7 @@ window.__ModuleLoader__.load({
             )
           )
         ) : null,
-        guideOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setGuideOpen(false) },
-          h('div', { className: 'cs-lib-modal cs-guide-modal', onClick: (event) => event.stopPropagation() },
-            h('div', { className: 'cs-lib-modal-title' }, t('guide')),
-            h('div', { className: 'cs-guide-intro' }, t('guideIntro')),
-            h('div', { className: 'cs-guide-section' },
-              h('div', { className: 'cs-guide-title' }, t('guideMouseTitle')),
-              h('ul', null,
-                h('li', null, t('guideMouse1')),
-                h('li', null, t('guideMouse2')),
-                h('li', null, t('guideMouse3')),
-                h('li', null, t('guideMouse4')),
-                h('li', null, t('guideMouse5')),
-                h('li', null, t('guideMouse6')),
-                h('li', null, t('guideMouse7'))
-              )
-            ),
-            h('div', { className: 'cs-guide-section' },
-              h('div', { className: 'cs-guide-title' }, t('guideBranchTitle')),
-              h('ul', null,
-                h('li', null, t('guideBranch1')),
-                h('li', null, t('guideBranch2')),
-                h('li', null, t('guideBranch3')),
-                h('li', null, t('guideBranch4'))
-              )
-            ),
-            h('div', { className: 'cs-guide-section' },
-              h('div', { className: 'cs-guide-title' }, t('guideCanvasTitle')),
-              h('ul', null,
-                h('li', null, t('guideCanvas1')),
-                h('li', null, t('guideCanvas2')),
-                h('li', null, t('guideCanvas3'))
-              )
-            ),
-            h('div', { className: 'cs-lib-modal-actions' },
-              h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: () => setGuideOpen(false) }, t('guideClose'))
-            )
-          )
-        ) : null,
+        guideOpen ? h(GuideModal, { t, onClose: () => setGuideOpen(false) }) : null,
         settingsOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setSettingsOpen(false) },
           h('div', { className: 'cs-lib-modal cs-settings-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-lib-modal-title' }, t('settings')),
@@ -3917,6 +3880,47 @@ window.__ModuleLoader__.load({
     }
 
 
+    function GuideModal({ t, onClose }) {
+      return h('div', { className: 'cs-lib-modal-backdrop', onClick: onClose },
+        h('div', { className: 'cs-lib-modal cs-guide-modal', onClick: (event) => event.stopPropagation() },
+          h('div', { className: 'cs-lib-modal-title' }, t('guide')),
+          h('div', { className: 'cs-guide-intro' }, t('guideIntro')),
+          h('div', { className: 'cs-guide-section' },
+            h('div', { className: 'cs-guide-title' }, t('guideMouseTitle')),
+            h('ul', null,
+              h('li', null, t('guideMouse1')),
+              h('li', null, t('guideMouse2')),
+              h('li', null, t('guideMouse3')),
+              h('li', null, t('guideMouse4')),
+              h('li', null, t('guideMouse5')),
+              h('li', null, t('guideMouse6')),
+              h('li', null, t('guideMouse7'))
+            )
+          ),
+          h('div', { className: 'cs-guide-section' },
+            h('div', { className: 'cs-guide-title' }, t('guideBranchTitle')),
+            h('ul', null,
+              h('li', null, t('guideBranch1')),
+              h('li', null, t('guideBranch2')),
+              h('li', null, t('guideBranch3')),
+              h('li', null, t('guideBranch4'))
+            )
+          ),
+          h('div', { className: 'cs-guide-section' },
+            h('div', { className: 'cs-guide-title' }, t('guideCanvasTitle')),
+            h('ul', null,
+              h('li', null, t('guideCanvas1')),
+              h('li', null, t('guideCanvas2')),
+              h('li', null, t('guideCanvas3'))
+            )
+          ),
+          h('div', { className: 'cs-lib-modal-actions' },
+            h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: onClose }, t('guideClose'))
+          )
+        )
+      )
+    }
+
     function ChatSpacePanel({ tr, t: slotT, onBackToConversation, spaceId, onBackToLibrary, appearance, changeAppearance }) {
       const t = typeof tr === 'function' ? tr : typeof slotT === 'function' ? slotT : (key) => key
       const [confirmDeletion, deleteConfirmation] = useDeleteConfirmation(t)
@@ -3952,6 +3956,7 @@ window.__ModuleLoader__.load({
       const [hover, setHover] = useState(null)
       const [layersOpen, setLayersOpen] = useState(false)
       const [memoryOpen, setMemoryOpen] = useState(false)
+      const [guideOpen, setGuideOpen] = useState(false)
       const [marquee, setMarquee] = useState(null)
       const [selectedTurn, setSelectedTurn] = useState(null)
       const [composerCollapsed, setComposerCollapsed] = useState(false)
@@ -6839,7 +6844,8 @@ window.__ModuleLoader__.load({
             h('span', { className: 'cs-zoom-label' }, Math.round(view.zoom * 100) + '%')
           ),
           renderDraft(),
-          renderToast()
+          renderToast(),
+          guideOpen ? h(GuideModal, { t, onClose: () => setGuideOpen(false) }) : null
         )
       )
     }

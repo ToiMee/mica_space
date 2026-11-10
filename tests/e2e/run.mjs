@@ -80,6 +80,10 @@ try {
   if (!(await page.locator('.cs-card-main').count())) throw new Error('vertical main cards missing')
   if (!(await page.getByText('!1', { exact: true }).count())) throw new Error('collapsed pending badge missing')
 
+  await page.getByRole('button', { name: '?' }).click()
+  await page.getByText('单击卡片：选中卡片').waitFor({ timeout: 3000 })
+  await page.getByRole('button', { name: '知道了' }).click()
+
   await page.locator('.cs-card-main').first().click({ button: 'right' })
   await page.locator('.cs-context-menu').waitFor({ timeout: 3000 })
   await page.keyboard.press('Escape')
