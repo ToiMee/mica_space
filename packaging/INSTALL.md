@@ -1,4 +1,4 @@
-# Mica Space 0.99.9 Demo — 安装说明
+# Mica Space 0.99.10 Demo — 安装说明
 
 这个压缩包已经包含运行依赖，不需要再执行 `npm install`。
 
@@ -7,7 +7,7 @@
 1. 把压缩包完整解压到一个固定目录，例如：
 
    ```text
-   D:\MicaSpace\mica-space-0.99.9
+   D:\MicaSpace\mica-space-0.99.10
    ```
 
 2. 打开 DSH。
