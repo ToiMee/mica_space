@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-**Current demo:** `0.99.12` · [Download / Release](https://github.com/ToiMee/mica_space/releases/latest)
+**Current demo:** `0.99.13` · [Download / Release](https://github.com/ToiMee/mica_space/releases/latest)
 
 Mica Space is a zoomable, branching conversation map for **DSH (DeepSeek Harness)**. Instead of scrolling through one long chat, each follow-up grows from the answer it belongs to: the main line keeps its context, and every branch stays independently explorable.
 
@@ -33,7 +33,8 @@ In a long conversation, follow-ups pile up under a single answer. To return to a
 - Mica-owned attachment storage with migration of older DSH attachments;
 - First-run guide with editable Chinese/English copy and a built-in demo space;
 - Source chips under answers, linking back to the main/branch turn used as context;
-- Demo space with main line, branch, pending marker, and source chips.
+- Demo space with main line, branch, pending marker, and source chips;
+- Interaction guide covering click, double-click, right-click, drag, marquee, zoom, collapse, and point mode.
 - Backup/restore UI clearly states that attachment files are not included.
 
 ## Install (bundled Demo)

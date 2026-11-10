@@ -131,6 +131,26 @@ window.__ModuleLoader__.load({
       demoWelcomeButton: '先看示例空间',
       demoTag: '示例',
       demoSpaceSettingsDesc: '打开内置示例，查看分支、待办和参考来源',
+      guide: '操作指南',
+      guideIntro: 'Mica 是画布，不是聊天列表。记住下面这几个动作就能上手。',
+      guideMouseTitle: '鼠标',
+      guideMouse1: '单击卡片：选中卡片',
+      guideMouse2: '双击卡片：聚焦并打开追问框',
+      guideMouse3: '右键卡片：颜色、分支名称、复制、删除',
+      guideMouse4: '拖动卡片：移动位置',
+      guideMouse5: '选中回答里的文字：从这段继续追问',
+      guideMouse6: '拖动空白：框选；中键拖动：平移画布',
+      guideMouse7: '滚轮：缩放画布',
+      guideBranchTitle: '分支',
+      guideBranch1: '点分支箭头：折叠 / 展开',
+      guideBranch2: '折叠后卡片显示 !N；点模式显示任务标记',
+      guideBranch3: '点模式里拖动小点：调整卡片位置',
+      guideBranch4: '回答下方“参考来源”：跳回被引用的问答',
+      guideCanvasTitle: '画布',
+      guideCanvas1: '缩放低于 25%：自动进入点模式',
+      guideCanvas2: '顶栏“回到主线”：快速定位主线',
+      guideCanvas3: '顶栏“重置”：重置视角',
+      guideClose: '知道了',
       untitledSpace: '未命名空间',
       titleLabel: '标题',
       folderName: '文件夹名称',
@@ -876,6 +896,11 @@ window.__ModuleLoader__.load({
 .cs-welcome-section-title { color: var(--cs-text); font-size: 12px; font-weight: 700; }
 .cs-welcome-list { margin: 0; padding-left: 18px; color: var(--cs-muted); font-size: 12px; line-height: 1.7; text-wrap: pretty; }
 .cs-welcome-list li { margin-bottom: 4px; }
+.cs-guide-modal { width: min(600px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
+.cs-guide-intro { color: var(--cs-muted); font-size: 12px; line-height: 1.6; }
+.cs-guide-section { display: flex; flex-direction: column; gap: 5px; }
+.cs-guide-title { color: var(--cs-text); font-size: 12px; font-weight: 700; }
+.cs-guide-section ul { margin: 0; padding-left: 18px; color: var(--cs-muted); font-size: 12px; line-height: 1.75; }
 .cs-welcome-feedback { padding: 9px 11px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); color: var(--cs-muted); font-size: 11px; line-height: 1.7; }
 .cs-welcome-feedback a { display: inline-block; margin-top: 4px; color: var(--cs-accent); text-decoration: none; }
 .cs-welcome-feedback a:hover { text-decoration: underline; }
@@ -2698,6 +2723,7 @@ window.__ModuleLoader__.load({
       const [trashOpen, setTrashOpen] = useState(false)
       const [welcomeOpen, setWelcomeOpen] = useState(() => !readWelcomeSeen())
       const [welcomeCopy, setWelcomeCopy] = useState(null)
+      const [guideOpen, setGuideOpen] = useState(false)
       const [welcomeCopyEn, setWelcomeCopyEn] = useState(null)
       const [privacyOpen, setPrivacyOpen] = useState(false)
       const [settingsOpen, setSettingsOpen] = useState(false)
@@ -3208,7 +3234,7 @@ window.__ModuleLoader__.load({
           attachments: [],
           sources: [],
         }, extra || {})
-        const first = makeTurn(uid('demo-turn'), '读长论文时，追问一多就找不到上下文，怎么办？', '先不要继续把问题堆在下面。\n\n在回答里选中一句话，从它旁边开一条支线；主线继续往前走，支线单独展开。这样每个追问都还挂在自己的出处上。')
+        const first = makeTurn(uid('demo-turn'), '读长论文时，追问一多就找不到上下文，怎么办？', '先不要继续把问题堆在下面。\n\n在回答里选中一句话，从它旁边开一条支线；主线继续往前走，支线单独展开。这样每个追问都还挂在自己的出处上。\n\n**先试试这些操作：**\n\n- 单击卡片：选中\n- 双击卡片：聚焦并打开追问框\n- 右键卡片：颜色、分支名称、复制、删除\n- 选中回答里的文字：从这段继续追问\n- 拖动卡片或点模式下的小点：移动位置\n- 点分支箭头：折叠 / 展开\n- 滚轮：缩放；中键拖动：平移画布')
         const branchQuestion = makeTurn(uid('demo-turn'), '能只针对这一段继续问吗？', '可以。选中“把追问摊开”这句话，追问就会从这段回答分叉，而不是接在整条主线后面。')
         const branchTodo = makeTurn(uid('demo-turn'), '这条支线以后还能找回来吗？', '能。折叠后它还在画布上；开启待办，点模式里会显示任务标记。', { todo: true })
         const second = makeTurn(uid('demo-turn'), '回到主线后，之前支线的内容还在吗？', '在。主线可以继续往下走，本地记忆还能把支线里的结论带回来；回答下面的“参考来源”可以点回原问答。', {
@@ -3654,8 +3680,47 @@ window.__ModuleLoader__.load({
               h('a', { href: 'https://github.com/ToiMee/mica_space/issues', target: '_blank', rel: 'noreferrer' }, welcomeText('welcomeFeedbackLink'))
             ),
             h('div', { className: 'cs-lib-modal-actions' },
+              h('button', { type: 'button', className: 'cs-btn', onClick: () => { markWelcomeSeen(); setWelcomeOpen(false); setGuideOpen(true) } }, t('guide')),
               h('button', { type: 'button', className: 'cs-btn', onClick: () => { markWelcomeSeen(); setWelcomeOpen(false); openDemoSpace() } }, t('demoWelcomeButton')),
               h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: () => { markWelcomeSeen(); setWelcomeOpen(false) } }, welcomeText('welcomeStart'))
+            )
+          )
+        ) : null,
+        guideOpen ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setGuideOpen(false) },
+          h('div', { className: 'cs-lib-modal cs-guide-modal', onClick: (event) => event.stopPropagation() },
+            h('div', { className: 'cs-lib-modal-title' }, t('guide')),
+            h('div', { className: 'cs-guide-intro' }, t('guideIntro')),
+            h('div', { className: 'cs-guide-section' },
+              h('div', { className: 'cs-guide-title' }, t('guideMouseTitle')),
+              h('ul', null,
+                h('li', null, t('guideMouse1')),
+                h('li', null, t('guideMouse2')),
+                h('li', null, t('guideMouse3')),
+                h('li', null, t('guideMouse4')),
+                h('li', null, t('guideMouse5')),
+                h('li', null, t('guideMouse6')),
+                h('li', null, t('guideMouse7'))
+              )
+            ),
+            h('div', { className: 'cs-guide-section' },
+              h('div', { className: 'cs-guide-title' }, t('guideBranchTitle')),
+              h('ul', null,
+                h('li', null, t('guideBranch1')),
+                h('li', null, t('guideBranch2')),
+                h('li', null, t('guideBranch3')),
+                h('li', null, t('guideBranch4'))
+              )
+            ),
+            h('div', { className: 'cs-guide-section' },
+              h('div', { className: 'cs-guide-title' }, t('guideCanvasTitle')),
+              h('ul', null,
+                h('li', null, t('guideCanvas1')),
+                h('li', null, t('guideCanvas2')),
+                h('li', null, t('guideCanvas3'))
+              )
+            ),
+            h('div', { className: 'cs-lib-modal-actions' },
+              h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: () => setGuideOpen(false) }, t('guideClose'))
             )
           )
         ) : null,
@@ -3670,6 +3735,10 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); openDemoSpace() } },
                 h('span', { className: 'cs-settings-label' }, t('openDemo')),
                 h('span', { className: 'cs-settings-desc' }, t('demoSpaceSettingsDesc'))
+              ),
+              h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); setGuideOpen(true) } },
+                h('span', { className: 'cs-settings-label' }, t('guide')),
+                h('span', { className: 'cs-settings-desc' }, t('guideIntro'))
               ),
               h('div', { className: 'cs-settings-row cs-settings-static' },
                 h('span', { className: 'cs-settings-label' }, t('language')),
@@ -6685,6 +6754,7 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'cs-btn', disabled: undoCount === 0, onClick: undo, title: 'Ctrl+Z' }, t('undo')),
 
             h('button', { type: 'button', className: 'cs-btn', onClick: focusMainLine }, t('focusMain')),
+            h('button', { type: 'button', className: 'cs-btn', title: t('guide'), onClick: () => setGuideOpen(true) }, '?'),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setMemoryOpen(true) }, t('memory')),
             h('button', { type: 'button', className: 'cs-btn', onClick: () => setLayersOpen(true) }, t('layers')),
             typeof onBackToLibrary === 'function'
