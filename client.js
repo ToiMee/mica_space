@@ -52,6 +52,10 @@ window.__ModuleLoader__.load({
       welcome: '使用说明',
       language: '界面语言',
       languageFollowsDsh: '跟随 DSH 的界面语言',
+      appearance: '外观',
+      appearanceAuto: '自动',
+      appearanceLight: '浅色',
+      appearanceDark: '深色',
       welcomeVersion: "v0.99 Demo",
       welcomeTitle: "欢迎使用Mica Space！",
       welcomeIntro: "这是 Mica 空间 0.99 Demo。\n\n长对话里追问一多，上下文容易变成一团线，想回到某个回答继续问，得上下翻找。\n\nMica 就是为解决这个问题：把追问摊成分支地图，主线保留，支线各自展开。",
@@ -291,6 +295,10 @@ window.__ModuleLoader__.load({
       welcome: 'Guide',
       language: 'Language',
       languageFollowsDsh: 'Follows the DSH interface language',
+      appearance: 'Appearance',
+      appearanceAuto: 'Auto',
+      appearanceLight: 'Light',
+      appearanceDark: 'Dark',
       welcomeVersion: '0.99 Demo',
       welcomeTitle: 'Welcome aboard — no need to floor it yet',
       welcomeIntro: 'Mica Space 0.99 Demo is for long conversations where follow-ups pile up into a tangle. Instead of scrolling back to find an answer, Mica spreads each follow-up into a branch while the main line stays intact. Take a moment to read the notes first.',
@@ -515,6 +523,38 @@ window.__ModuleLoader__.load({
     const CSS = `
 .cs-root { --cs-accent: var(--dsw-static-neutral-bluish-400, #3370ff); --cs-accent-soft: var(--dsw-static-neutral-bluish-200, #dbe6ff); --cs-text: var(--dsw-alias-label-primary, #1f2329); --cs-muted: var(--dsw-alias-label-secondary, color-mix(in srgb, var(--dsw-alias-label-primary, #1f2329) 62%, var(--dsw-alias-bg-module-platform, #ffffff) 38%)); --cs-border: var(--dsw-alias-border-l2, rgba(0,0,0,.1)); --cs-border-strong: var(--dsw-alias-border-l4, rgba(0,0,0,.16)); --cs-bg: var(--dsw-alias-bg-l1, color-mix(in srgb, var(--dsw-alias-bg-module-platform, #ffffff) 94%, var(--dsw-alias-label-primary, #1f2329) 6%)); --cs-panel: var(--dsw-alias-bg-module-platform, #ffffff); --cs-hover: var(--dsw-alias-interactive-bg-hover, rgba(0,0,0,.04)); --cs-shadow: var(--dsw-alias-shadow-l1, 0 4px 16px rgba(0,0,0,.08)); --cs-radius: var(--dsw-radius-xl, 12px); --cs-card-w: 420px; --cs-card-h: 300px; position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: var(--cs-bg); color: var(--cs-text); font-family: inherit; font-size: 14px; }
 .cs-root *, .cs-root *::before, .cs-root *::after { box-sizing: border-box; }
+.cs-root[data-mica-theme] {
+  color-scheme: light dark;
+  --cs-base-text: light-dark(#1f2329, #e8eaf0);
+  --cs-base-muted: light-dark(#575f6c, #a6adba);
+  --cs-base-panel: light-dark(#ffffff, #22242a);
+  --cs-base-bg: light-dark(#f5f6f8, #18191d);
+  --cs-base-border: light-dark(#d9dde5, #393d47);
+  --cs-base-border-strong: light-dark(#b7bfcc, #555c69);
+  --cs-base-hover: light-dark(#eef1f5, #30333b);
+  --cs-base-accent: light-dark(#2861dc, #3d6bd7);
+  --cs-base-accent-soft: light-dark(#dbe6ff, #273d68);
+  --cs-text: var(--dsw-alias-label-primary, var(--cs-base-text));
+  --cs-muted: var(--dsw-alias-label-secondary, var(--cs-base-muted));
+  --cs-panel: var(--dsw-alias-bg-module-platform, var(--cs-base-panel));
+  --cs-bg: var(--dsw-alias-bg-l1, var(--cs-base-bg));
+  --cs-border: var(--dsw-alias-border-l2, var(--cs-base-border));
+  --cs-border-strong: var(--dsw-alias-border-l4, var(--cs-base-border-strong));
+  --cs-hover: var(--dsw-alias-interactive-bg-hover, var(--cs-base-hover));
+  --cs-accent: var(--dsw-static-neutral-bluish-400, var(--cs-base-accent));
+  --cs-accent-soft: var(--dsw-static-neutral-bluish-200, var(--cs-base-accent-soft));
+}
+.cs-root[data-mica-theme="light"] { color-scheme: light; }
+.cs-root[data-mica-theme="dark"] { color-scheme: dark; }
+.cs-root:is([data-mica-theme="light"], [data-mica-theme="dark"]) {
+  --cs-text: var(--cs-base-text); --cs-muted: var(--cs-base-muted);
+  --cs-panel: var(--cs-base-panel); --cs-bg: var(--cs-base-bg);
+  --cs-border: var(--cs-base-border); --cs-border-strong: var(--cs-base-border-strong);
+  --cs-hover: var(--cs-base-hover); --cs-accent: var(--cs-base-accent);
+  --cs-accent-soft: var(--cs-base-accent-soft);
+  --cs-shadow: 0 4px 16px light-dark(rgba(0,0,0,.08), rgba(0,0,0,.32));
+}
+.cs-appearance { background: var(--cs-panel); color: var(--cs-text); }
 .cs-center { align-items: center; justify-content: center; gap: 12px; }
 .cs-loading { display: flex; align-items: center; gap: 10px; color: var(--cs-muted); font-size: 14px; }
 .cs-spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--cs-border); border-top-color: var(--cs-accent); animation: cs-spin .8s linear infinite; }
@@ -2621,8 +2661,24 @@ window.__ModuleLoader__.load({
       return [ask, message ? h(DeleteConfirmation, { message, settle, t }) : null]
     }
 
+    function AppearanceSelect({ appearance, onChange, t }) {
+      return h('select', { className: 'cs-btn cs-appearance', 'aria-label': t('appearance'), value: appearance,
+        onChange: event => onChange(event.target.value) },
+        h('option', { value: 'auto' }, t('appearanceAuto')),
+        h('option', { value: 'light' }, t('appearanceLight')),
+        h('option', { value: 'dark' }, t('appearanceDark')))
+    }
+
     function ChatSpaceRoot({ tr, t: slotT, onBackToConversation }) {
       const t = typeof tr === 'function' ? tr : typeof slotT === 'function' ? slotT : (key) => key
+      const [appearance, setAppearance] = useState(() => {
+        const saved = readLocalStorage(APPEARANCE_KEY)
+        return saved === 'light' || saved === 'dark' ? saved : 'auto'
+      })
+      const changeAppearance = value => {
+        setAppearance(value)
+        writeLocalStorage(APPEARANCE_KEY, value)
+      }
       const [confirmDeletion, deleteConfirmation] = useDeleteConfirmation(t)
       const [library, setLibrary] = useState(null)
       const [loadState, setLoadState] = useState('loading')
@@ -3274,6 +3330,8 @@ window.__ModuleLoader__.load({
           key: activeId,
           tr,
           t,
+          appearance,
+          changeAppearance,
           onBackToConversation,
           spaceId: activeId,
           onBackToLibrary: () => {
@@ -3285,14 +3343,14 @@ window.__ModuleLoader__.load({
       }
 
       if (loadState === 'loading') {
-        return h('div', { className: 'cs-root cs-library' },
+        return h('div', { className: 'cs-root cs-library', 'data-mica-theme': appearance },
           h('style', null, CSS),
           h('div', { className: 'cs-lib-center' }, t('loading'))
         )
       }
 
       if (loadState === 'error') {
-        return h('div', { className: 'cs-root cs-library' },
+        return h('div', { className: 'cs-root cs-library', 'data-mica-theme': appearance },
           h('style', null, CSS),
           h('div', { className: 'cs-lib-center' },
             h('div', { className: 'cs-lib-empty-title' }, t('libraryLoadError')),
@@ -3302,7 +3360,7 @@ window.__ModuleLoader__.load({
         )
       }
 
-      return h('div', { className: 'cs-root cs-library' },
+      return h('div', { className: 'cs-root cs-library', 'data-mica-theme': appearance },
         h('style', null, CSS),
         h('div', { className: 'cs-lib-header' },
           h('div', { className: 'cs-title-brand' },
@@ -3528,6 +3586,10 @@ window.__ModuleLoader__.load({
                 h('span', { className: 'cs-settings-label' }, t('language')),
                 h('span', { className: 'cs-settings-desc' }, t('languageFollowsDsh'))
               ),
+              h('div', { className: 'cs-settings-row cs-settings-static' },
+                h('span', { className: 'cs-settings-label' }, t('appearance')),
+                h(AppearanceSelect, { appearance, onChange: changeAppearance, t })
+              ),
               h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); setPrivacyOpen(true) } },
                 h('span', { className: 'cs-settings-label' }, t('privacy')),
                 h('span', { className: 'cs-settings-desc' }, t('privacySettingsDesc'))
@@ -3697,7 +3759,7 @@ window.__ModuleLoader__.load({
     }
 
 
-    function ChatSpacePanel({ tr, t: slotT, onBackToConversation, spaceId, onBackToLibrary }) {
+    function ChatSpacePanel({ tr, t: slotT, onBackToConversation, spaceId, onBackToLibrary, appearance, changeAppearance }) {
       const t = typeof tr === 'function' ? tr : typeof slotT === 'function' ? slotT : (key) => key
       const [confirmDeletion, deleteConfirmation] = useDeleteConfirmation(t)
       const [space, setSpace] = useState(null)
@@ -4117,7 +4179,7 @@ window.__ModuleLoader__.load({
       }, [anchorReveal])
 
       if (loadState === 'loading') {
-        return h('div', { className: 'cs-root cs-center' },
+        return h('div', { className: 'cs-root cs-center', 'data-mica-theme': appearance },
           h('style', null, CSS),
           h('div', { className: 'cs-loading' },
             h('span', { className: 'cs-spinner' }),
@@ -4127,7 +4189,7 @@ window.__ModuleLoader__.load({
       }
 
       if (loadState === 'error') {
-        return h('div', { className: 'cs-root cs-center' },
+        return h('div', { className: 'cs-root cs-center', 'data-mica-theme': appearance },
           h('style', null, CSS),
           h('div', { className: 'cs-error-screen' },
             h('strong', null, t('loadError')),
@@ -6512,6 +6574,7 @@ window.__ModuleLoader__.load({
 
       return h('div', {
         className: cx('cs-root', focusIds.size > 0 ? 'cs-card-focus' : ''),
+        'data-mica-theme': appearance,
         ref: rootRef,
       },
         h('style', null, CSS),
@@ -6524,6 +6587,7 @@ window.__ModuleLoader__.load({
             )
           ),
           h('div', { className: 'cs-top-actions' },
+            h(AppearanceSelect, { appearance, onChange: changeAppearance, t }),
             h('span', { className: 'cs-model', title: model ? `${model.provider} / ${model.model}` : '' }, model ? `${t('model')}: ${model.model}` : t('noModel')),
             h('span', { className: cx('cs-save', saveState === 'error' ? 'cs-save-error' : '') },
               saveState === 'saving' ? t('saving') : saveState === 'saved' ? t('saved') : saveState === 'error' ? t('saveError') : ''
@@ -6663,6 +6727,7 @@ window.__ModuleLoader__.load({
 
     const ACTIVE_KEY = 'chat-space:active'
     const LAST_SPACE_KEY = 'chat-space:last-space'
+    const APPEARANCE_KEY = 'chat-space:appearance'
     const LAST_FOLDER_KEY = 'chat-space:last-folder'
     const WELCOME_KEY = 'chat-space:welcome-seen'
     const FOLDER_VIEW_KEY = 'chat-space:folder-view'
