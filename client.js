@@ -130,6 +130,7 @@ window.__ModuleLoader__.load({
       openDemo: '打开示例空间',
       demoWelcomeButton: '先看示例空间',
       demoTag: '示例',
+      demoSpaceSettingsDesc: '打开内置示例，查看分支、待办和参考来源',
       untitledSpace: '未命名空间',
       titleLabel: '标题',
       folderName: '文件夹名称',
@@ -3665,6 +3666,10 @@ window.__ModuleLoader__.load({
               h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); setWelcomeOpen(true) } },
                 h('span', { className: 'cs-settings-label' }, t('welcome')),
                 h('span', { className: 'cs-settings-desc' }, welcomeText('welcomeVersion'))
+              ),
+              h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); openDemoSpace() } },
+                h('span', { className: 'cs-settings-label' }, t('openDemo')),
+                h('span', { className: 'cs-settings-desc' }, t('demoSpaceSettingsDesc'))
               ),
               h('div', { className: 'cs-settings-row cs-settings-static' },
                 h('span', { className: 'cs-settings-label' }, t('language')),
