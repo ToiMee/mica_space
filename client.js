@@ -123,6 +123,9 @@ window.__ModuleLoader__.load({
       emptySpace: '还没有内容',
       emptyLibrary: '还没有空间',
       emptyLibraryHint: '新建一个画布，从第一个问题开始。',
+      openDemo: '打开示例空间',
+      demoWelcomeButton: '先看示例空间',
+      demoTag: '示例',
       untitledSpace: '未命名空间',
       titleLabel: '标题',
       folderName: '文件夹名称',
@@ -794,6 +797,7 @@ window.__ModuleLoader__.load({
 .cs-lib-mini-danger:hover { color: #d9534f; }
 .cs-lib-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 260px; border: 1px dashed var(--cs-border); border-radius: 12px; color: var(--cs-muted); text-align: center; }
 .cs-lib-empty-title { color: var(--cs-text); font-size: 15px; font-weight: 600; }
+.cs-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .cs-lib-empty-text { max-width: 360px; color: var(--cs-muted); font-size: 12px; line-height: 1.6; }
 .cs-lib-notice { padding: 7px 20px; border-bottom: 1px solid var(--cs-border); background: color-mix(in srgb, #d9534f 8%, var(--cs-bg)); color: #b8453f; font-size: 12px; }
 .cs-lib-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--cs-muted); }
@@ -3072,6 +3076,82 @@ window.__ModuleLoader__.load({
         setNewSpaceOpen(true)
       }
 
+      const openDemoSpace = () => run(async () => {
+        const existing = (library.spaces || []).find((item) => item.demo || item.title === 'Mica 示例空间')
+        if (existing) {
+          openSpace(existing.id)
+          return
+        }
+        const created = await post('/space/create', { title: 'Mica 示例空间', layoutMode: 'vertical' })
+        const id = created.space.id
+        const now = Date.now()
+        const makeTurn = (turnId, question, answer, extra) => Object.assign({
+          id: turnId,
+          question,
+          answer,
+          status: 'completed',
+          error: '',
+          summary: question,
+          usage: null,
+          createdAt: now,
+          z: 1,
+          todo: false,
+          flag: false,
+          unread: false,
+          attachments: [],
+          sources: [],
+        }, extra || {})
+        const first = makeTurn(uid('demo-turn'), '读长论文时，追问一多就找不到上下文，怎么办？', '先不要继续把问题堆在下面。\n\n在回答里选中一句话，从它旁边开一条支线；主线继续往前走，支线单独展开。这样每个追问都还挂在自己的出处上。')
+        const branchQuestion = makeTurn(uid('demo-turn'), '能只针对这一段继续问吗？', '可以。选中“把追问摊开”这句话，追问就会从这段回答分叉，而不是接在整条主线后面。')
+        const branchTodo = makeTurn(uid('demo-turn'), '这条支线以后还能找回来吗？', '能。折叠后它还在画布上；开启待办，点模式里会显示任务标记。', { todo: true })
+        const second = makeTurn(uid('demo-turn'), '回到主线后，之前支线的内容还在吗？', '在。主线可以继续往下走，本地记忆还能把支线里的结论带回来；回答下面的“参考来源”可以点回原问答。', {
+          sources: [{ turnId: first.id, kind: 'main', branchId: null, label: 'M1', question: '读长论文时，追问一多就找不到上下文，怎么办？' }],
+        })
+        const demoBranch = {
+          id: uid('demo-branch'),
+          anchorTurnId: first.id,
+          anchorText: '把追问摊开',
+          anchorSource: 'selection',
+          brief: '',
+          parentBranchId: null,
+          colorIndex: 0,
+          color: '#5d9b6a',
+          collapsed: false,
+          tag: '示例分支',
+          createdAt: now,
+          turns: [branchQuestion, branchTodo],
+        }
+        const sideBranch = {
+          id: uid('demo-branch'),
+          anchorTurnId: second.id,
+          anchorText: '本地记忆',
+          anchorSource: 'selection',
+          brief: '',
+          parentBranchId: null,
+          colorIndex: 1,
+          color: '#9b7dcc',
+          collapsed: false,
+          tag: '另一个方向',
+          createdAt: now,
+          turns: [makeTurn(uid('demo-turn'), '那我可以把结论带回主线吗？', '可以。主线提问时会参考支线摘要，回答里会显示来源。')],
+        }
+        const demo = {
+          ...created.space,
+          title: 'Mica 示例空间',
+          demo: true,
+          layoutMode: 'vertical',
+          mainColor: '#4fc3f7',
+          memoryMode: 'lexical',
+          summaryMode: 'every',
+          main: { turns: [first, second] },
+          branches: [demoBranch, sideBranch],
+          view: { x: 220, y: 120, zoom: 0.8 },
+        }
+        const saved = await post('/save', { space: demo, spaceId: id })
+        if (saved.library) setLibrary(saved.library)
+        openSpace(id)
+      })
+
       const goUpFolder = () => {
         if (folderHistory.length > 0) {
           const previous = folderHistory[folderHistory.length - 1]
@@ -3427,7 +3507,10 @@ window.__ModuleLoader__.load({
                     ? h('div', { className: 'cs-lib-empty' },
                         h('div', { className: 'cs-lib-empty-title' }, searchActive ? t('noSearchResults') : t('emptyLibrary')),
                         h('div', { className: 'cs-lib-empty-text' }, searchActive ? t('noSearchResultsHint') : t('emptyLibraryHint')),
-                        h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, t('newSpace'))
+                        h('div', { className: 'cs-empty-actions' },
+                          h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: openNewSpace }, t('newSpace')),
+                          h('button', { type: 'button', className: 'cs-btn', onClick: openDemoSpace }, t('openDemo'))
+                        )
                       )
                     : null
                 )
@@ -3462,6 +3545,7 @@ window.__ModuleLoader__.load({
               h('a', { href: 'https://github.com/ToiMee/mica_space/issues', target: '_blank', rel: 'noreferrer' }, welcomeText('welcomeFeedbackLink'))
             ),
             h('div', { className: 'cs-lib-modal-actions' },
+              h('button', { type: 'button', className: 'cs-btn', onClick: () => { markWelcomeSeen(); setWelcomeOpen(false); openDemoSpace() } }, t('demoWelcomeButton')),
               h('button', { type: 'button', className: 'cs-btn cs-btn-primary', onClick: () => { markWelcomeSeen(); setWelcomeOpen(false) } }, welcomeText('welcomeStart'))
             )
           )
