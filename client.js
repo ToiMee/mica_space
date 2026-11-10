@@ -52,6 +52,10 @@ window.__ModuleLoader__.load({
       welcome: '使用说明',
       language: '界面语言',
       languageFollowsDsh: '跟随 DSH 的界面语言',
+      appearance: '外观',
+      appearanceAuto: '自动',
+      appearanceLight: '浅色',
+      appearanceDark: '深色',
       welcomeVersion: "v0.99 Demo",
       welcomeTitle: "欢迎使用Mica Space！",
       welcomeIntro: "这是 Mica 空间 0.99 Demo。\n\n长对话里追问一多，上下文容易变成一团线，想回到某个回答继续问，得上下翻找。\n\nMica 就是为解决这个问题：把追问摊成分支地图，主线保留，支线各自展开。",
@@ -140,6 +144,9 @@ window.__ModuleLoader__.load({
       delete: '删除',
       moveTo: '移动到',
       confirmDeleteSpace: '删除这个空间？',
+      confirmDeleteTitle: '确认删除',
+      confirmDeleteCard: '删除这张问答卡片？如果它是分支的起点，相关分支也会被删除。',
+      confirmDeleteCards: '删除选中的问答卡片？如果有从这些卡片开出的分支，也会一并删除。',
       confirmDeleteFolder: '删除这个文件夹？里面的子文件夹和空间都会一起删除（空间进入回收站）。',
       libraryLoadError: '空间库读取失败',
       loading: '加载中…',
@@ -291,6 +298,10 @@ window.__ModuleLoader__.load({
       welcome: 'Guide',
       language: 'Language',
       languageFollowsDsh: 'Follows the DSH interface language',
+      appearance: 'Appearance',
+      appearanceAuto: 'Auto',
+      appearanceLight: 'Light',
+      appearanceDark: 'Dark',
       welcomeVersion: '0.99 Demo',
       welcomeTitle: 'Welcome aboard — no need to floor it yet',
       welcomeIntro: 'Mica Space 0.99 Demo is for long conversations where follow-ups pile up into a tangle. Instead of scrolling back to find an answer, Mica spreads each follow-up into a branch while the main line stays intact. Take a moment to read the notes first.',
@@ -376,6 +387,9 @@ window.__ModuleLoader__.load({
       delete: 'Delete',
       moveTo: 'Move to',
       confirmDeleteSpace: 'Delete this space?',
+      confirmDeleteTitle: 'Confirm deletion',
+      confirmDeleteCard: 'Delete this conversation card? Any branches started from it will also be deleted.',
+      confirmDeleteCards: 'Delete the selected cards? Any branches started from them will also be deleted.',
       confirmDeleteFolder: 'Delete this folder? Its child folders and spaces will be deleted too (spaces go to trash).',
       libraryLoadError: 'Failed to load the library',
       loading: 'Loading…',
@@ -512,6 +526,38 @@ window.__ModuleLoader__.load({
     const CSS = `
 .cs-root { --cs-accent: var(--dsw-static-neutral-bluish-400, #3370ff); --cs-accent-soft: var(--dsw-static-neutral-bluish-200, #dbe6ff); --cs-text: var(--dsw-alias-label-primary, #1f2329); --cs-muted: var(--dsw-alias-label-secondary, color-mix(in srgb, var(--dsw-alias-label-primary, #1f2329) 62%, var(--dsw-alias-bg-module-platform, #ffffff) 38%)); --cs-border: var(--dsw-alias-border-l2, rgba(0,0,0,.1)); --cs-border-strong: var(--dsw-alias-border-l4, rgba(0,0,0,.16)); --cs-bg: var(--dsw-alias-bg-l1, color-mix(in srgb, var(--dsw-alias-bg-module-platform, #ffffff) 94%, var(--dsw-alias-label-primary, #1f2329) 6%)); --cs-panel: var(--dsw-alias-bg-module-platform, #ffffff); --cs-hover: var(--dsw-alias-interactive-bg-hover, rgba(0,0,0,.04)); --cs-shadow: var(--dsw-alias-shadow-l1, 0 4px 16px rgba(0,0,0,.08)); --cs-radius: var(--dsw-radius-xl, 12px); --cs-card-w: 420px; --cs-card-h: 300px; position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: var(--cs-bg); color: var(--cs-text); font-family: inherit; font-size: 14px; }
 .cs-root *, .cs-root *::before, .cs-root *::after { box-sizing: border-box; }
+.cs-root[data-mica-theme] {
+  color-scheme: light dark;
+  --cs-base-text: light-dark(#1f2329, #e8eaf0);
+  --cs-base-muted: light-dark(#575f6c, #a6adba);
+  --cs-base-panel: light-dark(#ffffff, #22242a);
+  --cs-base-bg: light-dark(#f5f6f8, #18191d);
+  --cs-base-border: light-dark(#d9dde5, #393d47);
+  --cs-base-border-strong: light-dark(#b7bfcc, #555c69);
+  --cs-base-hover: light-dark(#eef1f5, #30333b);
+  --cs-base-accent: light-dark(#2861dc, #3d6bd7);
+  --cs-base-accent-soft: light-dark(#dbe6ff, #273d68);
+  --cs-text: var(--dsw-alias-label-primary, var(--cs-base-text));
+  --cs-muted: var(--dsw-alias-label-secondary, var(--cs-base-muted));
+  --cs-panel: var(--dsw-alias-bg-module-platform, var(--cs-base-panel));
+  --cs-bg: var(--dsw-alias-bg-l1, var(--cs-base-bg));
+  --cs-border: var(--dsw-alias-border-l2, var(--cs-base-border));
+  --cs-border-strong: var(--dsw-alias-border-l4, var(--cs-base-border-strong));
+  --cs-hover: var(--dsw-alias-interactive-bg-hover, var(--cs-base-hover));
+  --cs-accent: var(--dsw-static-neutral-bluish-400, var(--cs-base-accent));
+  --cs-accent-soft: var(--dsw-static-neutral-bluish-200, var(--cs-base-accent-soft));
+}
+.cs-root[data-mica-theme="light"] { color-scheme: light; }
+.cs-root[data-mica-theme="dark"] { color-scheme: dark; }
+.cs-root:is([data-mica-theme="light"], [data-mica-theme="dark"]) {
+  --cs-text: var(--cs-base-text); --cs-muted: var(--cs-base-muted);
+  --cs-panel: var(--cs-base-panel); --cs-bg: var(--cs-base-bg);
+  --cs-border: var(--cs-base-border); --cs-border-strong: var(--cs-base-border-strong);
+  --cs-hover: var(--cs-base-hover); --cs-accent: var(--cs-base-accent);
+  --cs-accent-soft: var(--cs-base-accent-soft);
+  --cs-shadow: 0 4px 16px light-dark(rgba(0,0,0,.08), rgba(0,0,0,.32));
+}
+.cs-appearance { background: var(--cs-panel); color: var(--cs-text); }
 .cs-center { align-items: center; justify-content: center; gap: 12px; }
 .cs-loading { display: flex; align-items: center; gap: 10px; color: var(--cs-muted); font-size: 14px; }
 .cs-spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--cs-border); border-top-color: var(--cs-accent); animation: cs-spin .8s linear infinite; }
@@ -813,6 +859,11 @@ window.__ModuleLoader__.load({
 .cs-lib-hint { color: var(--cs-muted); font-size: 10px; line-height: 1.4; }
 .cs-back-icon { font-size: 14px; line-height: 1; }
 .cs-lib-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 3px; }
+.cs-delete-dialog { display: none; width: min(360px, calc(100% - 64px)); margin: auto; color: var(--cs-text); }
+.cs-delete-dialog[open] { display: flex; }
+.cs-delete-dialog::backdrop { background: rgba(14, 20, 28, .44); }
+.cs-delete-dialog p { margin: 0; line-height: 1.5; }
+.cs-delete-dialog .cs-delete-confirm { background: #b42318; border-color: #b42318; color: white; }
 .cs-lib-trash-modal { width: min(620px, calc(100vw - 48px)); }
 .cs-backup-modal { width: min(520px, calc(100vw - 48px)); }
 .cs-privacy-modal { width: min(620px, calc(100vw - 48px)); }
@@ -2576,8 +2627,63 @@ window.__ModuleLoader__.load({
       return lines.join('\n')
     }
 
+    function DeleteConfirmation({ message, settle, t }) {
+      const dialog = useRef(null)
+      useEffect(() => {
+        const node = dialog.current
+        if (!node) return
+        node.showModal()
+        return () => node.close()
+      }, [])
+      return h('dialog', {
+        ref: dialog, className: 'cs-lib-modal cs-delete-dialog', role: 'alertdialog',
+        'aria-modal': 'true', 'aria-label': t('confirmDeleteTitle'),
+        onCancel: event => { event.preventDefault(); settle(false) },
+      },
+        h('div', { className: 'cs-lib-modal-title' }, t('confirmDeleteTitle')),
+        h('p', null, message),
+        h('div', { className: 'cs-lib-modal-actions' },
+          h('button', { type: 'button', className: 'cs-btn', autoFocus: true, onClick: () => settle(false) }, t('cancel')),
+          h('button', { type: 'button', className: 'cs-btn cs-delete-confirm', onClick: () => settle(true) }, t('delete'))))
+    }
+
+    function useDeleteConfirmation(t) {
+      const [message, setMessage] = useState('')
+      const pending = useRef(null)
+      useEffect(() => () => { pending.current?.(false) }, [])
+      const ask = (text) => new Promise(resolve => {
+        if (pending.current) return resolve(false)
+        pending.current = resolve
+        setMessage(text)
+      })
+      const settle = (accepted) => {
+        const resolve = pending.current
+        pending.current = null
+        setMessage('')
+        resolve?.(accepted)
+      }
+      return [ask, message ? h(DeleteConfirmation, { message, settle, t }) : null]
+    }
+
+    function AppearanceSelect({ appearance, onChange, t }) {
+      return h('select', { className: 'cs-btn cs-appearance', 'aria-label': t('appearance'), value: appearance,
+        onChange: event => onChange(event.target.value) },
+        h('option', { value: 'auto' }, t('appearanceAuto')),
+        h('option', { value: 'light' }, t('appearanceLight')),
+        h('option', { value: 'dark' }, t('appearanceDark')))
+    }
+
     function ChatSpaceRoot({ tr, t: slotT, onBackToConversation }) {
       const t = typeof tr === 'function' ? tr : typeof slotT === 'function' ? slotT : (key) => key
+      const [appearance, setAppearance] = useState(() => {
+        const saved = readLocalStorage(APPEARANCE_KEY)
+        return saved === 'light' || saved === 'dark' ? saved : 'auto'
+      })
+      const changeAppearance = value => {
+        setAppearance(value)
+        writeLocalStorage(APPEARANCE_KEY, value)
+      }
+      const [confirmDeletion, deleteConfirmation] = useDeleteConfirmation(t)
       const [library, setLibrary] = useState(null)
       const [loadState, setLoadState] = useState('loading')
       const [loadError, setLoadError] = useState('')
@@ -2878,14 +2984,14 @@ window.__ModuleLoader__.load({
       })
 
       const deleteSpace = (space) => run(async () => {
-        if (!window.confirm(t('confirmDeleteSpace'))) return
+        if (!await confirmDeletion(t('confirmDeleteSpace'))) return
         const data = await post('/space/delete', { id: space.id })
         if (data.library) setLibrary(data.library)
         if (selectedFolder !== 'all' && selectedFolder !== 'none' && !folderById.has(selectedFolder)) setSelectedFolder('all')
       })
 
       const deleteFolder = (folder) => run(async () => {
-        if (!window.confirm(t('confirmDeleteFolder'))) return
+        if (!await confirmDeletion(t('confirmDeleteFolder'))) return
         const data = await post('/folder/delete', { id: folder.id })
         if (data.library) setLibrary(data.library)
         if (data.library && selectedFolder !== 'all' && selectedFolder !== 'none' && selectedFolder !== 'folders' && !data.library.folders.some((item) => item.id === selectedFolder)) { setSelectedFolder('all'); setFolderHistory([]); writeTextStorage(LAST_FOLDER_KEY, 'all') }
@@ -3048,7 +3154,7 @@ window.__ModuleLoader__.load({
       })
 
       const deleteTrashItem = (item) => run(async () => {
-        if (!window.confirm(t('confirmDeleteForever'))) return
+        if (!await confirmDeletion(t('confirmDeleteForever'))) return
         const data = await post('/trash/delete', { file: item.file })
         if (Array.isArray(data.items)) setTrashItems(data.items)
       })
@@ -3304,6 +3410,8 @@ window.__ModuleLoader__.load({
           key: activeId,
           tr,
           t,
+          appearance,
+          changeAppearance,
           onBackToConversation,
           spaceId: activeId,
           onBackToLibrary: () => {
@@ -3315,14 +3423,14 @@ window.__ModuleLoader__.load({
       }
 
       if (loadState === 'loading') {
-        return h('div', { className: 'cs-root cs-library' },
+        return h('div', { className: 'cs-root cs-library', 'data-mica-theme': appearance },
           h('style', null, CSS),
           h('div', { className: 'cs-lib-center' }, t('loading'))
         )
       }
 
       if (loadState === 'error') {
-        return h('div', { className: 'cs-root cs-library' },
+        return h('div', { className: 'cs-root cs-library', 'data-mica-theme': appearance },
           h('style', null, CSS),
           h('div', { className: 'cs-lib-center' },
             h('div', { className: 'cs-lib-empty-title' }, t('libraryLoadError')),
@@ -3332,7 +3440,7 @@ window.__ModuleLoader__.load({
         )
       }
 
-      return h('div', { className: 'cs-root cs-library' },
+      return h('div', { className: 'cs-root cs-library', 'data-mica-theme': appearance },
         h('style', null, CSS),
         h('div', { className: 'cs-lib-header' },
           h('div', { className: 'cs-title-brand' },
@@ -3562,6 +3670,10 @@ window.__ModuleLoader__.load({
                 h('span', { className: 'cs-settings-label' }, t('language')),
                 h('span', { className: 'cs-settings-desc' }, t('languageFollowsDsh'))
               ),
+              h('div', { className: 'cs-settings-row cs-settings-static' },
+                h('span', { className: 'cs-settings-label' }, t('appearance')),
+                h(AppearanceSelect, { appearance, onChange: changeAppearance, t })
+              ),
               h('button', { type: 'button', className: 'cs-settings-row', onClick: () => { setSettingsOpen(false); setPrivacyOpen(true) } },
                 h('span', { className: 'cs-settings-label' }, t('privacy')),
                 h('span', { className: 'cs-settings-desc' }, t('privacySettingsDesc'))
@@ -3713,6 +3825,7 @@ window.__ModuleLoader__.load({
             )
           )
         ) : null,
+        deleteConfirmation,
         renameTarget ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setRenameTarget(null) },
           h('div', { className: 'cs-lib-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-lib-modal-title' }, t('rename')),
@@ -3730,8 +3843,9 @@ window.__ModuleLoader__.load({
     }
 
 
-    function ChatSpacePanel({ tr, t: slotT, onBackToConversation, spaceId, onBackToLibrary }) {
+    function ChatSpacePanel({ tr, t: slotT, onBackToConversation, spaceId, onBackToLibrary, appearance, changeAppearance }) {
       const t = typeof tr === 'function' ? tr : typeof slotT === 'function' ? slotT : (key) => key
+      const [confirmDeletion, deleteConfirmation] = useDeleteConfirmation(t)
       const [space, setSpace] = useState(null)
       const mainColor = isHexColor(space && space.mainColor) ? space.mainColor : MAIN_COLOR
       const [model, setModel] = useState(null)
@@ -4149,7 +4263,7 @@ window.__ModuleLoader__.load({
       }, [anchorReveal])
 
       if (loadState === 'loading') {
-        return h('div', { className: 'cs-root cs-center' },
+        return h('div', { className: 'cs-root cs-center', 'data-mica-theme': appearance },
           h('style', null, CSS),
           h('div', { className: 'cs-loading' },
             h('span', { className: 'cs-spinner' }),
@@ -4159,7 +4273,7 @@ window.__ModuleLoader__.load({
       }
 
       if (loadState === 'error') {
-        return h('div', { className: 'cs-root cs-center' },
+        return h('div', { className: 'cs-root cs-center', 'data-mica-theme': appearance },
           h('style', null, CSS),
           h('div', { className: 'cs-error-screen' },
             h('strong', null, t('loadError')),
@@ -4405,11 +4519,13 @@ window.__ModuleLoader__.load({
         copyText(markdown)
       }
 
-      const contextDeleteSelected = () => {
+      const contextDeleteSelected = async () => {
         if (!contextMenu) return
+        const keep = new Set(contextMenu.ids)
+        setContextMenu(null)
+        if (!await confirmDeletion(t('confirmDeleteCards'))) return
         const snapshot = spaceRef.current
         if (!snapshot) return
-        const keep = new Set(contextMenu.ids)
         const removedTurns = new Set(keep)
         const removedBranches = new Set()
         let changed = true
@@ -4430,7 +4546,6 @@ window.__ModuleLoader__.load({
             }
           }
         }
-        if (removedBranches.size > 0 && !window.confirm(t('confirmDeleteBranch'))) return
         pushHistory(snapshot)
         setSelectedTurn(null)
         setSelectedIds(new Set())
@@ -5445,7 +5560,8 @@ window.__ModuleLoader__.load({
         }
       }
 
-      const deleteTurn = (kind, branchId, turnId) => {
+      const deleteTurn = async (kind, branchId, turnId) => {
+        if (!await confirmDeletion(t('confirmDeleteCard'))) return
         const snapshot = spaceRef.current
         if (!snapshot) return
         const removedTurns = new Set([turnId])
@@ -5471,10 +5587,6 @@ window.__ModuleLoader__.load({
               for (const turn of branch.turns) removedTurns.add(turn.id)
             }
           }
-        }
-        if (removedBranches.size > 0) {
-          const message = kind === 'main' ? t('confirmDeleteMain') : t('confirmDeleteBranch')
-          if (!window.confirm(message)) return
         }
         pushHistory(snapshot)
         if (selectedTurn && removedTurns.has(selectedTurn.turnId)) setSelectedTurn(null)
@@ -6546,6 +6658,7 @@ window.__ModuleLoader__.load({
 
       return h('div', {
         className: cx('cs-root', focusIds.size > 0 ? 'cs-card-focus' : ''),
+        'data-mica-theme': appearance,
         ref: rootRef,
       },
         h('style', null, CSS),
@@ -6558,6 +6671,7 @@ window.__ModuleLoader__.load({
             )
           ),
           h('div', { className: 'cs-top-actions' },
+            h(AppearanceSelect, { appearance, onChange: changeAppearance, t }),
             h('span', { className: 'cs-model', title: model ? `${model.provider} / ${model.model}` : '' }, model ? `${t('model')}: ${model.model}` : t('noModel')),
             h('span', { className: cx('cs-save', saveState === 'error' ? 'cs-save-error' : '') },
               saveState === 'saving' ? t('saving') : saveState === 'saved' ? t('saved') : saveState === 'error' ? t('saveError') : ''
@@ -6639,6 +6753,7 @@ window.__ModuleLoader__.load({
           renderSelection(),
           renderHover(),
           renderContextMenu(),
+          deleteConfirmation,
           renderMemorySettings(),
           renderLayers(),
           renderBottomComposer(),
@@ -6696,6 +6811,7 @@ window.__ModuleLoader__.load({
 
     const ACTIVE_KEY = 'chat-space:active'
     const LAST_SPACE_KEY = 'chat-space:last-space'
+    const APPEARANCE_KEY = 'chat-space:appearance'
     const LAST_FOLDER_KEY = 'chat-space:last-folder'
     const WELCOME_KEY = 'chat-space:welcome-seen'
     const FOLDER_VIEW_KEY = 'chat-space:folder-view'

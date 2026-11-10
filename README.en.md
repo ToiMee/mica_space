@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-**Current demo:** `0.99.10` · [Download / Release](https://github.com/ToiMee/mica_space/releases/latest)
+**Current demo:** `0.99.11` · [Download / Release](https://github.com/ToiMee/mica_space/releases/latest)
 
 Mica Space is a zoomable, branching conversation map for **DSH (DeepSeek Harness)**. Instead of scrolling through one long chat, each follow-up grows from the answer it belongs to: the main line keeps its context, and every branch stays independently explorable.
 
@@ -41,7 +41,7 @@ In a long conversation, follow-ups pile up under a single answer. To return to a
 On the GitHub Releases page, download:
 
 ```text
-mica-space-0.99.4-demo.zip
+mica-space-0.99.11-demo.zip
 ```
 
 Then:

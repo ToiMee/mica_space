@@ -2,7 +2,7 @@
 
 [English](README.en.md)
 
-**Current demo:** `0.99.7` · [Download / Release](https://github.com/ToiMee/mica_space/releases/latest)
+**Current demo:** `0.99.11` · [Download / Release](https://github.com/ToiMee/mica_space/releases/latest)
 
 Mica Space 是 DSH 的可缩放对话地图插件：一条纵向主线，多条从回答分叉的支线，每个空间是一张独立画布。
 
@@ -46,7 +46,7 @@ Mica Space 是 DSH 的可缩放对话地图插件：一条纵向主线，多条�
 
 ## 安装
 
-Release 里的 `mica-space-0.99.10-demo.zip` 已包含运行依赖，解压后直接在 DSH 插件管理里选择该目录即可，不需要再执行 `npm install`。
+Release 里的 `mica-space-0.99.11-demo.zip` 已包含运行依赖，解压后直接在 DSH 插件管理里选择该目录即可，不需要再执行 `npm install`。
 
 源码安装仍然需要先 `npm install`。
 
@@ -81,7 +81,7 @@ Release 里的 `mica-space-0.99.10-demo.zip` 已包含运行依赖，解压后�
 
 ## Agent 模式（v1.0 计划）
 
-**当前的 0.99.10 demo 没有 Agent 模式。**
+**当前的 0.99.11 demo 没有 Agent 模式。**
 
 现在 Mica 里的每条对话都是一次普通模型调用：
 
@@ -98,7 +98,7 @@ v1.0 会尝试把 Agent 模式接进来，但不会简单默认开启，也不�
 - 先做只读工具，再考虑写文件和执行命令；
 - 明确分支复制、回到主线、中断后继续时 Agent 状态怎么处理。
 
-Agent 模式涉及工具权限、会话持久化和分支语义，属于 v1.0 的探索项，不是 0.99.10 demo 的现有能力。
+Agent 模式涉及工具权限、会话持久化和分支语义，属于 v1.0 的探索项，不是 0.99.11 demo 的现有能力。
 
 ## 设置
 
@@ -137,7 +137,7 @@ Agent 模式涉及工具权限、会话持久化和分支语义，属于 v1.0 �
 - 大空间已做视口裁剪，但未做完整的节点虚拟化；
 - 核心测试覆盖上下文、空间库、embedding 和语义排序；另有 Playwright 真实浏览器 E2E；
 - 当前版本为预览版，升级前请保留 `.chat-space` 备份；
-- 0.99.10 demo 不包含 Agent 模式；Agent 计划在 v1.0 尝试。
+- 0.99.11 demo 不包含 Agent 模式；Agent 计划在 v1.0 尝试。
 
 ## 测试
 
@@ -161,4 +161,4 @@ https://github.com/ToiMee/mica_space
 
 ## 版本
 
-`0.99.10 demo`（包版本 `0.99.10`）— 零配置本地记忆 + 父子级轻量检索 + 主线 callback + 设置/备份恢复 + 附件清理 + 交互修复 + 横向布局修复；Agent 模式计划在 v1.0 尝试。
+`0.99.11 demo`（包版本 `0.99.11`）— 零配置本地记忆 + 父子级轻量检索 + 主线 callback + 设置/备份恢复 + 附件清理 + 交互修复 + 横向布局修复；Agent 模式计划在 v1.0 尝试。
