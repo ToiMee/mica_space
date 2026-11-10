@@ -109,8 +109,22 @@ try {
   const selected = await horizontalMain.evaluate((element) => element.classList.contains('cs-selected'))
   if (!selected) throw new Error('horizontal card double-click did not select')
 
+  const cardCount = await page.locator('.cs-card-main').count()
+  await horizontalMain.click({ button: 'right' })
+  await page.locator('.cs-context-menu').getByRole('button', { name: '删除', exact: true }).click()
+  const deletion = page.getByRole('alertdialog', { name: '确认删除' })
+  await deletion.getByRole('button', { name: '取消', exact: true }).click()
+  await deletion.waitFor({ state: 'hidden' })
+  if (await page.locator('.cs-card-main').count() !== cardCount) throw new Error('cancelled deletion removed a card')
+
+  await horizontalMain.click({ button: 'right' })
+  await page.locator('.cs-context-menu').getByRole('button', { name: '删除', exact: true }).click()
+  await deletion.getByRole('button', { name: '删除', exact: true }).click()
+  await deletion.waitFor({ state: 'hidden' })
+  if (await page.locator('.cs-card-main').count() !== cardCount - 1) throw new Error('confirmed deletion did not remove one card')
+
   if (pageErrors.length) throw new Error('browser errors: ' + pageErrors.join(' | '))
-  console.log('E2E passed: welcome once, vertical/horizontal cards, context menu, pending badge')
+  console.log('E2E passed: welcome once, vertical/horizontal cards, pending badge, deletion cancel and confirm')
   await browser.close()
 } finally {
   server.close()
