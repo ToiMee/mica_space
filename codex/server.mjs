@@ -57,7 +57,7 @@ async function dispatch(method, params = {}) {
     case 'initialize':
       return {
         protocolVersion: ['2025-03-26', '2025-06-18', '2025-11-25'].includes(params.protocolVersion) ? params.protocolVersion : '2025-11-25',
-        serverInfo: { name: 'mica-space', version: '0.99.8' },
+        serverInfo: { name: 'mica-space', version: '0.99.9' },
         capabilities: { tools: {}, resources: {} },
       }
     case 'ping': return {}

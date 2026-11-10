@@ -4,7 +4,7 @@
 
 **Codex desktop:** [Installation and setup](codex/README.md)
 
-**Current demo:** `0.99.8` · [Download / Release](https://github.com/ToiMee/mica_space/releases/latest)
+**Current demo:** `0.99.9` · [Download / Release](https://github.com/ToiMee/mica_space/releases/latest)
 
 Mica Space is a zoomable, branching conversation map for **DSH (DeepSeek Harness)**. Instead of scrolling through one long chat, each follow-up grows from the answer it belongs to: the main line keeps its context, and every branch stays independently explorable.
 

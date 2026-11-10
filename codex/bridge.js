@@ -25,7 +25,7 @@
   })
 
   window.__micaBridgeReady = request('ui/initialize', {
-    appInfo: { name: 'Mica Space', version: '0.99.7' },
+    appInfo: { name: 'Mica Space', version: '0.99.9' },
     appCapabilities: {},
     protocolVersion: '2026-01-26',
   }).then(result => {

@@ -1,6 +1,6 @@
 {
   "name": "mica-space",
-  "version": "0.99.8-codex.1",
+  "version": "0.99.9-codex.1",
   "description": "Mica Space branching learning canvas",
   "mcpServers": "./.mcp.json",
   "interface": {

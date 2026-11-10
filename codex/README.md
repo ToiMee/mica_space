@@ -1,6 +1,6 @@
 # Mica Space for Codex
 
-Mica Space 的 Codex 桌面版与 DeepSeek Harness 版共用画布和数据逻辑。`0.99.8-codex.1` 支持回答卡片上的来源跳转，并在设置、备份及恢复中说明备份不包含附件原文件。
+Mica Space 的 Codex 桌面版与 DeepSeek Harness 版共用画布和数据逻辑。`0.99.9-codex.1` 支持回答卡片上的来源跳转，并在设置、备份及恢复中说明备份不包含附件原文件。
 
 ## 安装
 

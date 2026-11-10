@@ -137,6 +137,9 @@ window.__ModuleLoader__.load({
       delete: '删除',
       moveTo: '移动到',
       confirmDeleteSpace: '删除这个空间？',
+      confirmDeleteTitle: '确认删除',
+      confirmDeleteCard: '删除这张问答卡片？如果它是分支的起点，相关分支也会被删除。',
+      confirmDeleteCards: '删除选中的问答卡片？如果有从这些卡片开出的分支，也会一并删除。',
       confirmDeleteFolder: '删除这个文件夹？里面的子文件夹和空间都会一起删除（空间进入回收站）。',
       libraryLoadError: '空间库读取失败',
       loading: '加载中…',
@@ -373,6 +376,9 @@ window.__ModuleLoader__.load({
       delete: 'Delete',
       moveTo: 'Move to',
       confirmDeleteSpace: 'Delete this space?',
+      confirmDeleteTitle: 'Confirm deletion',
+      confirmDeleteCard: 'Delete this conversation card? Any branches started from it will also be deleted.',
+      confirmDeleteCards: 'Delete the selected cards? Any branches started from them will also be deleted.',
       confirmDeleteFolder: 'Delete this folder? Its child folders and spaces will be deleted too (spaces go to trash).',
       libraryLoadError: 'Failed to load the library',
       loading: 'Loading…',
@@ -809,6 +815,11 @@ window.__ModuleLoader__.load({
 .cs-lib-hint { color: var(--cs-muted); font-size: 10px; line-height: 1.4; }
 .cs-back-icon { font-size: 14px; line-height: 1; }
 .cs-lib-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 3px; }
+.cs-delete-dialog { display: none; width: min(360px, calc(100% - 64px)); margin: auto; color: var(--cs-text); }
+.cs-delete-dialog[open] { display: flex; }
+.cs-delete-dialog::backdrop { background: rgba(14, 20, 28, .44); }
+.cs-delete-dialog p { margin: 0; line-height: 1.5; }
+.cs-delete-dialog .cs-delete-confirm { background: #b42318; border-color: #b42318; color: white; }
 .cs-lib-trash-modal { width: min(620px, calc(100vw - 48px)); }
 .cs-backup-modal { width: min(520px, calc(100vw - 48px)); }
 .cs-privacy-modal { width: min(620px, calc(100vw - 48px)); }
@@ -2626,8 +2637,47 @@ window.__ModuleLoader__.load({
       return lines.join('\n')
     }
 
+    function DeleteConfirmation({ message, settle, t }) {
+      const dialog = useRef(null)
+      useEffect(() => {
+        const node = dialog.current
+        if (!node) return
+        node.showModal()
+        return () => node.close()
+      }, [])
+      return h('dialog', {
+        ref: dialog, className: 'cs-lib-modal cs-delete-dialog', role: 'alertdialog',
+        'aria-modal': 'true', 'aria-label': t('confirmDeleteTitle'),
+        onCancel: event => { event.preventDefault(); settle(false) },
+      },
+        h('div', { className: 'cs-lib-modal-title' }, t('confirmDeleteTitle')),
+        h('p', null, message),
+        h('div', { className: 'cs-lib-modal-actions' },
+          h('button', { type: 'button', className: 'cs-btn', autoFocus: true, onClick: () => settle(false) }, t('cancel')),
+          h('button', { type: 'button', className: 'cs-btn cs-delete-confirm', onClick: () => settle(true) }, t('delete'))))
+    }
+
+    function useDeleteConfirmation(t) {
+      const [message, setMessage] = useState('')
+      const pending = useRef(null)
+      useEffect(() => () => { pending.current?.(false) }, [])
+      const ask = (text) => new Promise(resolve => {
+        if (pending.current) return resolve(false)
+        pending.current = resolve
+        setMessage(text)
+      })
+      const settle = (accepted) => {
+        const resolve = pending.current
+        pending.current = null
+        setMessage('')
+        resolve?.(accepted)
+      }
+      return [ask, message ? h(DeleteConfirmation, { message, settle, t }) : null]
+    }
+
     function ChatSpaceRoot({ tr, t: slotT, onBackToConversation }) {
       const t = typeof tr === 'function' ? tr : typeof slotT === 'function' ? slotT : (key) => key
+      const [confirmDeletion, deleteConfirmation] = useDeleteConfirmation(t)
       const [library, setLibrary] = useState(null)
       const [loadState, setLoadState] = useState('loading')
       const [loadError, setLoadError] = useState('')
@@ -2928,14 +2978,14 @@ window.__ModuleLoader__.load({
       })
 
       const deleteSpace = (space) => run(async () => {
-        if (!window.confirm(t('confirmDeleteSpace'))) return
+        if (!await confirmDeletion(t('confirmDeleteSpace'))) return
         const data = await post('/space/delete', { id: space.id })
         if (data.library) setLibrary(data.library)
         if (selectedFolder !== 'all' && selectedFolder !== 'none' && !folderById.has(selectedFolder)) setSelectedFolder('all')
       })
 
       const deleteFolder = (folder) => run(async () => {
-        if (!window.confirm(t('confirmDeleteFolder'))) return
+        if (!await confirmDeletion(t('confirmDeleteFolder'))) return
         const data = await post('/folder/delete', { id: folder.id })
         if (data.library) setLibrary(data.library)
         if (data.library && selectedFolder !== 'all' && selectedFolder !== 'none' && selectedFolder !== 'folders' && !data.library.folders.some((item) => item.id === selectedFolder)) { setSelectedFolder('all'); setFolderHistory([]); writeTextStorage(LAST_FOLDER_KEY, 'all') }
@@ -3098,7 +3148,7 @@ window.__ModuleLoader__.load({
       })
 
       const deleteTrashItem = (item) => run(async () => {
-        if (!window.confirm(t('confirmDeleteForever'))) return
+        if (!await confirmDeletion(t('confirmDeleteForever'))) return
         const data = await post('/trash/delete', { file: item.file })
         if (Array.isArray(data.items)) setTrashItems(data.items)
       })
@@ -3684,6 +3734,7 @@ window.__ModuleLoader__.load({
             )
           )
         ) : null,
+        deleteConfirmation,
         renameTarget ? h('div', { className: 'cs-lib-modal-backdrop', onClick: () => setRenameTarget(null) },
           h('div', { className: 'cs-lib-modal', onClick: (event) => event.stopPropagation() },
             h('div', { className: 'cs-lib-modal-title' }, t('rename')),
@@ -3703,6 +3754,7 @@ window.__ModuleLoader__.load({
 
     function ChatSpacePanel({ tr, t: slotT, onBackToConversation, spaceId, onBackToLibrary }) {
       const t = typeof tr === 'function' ? tr : typeof slotT === 'function' ? slotT : (key) => key
+      const [confirmDeletion, deleteConfirmation] = useDeleteConfirmation(t)
       const [space, setSpace] = useState(null)
       const mainColor = isHexColor(space && space.mainColor) ? space.mainColor : MAIN_COLOR
       const [model, setModel] = useState(null)
@@ -4376,11 +4428,13 @@ window.__ModuleLoader__.load({
         copyText(markdown)
       }
 
-      const contextDeleteSelected = () => {
+      const contextDeleteSelected = async () => {
         if (!contextMenu) return
+        const keep = new Set(contextMenu.ids)
+        setContextMenu(null)
+        if (!await confirmDeletion(t('confirmDeleteCards'))) return
         const snapshot = spaceRef.current
         if (!snapshot) return
-        const keep = new Set(contextMenu.ids)
         const removedTurns = new Set(keep)
         const removedBranches = new Set()
         let changed = true
@@ -4401,7 +4455,6 @@ window.__ModuleLoader__.load({
             }
           }
         }
-        if (removedBranches.size > 0 && !window.confirm(t('confirmDeleteBranch'))) return
         pushHistory(snapshot)
         setSelectedTurn(null)
         setSelectedIds(new Set())
@@ -5417,7 +5470,8 @@ window.__ModuleLoader__.load({
         }
       }
 
-      const deleteTurn = (kind, branchId, turnId) => {
+      const deleteTurn = async (kind, branchId, turnId) => {
+        if (!await confirmDeletion(t('confirmDeleteCard'))) return
         const snapshot = spaceRef.current
         if (!snapshot) return
         const removedTurns = new Set([turnId])
@@ -5443,10 +5497,6 @@ window.__ModuleLoader__.load({
               for (const turn of branch.turns) removedTurns.add(turn.id)
             }
           }
-        }
-        if (removedBranches.size > 0) {
-          const message = kind === 'main' ? t('confirmDeleteMain') : t('confirmDeleteBranch')
-          if (!window.confirm(message)) return
         }
         pushHistory(snapshot)
         if (selectedTurn && removedTurns.has(selectedTurn.turnId)) setSelectedTurn(null)
@@ -6611,6 +6661,7 @@ window.__ModuleLoader__.load({
           renderSelection(),
           renderHover(),
           renderContextMenu(),
+          deleteConfirmation,
           renderMemorySettings(),
           renderLayers(),
           renderBottomComposer(),
