@@ -56,6 +56,11 @@ window.__ModuleLoader__.load({
       appearanceAuto: '自动',
       appearanceLight: '浅色',
       appearanceDark: '深色',
+      fontSize: '字体大小',
+      fontSmall: '小',
+      fontNormal: '标准',
+      fontLarge: '大',
+      fontXLarge: '特大',
       welcomeVersion: "v0.99 Demo",
       welcomeTitle: "欢迎使用Mica Space！",
       welcomeIntro: "这是 Mica 空间 0.99 Demo。\n\n长对话里追问一多，上下文容易变成一团线，想回到某个回答继续问，得上下翻找。\n\nMica 就是为解决这个问题：把追问摊成分支地图，主线保留，支线各自展开。",
@@ -323,6 +328,11 @@ window.__ModuleLoader__.load({
       appearanceAuto: 'Auto',
       appearanceLight: 'Light',
       appearanceDark: 'Dark',
+      fontSize: 'Font size',
+      fontSmall: 'Small',
+      fontNormal: 'Normal',
+      fontLarge: 'Large',
+      fontXLarge: 'Extra large',
       welcomeVersion: '0.99 Demo',
       welcomeTitle: 'Welcome aboard — no need to floor it yet',
       welcomeIntro: 'Mica Space 0.99 Demo is for long conversations where follow-ups pile up into a tangle. Instead of scrolling back to find an answer, Mica spreads each follow-up into a branch while the main line stays intact. Take a moment to read the notes first.',
@@ -545,7 +555,7 @@ window.__ModuleLoader__.load({
     }
 
     const CSS = `
-.cs-root { --cs-accent: var(--dsw-static-neutral-bluish-400, #3370ff); --cs-accent-soft: var(--dsw-static-neutral-bluish-200, #dbe6ff); --cs-text: var(--dsw-alias-label-primary, #1f2329); --cs-muted: var(--dsw-alias-label-secondary, color-mix(in srgb, var(--dsw-alias-label-primary, #1f2329) 62%, var(--dsw-alias-bg-module-platform, #ffffff) 38%)); --cs-border: var(--dsw-alias-border-l2, rgba(0,0,0,.1)); --cs-border-strong: var(--dsw-alias-border-l4, rgba(0,0,0,.16)); --cs-bg: var(--dsw-alias-bg-l1, color-mix(in srgb, var(--dsw-alias-bg-module-platform, #ffffff) 94%, var(--dsw-alias-label-primary, #1f2329) 6%)); --cs-panel: var(--dsw-alias-bg-module-platform, #ffffff); --cs-hover: var(--dsw-alias-interactive-bg-hover, rgba(0,0,0,.04)); --cs-shadow: var(--dsw-alias-shadow-l1, 0 4px 16px rgba(0,0,0,.08)); --cs-radius: var(--dsw-radius-xl, 12px); --cs-card-w: 420px; --cs-card-h: 300px; position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: var(--cs-bg); color: var(--cs-text); font-family: inherit; font-size: 14px; }
+.cs-root { --cs-font-scale: 1; --cs-accent: var(--dsw-static-neutral-bluish-400, #3370ff); --cs-accent-soft: var(--dsw-static-neutral-bluish-200, #dbe6ff); --cs-text: var(--dsw-alias-label-primary, #1f2329); --cs-muted: var(--dsw-alias-label-secondary, color-mix(in srgb, var(--dsw-alias-label-primary, #1f2329) 62%, var(--dsw-alias-bg-module-platform, #ffffff) 38%)); --cs-border: var(--dsw-alias-border-l2, rgba(0,0,0,.1)); --cs-border-strong: var(--dsw-alias-border-l4, rgba(0,0,0,.16)); --cs-bg: var(--dsw-alias-bg-l1, color-mix(in srgb, var(--dsw-alias-bg-module-platform, #ffffff) 94%, var(--dsw-alias-label-primary, #1f2329) 6%)); --cs-panel: var(--dsw-alias-bg-module-platform, #ffffff); --cs-hover: var(--dsw-alias-interactive-bg-hover, rgba(0,0,0,.04)); --cs-shadow: var(--dsw-alias-shadow-l1, 0 4px 16px rgba(0,0,0,.08)); --cs-radius: var(--dsw-radius-xl, 12px); --cs-card-w: 420px; --cs-card-h: 300px; position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: var(--cs-bg); color: var(--cs-text); font-family: inherit; font-size: 14px; }
 .cs-root *, .cs-root *::before, .cs-root *::after { box-sizing: border-box; }
 .cs-root[data-mica-theme] {
   color-scheme: light dark;
@@ -635,8 +645,8 @@ window.__ModuleLoader__.load({
 .cs-card-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; scrollbar-width: thin; scrollbar-color: var(--cs-border-strong) transparent; }
 .cs-q { flex-shrink: 0; display: flex; align-items: flex-start; gap: 8px; }
 .cs-q-mark { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 6px; background: var(--cs-hover); color: var(--cs-muted); font-size: 11px; font-weight: 700; }
-.cs-q-text { min-width: 0; max-height: 76px; overflow: auto; font-size: 13px; font-weight: 600; line-height: 1.55; overflow-wrap: anywhere; }
-.cs-a { flex: 1; min-height: 0; font-size: 13px; line-height: 1.68; color: var(--cs-text); user-select: text; cursor: text; overflow-wrap: anywhere; }
+.cs-q-text { min-width: 0; max-height: 76px; overflow: auto; font-size: calc(13px * var(--cs-font-scale)); font-weight: 600; line-height: 1.55; overflow-wrap: anywhere; }
+.cs-a { flex: 1; min-height: 0; font-size: calc(13px * var(--cs-font-scale)); line-height: 1.68; color: var(--cs-text); user-select: text; cursor: text; overflow-wrap: anywhere; }
 .cs-a-compact { color: var(--cs-muted); white-space: pre-wrap; line-height: 1.65; }
 .cs-md { min-height: 1em; }
 .cs-p { margin: 0 0 6px; white-space: pre-wrap; }
@@ -671,7 +681,7 @@ window.__ModuleLoader__.load({
 .cs-composer-branch-name { width: 100%; min-height: 32px; padding: 6px 8px; border: 1px solid var(--cs-border); border-radius: 7px; outline: none; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 11px; }
 .cs-composer-branch-name:focus { border-color: var(--cs-accent); }
 .cs-composer { width: 100%; display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--cs-border); border-radius: var(--cs-radius); background: var(--cs-panel); box-shadow: var(--cs-shadow); }
-.cs-input { width: 100%; min-height: 64px; max-height: 180px; resize: vertical; overscroll-behavior: contain; border: none; outline: none; background: transparent; color: var(--cs-text); font: inherit; font-size: 13px; line-height: 1.6; }
+.cs-input { width: 100%; min-height: 64px; max-height: 180px; resize: vertical; overscroll-behavior: contain; border: none; outline: none; background: transparent; color: var(--cs-text); font: inherit; font-size: calc(13px * var(--cs-font-scale)); line-height: 1.6; }
 .cs-input::placeholder { color: var(--cs-muted); }
 .cs-composer-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cs-add-btn { flex-shrink: 0; width: 30px; height: 30px; padding: 0; border: 1px solid var(--cs-border); border-radius: 50%; background: var(--cs-bg); color: var(--cs-muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
@@ -850,12 +860,12 @@ window.__ModuleLoader__.load({
 .cs-lib-space-card[draggable="true"] { cursor: grab; }
 .cs-lib-space-card[draggable="true"]:active { cursor: grabbing; }
 .cs-lib-space-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.cs-lib-space-title { min-width: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.cs-lib-space-title { min-width: 0; display: flex; align-items: center; gap: 6px; font-size: calc(14px * var(--cs-font-scale)); font-weight: 600; }
 .cs-lib-space-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cs-space-icon { flex-shrink: 0; color: var(--cs-muted); }
 .cs-folder-icon { flex-shrink: 0; }
 .cs-lib-layout-badge { flex-shrink: 0; padding: 1px 6px; border: 1px solid var(--cs-border); border-radius: 999px; color: var(--cs-muted); font-size: 10px; line-height: 1.6; }
-.cs-lib-space-question { flex: 1; min-height: 34px; overflow: hidden; color: var(--cs-muted); font-size: 12px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cs-lib-space-question { font-size: calc(12px * var(--cs-font-scale));  flex: 1; min-height: 34px; overflow: hidden; color: var(--cs-muted); font-size: 12px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .cs-lib-space-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--cs-muted); font-size: 11px; }
 .cs-lib-space-actions { display: flex; align-items: center; gap: 5px; padding-top: 6px; border-top: 1px solid var(--cs-border); }
 .cs-lib-move { flex: 1; min-width: 0; padding: 3px 5px; border: 1px solid var(--cs-border); border-radius: 5px; background: var(--cs-bg); color: var(--cs-text); font: inherit; font-size: 11px; }
@@ -891,26 +901,30 @@ window.__ModuleLoader__.load({
 .cs-settings-modal { width: min(560px, calc(100vw - 48px)); }
 .cs-welcome-modal { width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
 .cs-welcome-badge { align-self: flex-start; padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--cs-accent) 14%, var(--cs-panel)); color: var(--cs-accent); font-size: 10px; font-weight: 700; letter-spacing: .03em; }
-.cs-welcome-lead { color: var(--cs-text); font-size: 13px; line-height: 1.7; white-space: pre-wrap; text-wrap: pretty; }
+.cs-welcome-lead { color: var(--cs-text); font-size: calc(13px * var(--cs-font-scale)); line-height: 1.7; white-space: pre-wrap; text-wrap: pretty; }
 .cs-welcome-section { display: flex; flex-direction: column; gap: 5px; }
 .cs-welcome-section-title { color: var(--cs-text); font-size: 12px; font-weight: 700; }
-.cs-welcome-list { margin: 0; padding-left: 18px; color: var(--cs-muted); font-size: 12px; line-height: 1.7; text-wrap: pretty; }
+.cs-welcome-list { margin: 0; padding-left: 18px; color: var(--cs-muted); font-size: calc(12px * var(--cs-font-scale)); line-height: 1.7; text-wrap: pretty; }
 .cs-welcome-list li { margin-bottom: 4px; }
 .cs-guide-modal { width: min(600px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
 .cs-guide-intro { color: var(--cs-muted); font-size: 12px; line-height: 1.6; }
 .cs-guide-section { display: flex; flex-direction: column; gap: 5px; }
 .cs-guide-title { color: var(--cs-text); font-size: 12px; font-weight: 700; }
-.cs-guide-section ul { margin: 0; padding-left: 18px; color: var(--cs-muted); font-size: 12px; line-height: 1.75; }
+.cs-guide-section ul { margin: 0; padding-left: 18px; color: var(--cs-muted); font-size: calc(12px * var(--cs-font-scale)); line-height: 1.75; }
 .cs-welcome-feedback { padding: 9px 11px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); color: var(--cs-muted); font-size: 11px; line-height: 1.7; }
 .cs-welcome-feedback a { display: inline-block; margin-top: 4px; color: var(--cs-accent); text-decoration: none; }
 .cs-welcome-feedback a:hover { text-decoration: underline; }
 .cs-settings-list { display: flex; flex-direction: column; gap: 5px; }
 .cs-settings-row { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 10px 12px; border: 1px solid var(--cs-border); border-radius: 8px; background: var(--cs-bg); color: var(--cs-text); font: inherit; text-align: left; cursor: pointer; }
 .cs-settings-row:hover { border-color: var(--cs-accent); }
+.cs-font-options { display: flex; flex-wrap: wrap; gap: 4px; }
+.cs-font-option { padding: 3px 8px; border: 1px solid var(--cs-border); border-radius: 6px; background: var(--cs-bg); color: var(--cs-muted); font: inherit; font-size: 10px; cursor: pointer; }
+.cs-font-option:hover { border-color: var(--cs-accent); color: var(--cs-text); }
+.cs-font-option-active { border-color: var(--cs-accent); background: var(--cs-accent-soft); color: var(--cs-accent); }
 .cs-settings-static { cursor: default; }
 .cs-settings-static:hover { border-color: var(--cs-border); }
-.cs-settings-label { font-size: 12px; font-weight: 600; }
-.cs-settings-desc { color: var(--cs-muted); font-size: 10px; }
+.cs-settings-label { font-size: calc(12px * var(--cs-font-scale)); font-weight: 600; }
+.cs-settings-desc { color: var(--cs-muted); font-size: calc(10px * var(--cs-font-scale)); }
 .cs-settings-note { margin-top: 2px; padding: 8px 10px; border: 1px solid color-mix(in srgb, #e8b84a 38%, var(--cs-border)); border-radius: 7px; background: color-mix(in srgb, #e8b84a 8%, var(--cs-bg)); color: var(--cs-muted); font-size: 10px; line-height: 1.55; }
 .cs-settings-divider { height: 1px; margin: 5px 4px; background: var(--cs-border); }
 .cs-recovery-modal { width: min(640px, calc(100vw - 48px)); }
@@ -2709,6 +2723,15 @@ window.__ModuleLoader__.load({
         setAppearance(value)
         writeLocalStorage(APPEARANCE_KEY, value)
       }
+      const [fontScale, setFontScale] = useState(() => {
+        const saved = readLocalStorage(FONT_KEY)
+        return FONT_SCALES[saved] ? saved : 'normal'
+      })
+      const changeFontScale = (value) => {
+        if (!FONT_SCALES[value]) return
+        setFontScale(value)
+        writeLocalStorage(FONT_KEY, value)
+      }
       const [confirmDeletion, deleteConfirmation] = useDeleteConfirmation(t)
       const [library, setLibrary] = useState(null)
       const [loadState, setLoadState] = useState('loading')
@@ -3450,14 +3473,14 @@ window.__ModuleLoader__.load({
       }
 
       if (loadState === 'loading') {
-        return h('div', { className: 'cs-root cs-library', 'data-mica-theme': appearance },
+        return h('div', { className: 'cs-root cs-library', 'data-mica-theme': appearance, style: { '--cs-font-scale': FONT_SCALES[fontScale] || 1 } },
           h('style', null, CSS),
           h('div', { className: 'cs-lib-center' }, t('loading'))
         )
       }
 
       if (loadState === 'error') {
-        return h('div', { className: 'cs-root cs-library', 'data-mica-theme': appearance },
+        return h('div', { className: 'cs-root cs-library', 'data-mica-theme': appearance, style: { '--cs-font-scale': FONT_SCALES[fontScale] || 1 } },
           h('style', null, CSS),
           h('div', { className: 'cs-lib-center' },
             h('div', { className: 'cs-lib-empty-title' }, t('libraryLoadError')),
@@ -3467,7 +3490,7 @@ window.__ModuleLoader__.load({
         )
       }
 
-      return h('div', { className: 'cs-root cs-library', 'data-mica-theme': appearance },
+      return h('div', { className: 'cs-root cs-library', 'data-mica-theme': appearance, style: { '--cs-font-scale': FONT_SCALES[fontScale] || 1 } },
         h('style', null, CSS),
         h('div', { className: 'cs-lib-header' },
           h('div', { className: 'cs-title-brand' },
@@ -3921,7 +3944,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function ChatSpacePanel({ tr, t: slotT, onBackToConversation, spaceId, onBackToLibrary, appearance, changeAppearance }) {
+    function ChatSpacePanel({ tr, t: slotT, onBackToConversation, spaceId, onBackToLibrary, appearance, fontScale, changeAppearance }) {
       const t = typeof tr === 'function' ? tr : typeof slotT === 'function' ? slotT : (key) => key
       const [confirmDeletion, deleteConfirmation] = useDeleteConfirmation(t)
       const [space, setSpace] = useState(null)
@@ -4342,7 +4365,7 @@ window.__ModuleLoader__.load({
       }, [anchorReveal])
 
       if (loadState === 'loading') {
-        return h('div', { className: 'cs-root cs-center', 'data-mica-theme': appearance },
+        return h('div', { className: 'cs-root cs-center', 'data-mica-theme': appearance, style: { '--cs-font-scale': FONT_SCALES[fontScale] || 1 } },
           h('style', null, CSS),
           h('div', { className: 'cs-loading' },
             h('span', { className: 'cs-spinner' }),
@@ -4352,7 +4375,7 @@ window.__ModuleLoader__.load({
       }
 
       if (loadState === 'error') {
-        return h('div', { className: 'cs-root cs-center', 'data-mica-theme': appearance },
+        return h('div', { className: 'cs-root cs-center', 'data-mica-theme': appearance, style: { '--cs-font-scale': FONT_SCALES[fontScale] || 1 } },
           h('style', null, CSS),
           h('div', { className: 'cs-error-screen' },
             h('strong', null, t('loadError')),
@@ -6737,7 +6760,7 @@ window.__ModuleLoader__.load({
 
       return h('div', {
         className: cx('cs-root', focusIds.size > 0 ? 'cs-card-focus' : ''),
-        'data-mica-theme': appearance,
+        'data-mica-theme': appearance, style: { '--cs-font-scale': FONT_SCALES[fontScale] || 1 },
         ref: rootRef,
       },
         h('style', null, CSS),
@@ -6893,6 +6916,8 @@ window.__ModuleLoader__.load({
     const ACTIVE_KEY = 'chat-space:active'
     const LAST_SPACE_KEY = 'chat-space:last-space'
     const APPEARANCE_KEY = 'chat-space:appearance'
+    const FONT_KEY = 'chat-space:font-scale'
+    const FONT_SCALES = { small: 0.9, normal: 1, large: 1.15, xlarge: 1.3 }
     const LAST_FOLDER_KEY = 'chat-space:last-folder'
     const WELCOME_KEY = 'chat-space:welcome-seen'
     const FOLDER_VIEW_KEY = 'chat-space:folder-view'
