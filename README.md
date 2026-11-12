@@ -2,9 +2,15 @@
 
 [English](README.en.md)
 
-**Current demo:** `0.99.11` · [Download / Release](https://github.com/ToiMee/mica_space/releases/latest)
+**Current demo:** `0.99.15` · [Download / Release](https://github.com/ToiMee/mica_space/releases/latest)
 
-Mica Space 是 DSH 的可缩放对话地图插件：一条纵向主线，多条从回答分叉的支线，每个空间是一张独立画布。
+Mica Space 是可缩放的对话地图插件，已有 **DSH（DeepSeek Harness）版和 Codex 适配版**：一条纵向主线，多条从回答分叉的支线，每个空间是一张独立画布。
+
+## 平台与版本
+
+- **DSH 版**：本仓库的 `main` 分支及默认 Release 安装包面向 DSH；下文的安装、模型配置和数据说明均针对 DSH 版。
+- **Codex 版**：已有适配版，可在 [`codex/0.99.8` 分支](https://github.com/ToiMee/mica_space/tree/codex/0.99.8)查看较早的 `0.99.8-codex.1` 版本。该分支保留的是历史版本，不代表当前 Codex 版的最新进度。
+- 两端使用各自的宿主接入方式和安装包。DSH 版安装包不能直接作为 Codex 插件安装；Mica Space 项目本身并不限于 DSH。
 
 长对话里，一个回答下面往往要继续追问很多次。传统聊天只能一直往下滚，想回到某个回答时又得上下翻找，文字一多就很难受。Mica Space 让每条追问直接从那张回答分叉：主线保持完整上下文，支线各自展开；后续回到主线时，本地记忆还能 callback 之前支线的结论。
 
@@ -46,7 +52,7 @@ Mica Space 是 DSH 的可缩放对话地图插件：一条纵向主线，多条�
 - 零配置的轻量哈希向量，以及可选的本地共现语义模式；
 - Git 备份（本地提交 + 可选私有 remote push）。
 
-## 安装
+## 安装（DSH 版）
 
 Release 里的 `mica-space-0.99.15-demo.zip` 已包含运行依赖，解压后直接在 DSH 插件管理里选择该目录即可，不需要再执行 `npm install`。
 
