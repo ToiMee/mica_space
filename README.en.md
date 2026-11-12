@@ -4,7 +4,13 @@
 
 **Current demo:** `0.99.15` · [Download / Release](https://github.com/ToiMee/mica_space/releases/latest)
 
-Mica Space is a zoomable, branching conversation map for **DSH (DeepSeek Harness)**. Instead of scrolling through one long chat, each follow-up grows from the answer it belongs to: the main line keeps its context, and every branch stays independently explorable.
+Mica Space is a zoomable, branching conversation map with **DSH (DeepSeek Harness) and Codex adaptations**. Instead of scrolling through one long chat, each follow-up grows from the answer it belongs to: the main line keeps its context, and every branch stays independently explorable.
+
+## Platforms and versions
+
+- **DSH edition:** this repository's `main` branch and default Release packages target DSH. The installation, model configuration, and data details below describe the DSH edition.
+- **Codex edition:** an earlier adaptation, `0.99.8-codex.1`, is available in the [`codex/0.99.8` branch](https://github.com/ToiMee/mica_space/tree/codex/0.99.8). That branch preserves a historical version and does not represent the latest Codex development progress.
+- Each edition has its own host integration and installer. The DSH package cannot be installed directly as a Codex plugin; the Mica Space project itself is not limited to DSH.
 
 ## Why
 
@@ -38,12 +44,12 @@ In a long conversation, follow-ups pile up under a single answer. To return to a
 - Adjustable font size (small / normal / large / extra large).
 - Backup/restore UI clearly states that attachment files are not included.
 
-## Install (bundled Demo)
+## Install (DSH bundled Demo)
 
 On the GitHub Releases page, download:
 
 ```text
-mica-space-0.99.11-demo.zip
+mica-space-0.99.15-demo.zip
 ```
 
 Then:
